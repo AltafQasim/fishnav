@@ -1,11 +1,10 @@
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Tabs } from 'expo-router';
 import React from 'react';
 import {
   Animated,
   Dimensions,
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -20,12 +19,15 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const BAR_WIDTH = Math.min(SCREEN_WIDTH - 24, 428);
 const TOTAL_HEIGHT = 107;
 
-// ==========================================
-// 🎨 EXACT MARINE SVG ICONS
-// ==========================================
+export type ActiveTabType = 'waypoint' | 'weather' | 'compass' | 'calendar' | 'settings' | null;
 
-// 1. Waypoint Icon (index)
-const WaypointTabIcon = ({ isActive }: { isActive: boolean }) => {
+type CurvedBottomBarProps = {
+  activeTab: ActiveTabType;
+  onTabPress: (tab: 'waypoint' | 'weather' | 'compass' | 'calendar' | 'settings') => void;
+};
+
+// 1. Waypoint Icon
+const WaypointIcon = ({ isActive }: { isActive: boolean }) => {
   if (isActive) {
     return (
       <View style={styles.activeIconBadge}>
@@ -43,8 +45,8 @@ const WaypointTabIcon = ({ isActive }: { isActive: boolean }) => {
   );
 };
 
-// 2. Weather & Tide Icon (weather)
-const WeatherTabIcon = ({ isActive }: { isActive: boolean }) => {
+// 2. Weather Icon
+const WeatherIcon = ({ isActive }: { isActive: boolean }) => {
   if (isActive) {
     return (
       <View style={styles.activeIconBadge}>
@@ -61,7 +63,7 @@ const WeatherTabIcon = ({ isActive }: { isActive: boolean }) => {
   );
 };
 
-// 3. Center Compass Button (Center action - compass)
+// 3. Center Compass Rose Icon
 const CenterCompassIcon = () => (
   <Svg width={32} height={32} viewBox="0 0 24 24" fill="none">
     <Circle cx="12" cy="12" r="10" stroke="#FFFFFF" strokeWidth={1.8} />
@@ -73,8 +75,8 @@ const CenterCompassIcon = () => (
   </Svg>
 );
 
-// 4. Sun & Moon Calendar Icon (calendar)
-const CalendarTabIcon = ({ isActive }: { isActive: boolean }) => {
+// 4. Calendar Icon
+const CalendarIcon = ({ isActive }: { isActive: boolean }) => {
   if (isActive) {
     return (
       <View style={styles.activeIconBadge}>
@@ -94,8 +96,8 @@ const CalendarTabIcon = ({ isActive }: { isActive: boolean }) => {
   );
 };
 
-// 5. Settings Icon (settings)
-const SettingsTabIcon = ({ isActive }: { isActive: boolean }) => {
+// 5. Settings Icon
+const SettingsIcon = ({ isActive }: { isActive: boolean }) => {
   if (isActive) {
     return (
       <View style={styles.activeIconBadge}>
@@ -113,17 +115,9 @@ const SettingsTabIcon = ({ isActive }: { isActive: boolean }) => {
   );
 };
 
-// ==========================================
-// 🌟 CUSTOM CURVED TAB BAR COMPONENT
-// ==========================================
-
-function CustomCurvedTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+export function CurvedBottomBar({ activeTab, onTabPress }: CurvedBottomBarProps) {
   const insets = useSafeAreaInsets();
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
-
-  // Filter routes so only the 5 main tabs appear in the tab bar
-  const mainTabNames = ['index', 'weather', 'compass', 'calendar', 'settings'];
-  const tabRoutes = state.routes.filter((r) => mainTabNames.includes(r.name));
 
   const width = BAR_WIDTH;
   const height = TOTAL_HEIGHT;
@@ -148,36 +142,26 @@ function CustomCurvedTabBar({ state, descriptors, navigation }: BottomTabBarProp
     Z
   `;
 
-  // Center route is index 2: 'compass'
-  const compassRoute = tabRoutes.find((r) => r.name === 'compass') || tabRoutes[2];
-
   const handleCenterPress = () => {
-    if (!compassRoute) return;
     Animated.sequence([
-      Animated.timing(scaleAnim, { toValue: 0.92, duration: 90, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, friction: 4, tension: 40, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 0.92, duration: 80, useNativeDriver: Platform.OS !== 'web' }),
+      Animated.spring(scaleAnim, { toValue: 1, friction: 4, tension: 40, useNativeDriver: Platform.OS !== 'web' }),
     ]).start();
-
-    const event = navigation.emit({
-      type: 'tabPress',
-      target: compassRoute.key,
-      canPreventDefault: true,
-    });
-
-    if (!event.defaultPrevented) {
-      navigation.navigate(compassRoute.name);
-    }
+    onTabPress('compass');
   };
 
   return (
-    <View style={[styles.tabBarWrapper, { bottom: Platform.OS === 'ios' ? insets.bottom : 12 }]}>
-      <View style={styles.barContainer}>
+    <View
+      style={[styles.tabBarWrapper, { bottom: Platform.OS === 'ios' ? insets.bottom : 12 }]}
+      pointerEvents="box-none"
+    >
+      <View style={styles.barContainer} pointerEvents="box-none">
         {/* Curved Background Bar */}
-        <Svg width={BAR_WIDTH} height={TOTAL_HEIGHT} style={styles.svgBackground}>
+        <Svg width={BAR_WIDTH} height={TOTAL_HEIGHT} style={styles.svgBackground} pointerEvents="none">
           <Path d={pathData} fill={MapColors?.navy || '#00162B'} />
         </Svg>
 
-        {/* Center White Crescent Arch */}
+        {/* Center Crescent Arch */}
         <View style={styles.crescentWrapper} pointerEvents="none">
           <Svg width={76} height={38} viewBox="0 0 76 38">
             <Path
@@ -190,160 +174,86 @@ function CustomCurvedTabBar({ state, descriptors, navigation }: BottomTabBarProp
           </Svg>
         </View>
 
-        {/* Elevated Center Glowing Compass Button */}
-        {compassRoute && (
-          <Animated.View style={[styles.centerButtonWrapper, { transform: [{ scale: scaleAnim }] }]}>
-            <TouchableOpacity
-              activeOpacity={0.88}
-              onPress={handleCenterPress}
-              style={styles.centerTouch}
-              accessibilityRole="button"
-              accessibilityLabel="Open Marine Compass"
+        {/* Elevated Floating Center Compass Button */}
+        <Animated.View
+          style={[styles.centerButtonWrapper, { transform: [{ scale: scaleAnim }] }]}
+          pointerEvents="auto"
+        >
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={handleCenterPress}
+            style={styles.centerTouch}
+            accessibilityRole="button"
+            accessibilityLabel="Marine Compass"
+          >
+            <LinearGradient
+              colors={activeTab === 'compass' ? ['#0284C7', '#0369A1'] : ['#0F2942', '#0A1F35']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 0, y: 1 }}
+              style={[styles.gradientCircle, activeTab === 'compass' && styles.gradientCircleActive]}
             >
-              <LinearGradient
-                colors={['#0284C7', '#0369A1']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={styles.gradientCircle}
-              >
-                <CenterCompassIcon />
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
+              <CenterCompassIcon />
+            </LinearGradient>
+          </TouchableOpacity>
+        </Animated.View>
 
         {/* Tab Items Row */}
-        <View style={styles.itemsRow}>
-          {tabRoutes.map((route, index) => {
-            if (index === 2) {
-              return <View key="compass-spacer" style={styles.centerSpacer} />;
-            }
+        <View style={styles.itemsRow} pointerEvents="auto">
+          {/* Tab 1: Waypoint */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => onTabPress('waypoint')}
+            style={styles.tabItem}
+            accessibilityRole="button"
+            accessibilityLabel="Waypoints"
+          >
+            <WaypointIcon isActive={activeTab === 'waypoint'} />
+            {activeTab === 'waypoint' && <Text style={styles.activeLabel}>Waypoint</Text>}
+          </TouchableOpacity>
 
-            const isFocused = state.routes[state.index]?.name === route.name;
-            const { options } = descriptors[route.key];
+          {/* Tab 2: Weather */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => onTabPress('weather')}
+            style={styles.tabItem}
+            accessibilityRole="button"
+            accessibilityLabel="Weather"
+          >
+            <WeatherIcon isActive={activeTab === 'weather'} />
+            {activeTab === 'weather' && <Text style={styles.activeLabel}>Weather</Text>}
+          </TouchableOpacity>
 
-            const getLabel = () => {
-              switch (route.name) {
-                case 'index':
-                  return 'Waypoint';
-                case 'weather':
-                  return 'Weather';
-                case 'calendar':
-                  return 'Calendar';
-                case 'settings':
-                  return 'Settings';
-                default:
-                  return route.name;
-              }
-            };
+          {/* Spacer for Elevated Center Compass */}
+          <View style={styles.centerSpacer} pointerEvents="none" />
 
-            const onPress = () => {
-              const event = navigation.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
+          {/* Tab 4: Calendar */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => onTabPress('calendar')}
+            style={styles.tabItem}
+            accessibilityRole="button"
+            accessibilityLabel="Calendar"
+          >
+            <CalendarIcon isActive={activeTab === 'calendar'} />
+            {activeTab === 'calendar' && <Text style={styles.activeLabel}>Calendar</Text>}
+          </TouchableOpacity>
 
-              if (!isFocused && !event.defaultPrevented) {
-                navigation.navigate(route.name);
-              }
-            };
-
-            const renderIcon = () => {
-              switch (route.name) {
-                case 'index':
-                  return <WaypointTabIcon isActive={isFocused} />;
-                case 'weather':
-                  return <WeatherTabIcon isActive={isFocused} />;
-                case 'calendar':
-                  return <CalendarTabIcon isActive={isFocused} />;
-                case 'settings':
-                  return <SettingsTabIcon isActive={isFocused} />;
-                default:
-                  return <WaypointTabIcon isActive={isFocused} />;
-              }
-            };
-
-            return (
-              <TouchableOpacity
-                key={route.key}
-                accessibilityRole="button"
-                accessibilityState={isFocused ? { selected: true } : {}}
-                accessibilityLabel={options.tabBarAccessibilityLabel || getLabel()}
-                testID={options.tabBarTestID}
-                onPress={onPress}
-                activeOpacity={0.8}
-                style={styles.tabItem}
-              >
-                {renderIcon()}
-                {isFocused && (
-                  <Text style={styles.activeLabel}>{getLabel()}</Text>
-                )}
-              </TouchableOpacity>
-            );
-          })}
+          {/* Tab 5: Settings */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => onTabPress('settings')}
+            style={styles.tabItem}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+          >
+            <SettingsIcon isActive={activeTab === 'settings'} />
+            {activeTab === 'settings' && <Text style={styles.activeLabel}>Settings</Text>}
+          </TouchableOpacity>
         </View>
       </View>
     </View>
   );
 }
-
-// ==========================================
-// 🚀 EXPORTED ROUTER APP TABS
-// ==========================================
-
-export default function AppTabs() {
-  return (
-    <Tabs
-      tabBar={(props) => <CustomCurvedTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-        sceneContainerStyle: { backgroundColor: 'transparent' },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Waypoint',
-        }}
-      />
-      <Tabs.Screen
-        name="weather"
-        options={{
-          title: 'Weather',
-        }}
-      />
-      <Tabs.Screen
-        name="compass"
-        options={{
-          title: 'Compass',
-        }}
-      />
-      <Tabs.Screen
-        name="calendar"
-        options={{
-          title: 'Calendar',
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: 'Settings',
-        }}
-      />
-
-      {/* Hidden Auxiliary Routes accessible via router.push */}
-      <Tabs.Screen name="map" options={{ href: null }} />
-      <Tabs.Screen name="spots" options={{ href: null }} />
-      <Tabs.Screen name="trips" options={{ href: null }} />
-      <Tabs.Screen name="more" options={{ href: null }} />
-    </Tabs>
-  );
-}
-
-// ==========================================
-// 📱 STYLES
-// ==========================================
 
 const styles = StyleSheet.create({
   tabBarWrapper: {
@@ -352,7 +262,6 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     backgroundColor: 'transparent',
-    pointerEvents: 'box-none',
     zIndex: 90,
   },
   barContainer: {
@@ -360,6 +269,7 @@ const styles = StyleSheet.create({
     height: TOTAL_HEIGHT,
     alignItems: 'center',
     justifyContent: 'flex-end',
+    position: 'relative',
   },
   svgBackground: {
     position: 'absolute',
@@ -381,7 +291,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 7,
     alignSelf: 'center',
-    zIndex: 10,
+    zIndex: 20,
     shadowColor: '#0284C7',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.6,
@@ -398,7 +308,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  gradientCircleActive: {
+    borderColor: '#38BDF8',
+    borderWidth: 2,
   },
   itemsRow: {
     width: '100%',
@@ -407,7 +321,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    zIndex: 5,
+    zIndex: 10,
   },
   tabItem: {
     flex: 1,

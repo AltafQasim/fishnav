@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 
 import { buildLeafletHtml } from '@/components/map/leaflet-map-html';
@@ -88,6 +88,7 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
     ref,
   ) {
     const webRef = useRef<WebView>(null);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
     const readyRef = useRef(false);
     const queueRef = useRef<MapCommand[]>([]);
     const html = useMemo(() => buildLeafletHtml(), []);
@@ -97,14 +98,22 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
         queueRef.current.push(cmd);
         return;
       }
-      webRef.current?.postMessage(JSON.stringify(cmd));
+      if (Platform.OS === 'web') {
+        (iframeRef.current as any)?.contentWindow?.postMessage(JSON.stringify(cmd), '*');
+      } else {
+        webRef.current?.postMessage(JSON.stringify(cmd));
+      }
     }, []);
 
     const flushQueue = useCallback(() => {
       const queued = queueRef.current;
       queueRef.current = [];
       queued.forEach((cmd) => {
-        webRef.current?.postMessage(JSON.stringify(cmd));
+        if (Platform.OS === 'web') {
+          (iframeRef.current as any)?.contentWindow?.postMessage(JSON.stringify(cmd), '*');
+        } else {
+          webRef.current?.postMessage(JSON.stringify(cmd));
+        }
       });
     }, []);
 
@@ -188,49 +197,78 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
       });
     }, [location, heading, followUser, headingUp, send]);
 
+    const processMessageData = useCallback((data: any) => {
+      if (!data || typeof data !== 'object') return;
+
+      if (data.type === 'ready') {
+        readyRef.current = true;
+        flushQueue();
+        send({ type: 'setStyle', style: mapStyle });
+        send({ type: 'setOverlays', overlays });
+        return;
+      }
+
+      if (data.type === 'selectSpot' && data.id) {
+        const spot = spots.find((s) => s.id === data.id);
+        if (spot) onSelectSpot(spot);
+        return;
+      }
+
+      if (data.type === 'mapClick' && typeof data.lat === 'number' && typeof data.lng === 'number') {
+        onMapClick(data.lat, data.lng);
+        return;
+      }
+
+      if (data.type === 'measureUpdate' && typeof data.totalNm === 'number') {
+        onMeasureUpdate?.(data.totalNm, data.pointsCount ?? 0);
+        return;
+      }
+
+      if (data.type === 'userPanned') {
+        onUserPanned?.();
+        return;
+      }
+    }, [flushQueue, mapStyle, onMapClick, onMeasureUpdate, onSelectSpot, onUserPanned, overlays, send, spots]);
+
     const onMessage = (event: WebViewMessageEvent) => {
       try {
-        const data = JSON.parse(event.nativeEvent.data) as {
-          type: string;
-          id?: string;
-          lat?: number;
-          lng?: number;
-          totalNm?: number;
-          pointsCount?: number;
-        };
-
-        if (data.type === 'ready') {
-          readyRef.current = true;
-          flushQueue();
-          send({ type: 'setStyle', style: mapStyle });
-          send({ type: 'setOverlays', overlays });
-          return;
-        }
-
-        if (data.type === 'selectSpot' && data.id) {
-          const spot = spots.find((s) => s.id === data.id);
-          if (spot) onSelectSpot(spot);
-          return;
-        }
-
-        if (data.type === 'mapClick' && typeof data.lat === 'number' && typeof data.lng === 'number') {
-          onMapClick(data.lat, data.lng);
-          return;
-        }
-
-        if (data.type === 'measureUpdate' && typeof data.totalNm === 'number') {
-          onMeasureUpdate?.(data.totalNm, data.pointsCount ?? 0);
-          return;
-        }
-
-        if (data.type === 'userPanned') {
-          onUserPanned?.();
-          return;
-        }
+        const data = JSON.parse(event.nativeEvent.data);
+        processMessageData(data);
       } catch {
         // Ignore malformed messages
       }
     };
+
+    // Web iframe listener
+    useEffect(() => {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const handleWebMsg = (e: MessageEvent) => {
+          try {
+            const parsed = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+            processMessageData(parsed);
+          } catch {}
+        };
+        window.addEventListener('message', handleWebMsg);
+        return () => window.removeEventListener('message', handleWebMsg);
+      }
+    }, [processMessageData]);
+
+    if (Platform.OS === 'web') {
+      return (
+        <View style={styles.wrap}>
+          <iframe
+            ref={iframeRef as any}
+            srcDoc={html}
+            style={{
+              width: '100%',
+              height: '100%',
+              border: 'none',
+              backgroundColor: MapColors.navyDeep,
+            }}
+          />
+        </View>
+      );
+    }
 
     return (
       <View style={styles.wrap}>
@@ -260,10 +298,14 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
 const styles = StyleSheet.create({
   wrap: {
     flex: 1,
+    width: '100%',
+    height: '100%',
     backgroundColor: MapColors.navyDeep,
   },
   map: {
     flex: 1,
+    width: '100%',
+    height: '100%',
     backgroundColor: MapColors.navyDeep,
   },
   loading: {

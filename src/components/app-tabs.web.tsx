@@ -6,6 +6,7 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
+import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
@@ -20,20 +21,20 @@ export default function AppTabs() {
       <TabSlot style={{ height: '100%' }} />
       <TabList asChild>
         <CustomTabList>
-          <TabTrigger name="home" href="/" asChild>
-            <TabButton>Home</TabButton>
+          <TabTrigger name="index" href="/" asChild>
+            <TabButton>Waypoint</TabButton>
           </TabTrigger>
-          <TabTrigger name="map" href="/map" asChild>
-            <TabButton>Map</TabButton>
+          <TabTrigger name="weather" href="/weather" asChild>
+            <TabButton>Weather</TabButton>
           </TabTrigger>
-          <TabTrigger name="spots" href="/spots" asChild>
-            <TabButton>Spots</TabButton>
+          <TabTrigger name="compass" href="/compass" asChild>
+            <TabButton>Compass</TabButton>
           </TabTrigger>
-          <TabTrigger name="trips" href="/trips" asChild>
-            <TabButton>Trips</TabButton>
+          <TabTrigger name="calendar" href="/calendar" asChild>
+            <TabButton>Calendar</TabButton>
           </TabTrigger>
-          <TabTrigger name="more" href="/more" asChild>
-            <TabButton>More</TabButton>
+          <TabTrigger name="settings" href="/settings" asChild>
+            <TabButton>Settings</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -45,7 +46,7 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <View style={[styles.tabButtonView, isFocused && styles.tabButtonFocused]}>
-        <ThemedText type="small" style={{ color: isFocused ? MapColors.accent : MapColors.textMuted }}>
+        <ThemedText type="small" style={{ color: isFocused ? '#38BDF8' : MapColors.textMuted }}>
           {children}
         </ThemedText>
       </View>
@@ -57,7 +58,7 @@ export function CustomTabList(props: TabListProps) {
   return (
     <View {...props} style={styles.tabListContainer}>
       <ThemedView style={[styles.innerContainer, { backgroundColor: MapColors.navyPanel }]}>
-        <ThemedText type="smallBold" style={[styles.brandText, { color: MapColors.text }]}>
+        <ThemedText type="smallBold" style={[styles.brandText, { color: '#38BDF8' }]}>
           FishNavPro
         </ThemedText>
         {props.children}
@@ -70,10 +71,12 @@ const styles = StyleSheet.create({
   tabListContainer: {
     position: 'absolute',
     width: '100%',
+    bottom: 0,
     padding: Spacing.three,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
+    zIndex: 100,
   },
   innerContainer: {
     paddingVertical: Spacing.two,
@@ -84,6 +87,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     gap: Spacing.two,
     maxWidth: MaxContentWidth,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   brandText: {
     marginRight: 'auto',
@@ -97,6 +102,6 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.three,
   },
   tabButtonFocused: {
-    backgroundColor: MapColors.accentSoft,
+    backgroundColor: 'rgba(2, 132, 199, 0.25)',
   },
 });

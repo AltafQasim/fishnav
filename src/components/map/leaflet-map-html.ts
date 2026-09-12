@@ -262,6 +262,11 @@ export function buildLeafletHtml() {
       if (window.ReactNativeWebView) {
         window.ReactNativeWebView.postMessage(JSON.stringify(msg));
       }
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage(JSON.stringify(msg), '*');
+        }
+      } catch (e) {}
     }
 
     function toRad(deg) { return (deg * Math.PI) / 180; }

@@ -8,6 +8,9 @@ export type FishingSpot = {
   depthM: number;
   color: string;
   favorite?: boolean;
+  category?: string;
+  notes?: string;
+  createdAt?: number;
 };
 
 /** Demo fishing spots in Arabian Sea. */
