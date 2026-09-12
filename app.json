@@ -8,7 +8,11 @@
     "scheme": "fishnavpro",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "FishNavPro needs your location to show accurate GPS position on the marine map.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "FishNavPro needs your location to show accurate GPS position on the marine map."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -17,6 +21,10 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -32,7 +40,17 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
-      ]
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow FishNavPro to use your location for accurate marine navigation.",
+          "locationWhenInUsePermission": "Allow FishNavPro to use your location to show your position on the map.",
+          "isAndroidBackgroundLocationEnabled": false,
+          "isIosBackgroundLocationEnabled": false
+        }
+      ],
+      "react-native-maps"
     ],
     "experiments": {
       "typedRoutes": true,

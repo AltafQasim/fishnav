@@ -1,31 +1,42 @@
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { MapColors } from '@/constants/map-theme';
+
+const mapIcon = require('@/assets/images/tabIcons/explore.png');
+const homeIcon = require('@/assets/images/tabIcons/home.png');
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
-
   return (
     <NativeTabs
-      backgroundColor={colors.background}
-      indicatorColor={colors.backgroundElement}
-      labelStyle={{ selected: { color: colors.text } }}>
+      backgroundColor={MapColors.navy}
+      indicatorColor={MapColors.accentSoft}
+      labelStyle={{
+        default: { color: MapColors.textMuted },
+        selected: { color: MapColors.accent },
+      }}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
-          renderingMode="template"
-        />
+        <NativeTabs.Trigger.Icon sf="house.fill" src={homeIcon} renderingMode="template" />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="explore">
-        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
-          renderingMode="template"
-        />
+      <NativeTabs.Trigger name="map">
+        <NativeTabs.Trigger.Label>Map</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="map.fill" src={mapIcon} renderingMode="template" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="spots">
+        <NativeTabs.Trigger.Label>Spots</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="mappin.and.ellipse" src={mapIcon} renderingMode="template" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="trips">
+        <NativeTabs.Trigger.Label>Trips</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="sailboat.fill" src={homeIcon} renderingMode="template" />
+      </NativeTabs.Trigger>
+
+      <NativeTabs.Trigger name="more">
+        <NativeTabs.Trigger.Label>More</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon sf="line.3.horizontal" src={homeIcon} renderingMode="template" />
       </NativeTabs.Trigger>
     </NativeTabs>
   );
