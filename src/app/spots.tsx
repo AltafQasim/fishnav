@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FISHING_SPOTS, FishingSpot, HARBOR } from '@/constants/fishing-spots';
+import { FISHING_SPOTS, FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
 import { BottomTabInset } from '@/constants/theme';
 import { formatLatitude, formatLongitude, useUserLocation } from '@/hooks/use-user-location';
@@ -24,22 +24,6 @@ export default function SpotsScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Fishing Waypoints</Text>
         <Text style={styles.subtitle}>Gujarat Coastal Hotspots & Recorded Catch Zones</Text>
-      </View>
-
-      {/* Harbor Banner */}
-      <View style={styles.harborCard}>
-        <View style={styles.harborIconWrap}>
-          <MaterialCommunityIcons name="anchor" size={24} color="#38BDF8" />
-        </View>
-        <View style={styles.harborInfo}>
-          <Text style={styles.harborTitle}>{HARBOR.name} Base Port</Text>
-          <Text style={styles.harborSub}>
-            {formatLatitude(HARBOR.latitude)} • {formatLongitude(HARBOR.longitude)}
-          </Text>
-        </View>
-        <Pressable style={styles.viewMapBtn} onPress={() => router.push('/map')}>
-          <Text style={styles.viewMapText}>CHART</Text>
-        </Pressable>
       </View>
 
       {/* List of Spots */}

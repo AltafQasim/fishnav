@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FishingSpot, HARBOR } from '@/constants/fishing-spots';
+import { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
 import { LocationStatus } from '@/hooks/use-user-location';
 import { parseCoordinates } from '@/utils/geo';
@@ -19,7 +19,6 @@ import { parseCoordinates } from '@/utils/geo';
 export type CategoryFilter =
   | 'all'
   | 'favorites'
-  | 'harbor'
   | 'deep'
   | 'hazards'
   | 'measure'
@@ -34,7 +33,6 @@ type MapSearchBarProps = {
   placeLabel?: string | null;
   onSelectFilter: (filter: CategoryFilter) => void;
   onSelectSpot: (spot: FishingSpot) => void;
-  onSelectHarbor: () => void;
   onGoToCoords: (lat: number, lng: number) => void;
   onOpenLayers: () => void;
   onBack?: () => void;
@@ -48,7 +46,6 @@ export function MapSearchBar({
   placeLabel,
   onSelectFilter,
   onSelectSpot,
-  onSelectHarbor,
   onGoToCoords,
   onOpenLayers,
   onBack,
@@ -64,9 +61,9 @@ export function MapSearchBar({
   }, [query]);
 
   // Filter matching results
-  const searchResults = useMemo<{ spots: FishingSpot[]; matchesHarbor: boolean }>(() => {
+  const searchResults = useMemo<{ spots: FishingSpot[] }>(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return { spots: [], matchesHarbor: false };
+    if (!q) return { spots: [] };
 
     const matchedSpots = spots.filter(
       (s) =>
@@ -75,11 +72,8 @@ export function MapSearchBar({
         `${s.depthM}m`.includes(q),
     );
 
-    const matchesHarbor = HARBOR.name.toLowerCase().includes(q);
-
     return {
       spots: matchedSpots,
-      matchesHarbor,
     };
   }, [query, spots]);
 
@@ -89,12 +83,6 @@ export function MapSearchBar({
     setQuery('');
     setIsFocused(false);
     onSelectSpot(spot);
-  };
-
-  const handleSelectHarborItem = () => {
-    setQuery('');
-    setIsFocused(false);
-    onSelectHarbor();
   };
 
   const handleSelectCoordsItem = () => {
@@ -164,19 +152,6 @@ export function MapSearchBar({
             </Pressable>
           ) : null}
 
-          {searchResults.matchesHarbor ? (
-            <Pressable style={styles.dropdownItem} onPress={handleSelectHarborItem}>
-              <View style={[styles.itemIcon, { backgroundColor: 'rgba(56, 189, 248, 0.2)' }]}>
-                <MaterialCommunityIcons name="anchor" size={20} color="#38BDF8" />
-              </View>
-              <View style={styles.itemText}>
-                <Text style={styles.itemTitle}>{HARBOR.name} Port</Text>
-                <Text style={styles.itemSub}>Base Harbor & Fishing Landing Center</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={MapColors.textMuted} />
-            </Pressable>
-          ) : null}
-
           {searchResults.spots.map((spot) => (
             <Pressable
               key={spot.id}
@@ -195,7 +170,7 @@ export function MapSearchBar({
             </Pressable>
           ))}
 
-          {!parsedCoord && !searchResults.matchesHarbor && searchResults.spots.length === 0 ? (
+          {!parsedCoord && searchResults.spots.length === 0 ? (
             <View style={styles.noResults}>
               <Text style={styles.noResultsText}>No marine spots found for "{query}"</Text>
               <Text style={styles.noResultsSub}>Try typing coordinates like 20.35, 70.82</Text>
@@ -221,12 +196,6 @@ export function MapSearchBar({
           icon={<Ionicons name="star" size={14} color={activeFilter === 'favorites' ? '#FFF' : MapColors.yellow} />}
           active={activeFilter === 'favorites'}
           onPress={() => onSelectFilter('favorites')}
-        />
-        <Chip
-          label="Harbors"
-          icon={<MaterialCommunityIcons name="anchor" size={14} color={activeFilter === 'harbor' ? '#FFF' : '#38BDF8'} />}
-          active={activeFilter === 'harbor'}
-          onPress={() => onSelectFilter('harbor')}
         />
         <Chip
           label="Deep Sea"

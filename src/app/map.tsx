@@ -27,7 +27,6 @@ import {
   DANGER_ZONE,
   FISHING_SPOTS,
   FishingSpot,
-  HARBOR,
 } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
 import { useUserLocation } from '@/hooks/use-user-location';
@@ -166,13 +165,6 @@ export default function MapScreen() {
     setFollowUser(false);
   };
 
-  const handleSelectHarbor = () => {
-    mapRef.current?.flyTo(HARBOR.latitude, HARBOR.longitude, 13);
-    setDroppedPin({ latitude: HARBOR.latitude, longitude: HARBOR.longitude });
-    setSelectedSpotId(null);
-    setFollowUser(false);
-  };
-
   const handleGoToCoords = (lat: number, lng: number) => {
     mapRef.current?.flyTo(lat, lng, 13);
     setDroppedPin({ latitude: lat, longitude: lng });
@@ -206,10 +198,6 @@ export default function MapScreen() {
     }
     if (filter === 'goto_coords') {
       setCoordModalVisible(true);
-      return;
-    }
-    if (filter === 'harbor') {
-      handleSelectHarbor();
       return;
     }
     if (filter === 'hazards') {
@@ -269,7 +257,6 @@ export default function MapScreen() {
           placeLabel={placeLabel}
           onSelectFilter={handleSelectFilter}
           onSelectSpot={handleSelectSpot}
-          onSelectHarbor={handleSelectHarbor}
           onGoToCoords={handleGoToCoords}
           onOpenLayers={() => setLayersModalVisible(true)}
           onBack={() => (router.canGoBack() ? router.back() : undefined)}

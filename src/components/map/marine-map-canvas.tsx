@@ -152,16 +152,6 @@ export function MarineMapCanvas({
           Danger Zone
         </SvgText>
 
-        {/* Nawabandar label */}
-        <G transform="translate(278, 62)">
-          <Path
-            d="M8 2 C9.1 2 10 2.9 10 4 C10 5.1 9.1 6 8 6 C6.9 6 6 5.1 6 4 C6 2.9 6.9 2 8 2 Z M4 7 H12 V9 H10 V14 H13 V16 H3 V14 H6 V9 H4 Z"
-            fill="#fff"
-          />
-          <SvgText x="18" y="14" fill="#fff" fontSize="12" fontWeight="700">
-            Nawabandar
-          </SvgText>
-        </G>
 
         {/* Distance chip near boat */}
         <Path

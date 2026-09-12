@@ -10,7 +10,7 @@ export type FishingSpot = {
   favorite?: boolean;
 };
 
-/** Demo spots around Gujarat coast (Nawabandar / Veraval area). */
+/** Demo fishing spots in Arabian Sea. */
 export const FISHING_SPOTS: FishingSpot[] = [
   {
     id: 'ghol',
@@ -43,12 +43,6 @@ export const DANGER_ZONE = {
   latitude: 20.332,
   longitude: 70.81,
   radiusM: 1800,
-};
-
-export const HARBOR = {
-  name: 'Nawabandar',
-  latitude: 20.761,
-  longitude: 71.132,
 };
 
 /** Fallback camera when GPS is unavailable. */

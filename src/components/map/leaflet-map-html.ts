@@ -2,7 +2,6 @@ import {
   DANGER_ZONE,
   DEFAULT_MAP_REGION,
   FISHING_SPOTS,
-  HARBOR
 } from '@/constants/fishing-spots';
 
 export function buildLeafletHtml() {
@@ -17,12 +16,6 @@ export function buildLeafletHtml() {
       favorite: !!s.favorite,
     })),
   );
-
-  const initialHarbor = JSON.stringify({
-    name: HARBOR.name,
-    lat: HARBOR.latitude,
-    lng: HARBOR.longitude,
-  });
 
   const initialDanger = JSON.stringify({
     lat: DANGER_ZONE.latitude,
@@ -192,18 +185,6 @@ export function buildLeafletHtml() {
       border: 1px solid rgba(255,255,255,0.25);
     }
     
-    /* Harbor label */
-    .harbor-chip {
-      background: rgba(0, 14, 28, 0.88);
-      color: #38BDF8;
-      padding: 3px 8px;
-      border-radius: 7px;
-      border: 1px solid rgba(56, 189, 248, 0.3);
-      font: 700 11px/1.2 -apple-system, sans-serif;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-      white-space: nowrap;
-    }
-
     /* Measure vertex */
     .measure-vertex {
       width: 14px;
@@ -229,7 +210,6 @@ export function buildLeafletHtml() {
 
   <script>
     let SPOTS = ${initialSpots};
-    let HARBOR = ${initialHarbor};
     let DANGER = ${initialDanger};
     const DEFAULT = ${defaultCenter};
 
@@ -364,16 +344,6 @@ export function buildLeafletHtml() {
       }).setView([DEFAULT.lat, DEFAULT.lng], DEFAULT.zoom);
 
       setBaseStyle('standard');
-
-      // Harbor marker
-      L.marker([HARBOR.lat, HARBOR.lng], {
-        icon: L.divIcon({
-          className: '',
-          html: '<div class="harbor-chip">⚓ ' + HARBOR.name + '</div>',
-          iconSize: [110, 24],
-          iconAnchor: [55, 12]
-        })
-      }).addTo(map);
 
       // Danger zone
       setDangerZone(true);
