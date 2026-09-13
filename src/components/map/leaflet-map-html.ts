@@ -175,14 +175,42 @@ export function buildLeafletHtml() {
 
     /* Route info chip */
     .route-chip {
-      background: #0084FF;
+      background: #0891B2;
       color: #FFFFFF;
-      padding: 5px 9px;
-      border-radius: 8px;
-      font: 700 11px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 5px 10px;
+      border-radius: 9px;
+      font: 800 11px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       white-space: nowrap;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.45);
-      border: 1px solid rgba(255,255,255,0.25);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.55);
+      border: 1.5px solid #00F0FF;
+      letter-spacing: 0.2px;
+    }
+    .nav-target-beacon {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .beacon-pulse {
+      position: absolute;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 2.5px solid #00F0FF;
+      animation: beaconPulse 1.8s infinite ease-out;
+      background: rgba(0, 240, 255, 0.22);
+    }
+    @keyframes beaconPulse {
+      0% { transform: scale(0.6); opacity: 1; }
+      100% { transform: scale(1.8); opacity: 0; }
+    }
+    .beacon-center {
+      font-size: 24px;
+      line-height: 1;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.85));
     }
     
     /* Measure vertex */
@@ -222,6 +250,10 @@ export function buildLeafletHtml() {
     let droppedPinMarker = null;
     let routeLine = null;
     let routeChipMarker = null;
+    let navTarget = null;
+    let navTargetMarker = null;
+    let activeTrackPolyline = null;
+    let savedTracksGroup = null;
 
     let followUser = true;
     let headingUp = false;
@@ -514,17 +546,47 @@ export function buildLeafletHtml() {
       clearRoute();
     }
 
+    function updateNavTargetMarker() {
+      if (!navTarget) {
+        clearNavTargetMarker();
+        return;
+      }
+      if (!navTargetMarker) {
+        navTargetMarker = L.marker([navTarget.lat, navTarget.lng], {
+          icon: L.divIcon({
+            className: '',
+            html: '<div class="nav-target-beacon"><div class="beacon-pulse"></div><div class="beacon-center">🎯</div></div>',
+            iconSize: [44, 44],
+            iconAnchor: [22, 22]
+          }),
+          zIndexOffset: 920
+        }).addTo(map);
+      } else {
+        navTargetMarker.setLatLng([navTarget.lat, navTarget.lng]);
+      }
+    }
+
+    function clearNavTargetMarker() {
+      if (navTargetMarker) {
+        map.removeLayer(navTargetMarker);
+        navTargetMarker = null;
+      }
+    }
+
     function updateRoute() {
       if (!userLatLng) {
         clearRoute();
         return;
       }
 
-      // Find target: selected spot or dropped pin
+      // Find target: navTarget has priority during active navigation
       let target = null;
       let targetName = '';
 
-      if (selectedSpotId) {
+      if (navTarget) {
+        target = { lat: navTarget.lat, lng: navTarget.lng };
+        targetName = navTarget.name || 'Destination';
+      } else if (selectedSpotId) {
         const s = SPOTS.find(function(sp) { return sp.id === selectedSpotId; });
         if (s) {
           target = { lat: s.lat, lng: s.lng };
@@ -544,12 +606,12 @@ export function buildLeafletHtml() {
       const pts = [[userLatLng.lat, userLatLng.lng], [target.lat, target.lng]];
       const dist = distanceNm(userLatLng, target);
       const brg = bearingDeg(userLatLng, target);
-      const chipLabel = formatNm(dist) + ' | ' + Math.round(brg) + '°';
+      const chipLabel = formatNm(dist) + ' • ' + Math.round(brg) + '° BRG';
 
       if (!routeLine) {
         routeLine = L.polyline(pts, {
-          color: '#0084FF',
-          weight: 3.5,
+          color: '#00E5FF',
+          weight: 4.5,
           dashArray: '8 6',
           opacity: 0.95
         }).addTo(map);
@@ -563,8 +625,8 @@ export function buildLeafletHtml() {
           icon: L.divIcon({
             className: '',
             html: '<div class="route-chip">' + chipLabel + '</div>',
-            iconSize: [120, 26],
-            iconAnchor: [60, 13]
+            iconSize: [130, 26],
+            iconAnchor: [65, 13]
           }),
           interactive: false
         }).addTo(map);
@@ -573,8 +635,8 @@ export function buildLeafletHtml() {
         routeChipMarker.setIcon(L.divIcon({
           className: '',
           html: '<div class="route-chip">' + chipLabel + '</div>',
-          iconSize: [120, 26],
-          iconAnchor: [60, 13]
+          iconSize: [130, 26],
+          iconAnchor: [65, 13]
         }));
       }
     }
@@ -588,6 +650,56 @@ export function buildLeafletHtml() {
         map.removeLayer(routeChipMarker);
         routeChipMarker = null;
       }
+    }
+
+    // Active trip breadcrumb trail
+    function updateActiveTrack(points) {
+      if (!points || points.length === 0) {
+        if (activeTrackPolyline) {
+          map.removeLayer(activeTrackPolyline);
+          activeTrackPolyline = null;
+        }
+        return;
+      }
+      const latlngs = points.map(function(p) { return [p.latitude || p.lat, p.longitude || p.lng]; });
+      if (!activeTrackPolyline) {
+        activeTrackPolyline = L.polyline(latlngs, {
+          color: '#00F0FF',
+          weight: 4.5,
+          opacity: 0.95,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(map);
+      } else {
+        activeTrackPolyline.setLatLngs(latlngs);
+      }
+    }
+
+    // Saved historical trips layer
+    function updateSavedTracks(tracks) {
+      if (!savedTracksGroup) {
+        savedTracksGroup = L.layerGroup().addTo(map);
+      }
+      savedTracksGroup.clearLayers();
+      if (!Array.isArray(tracks)) return;
+
+      tracks.forEach(function(t) {
+        if (!t.points || t.points.length < 2) return;
+        const pts = t.points.map(function(p) { return [p.latitude || p.lat, p.longitude || p.lng]; });
+        const poly = L.polyline(pts, {
+          color: t.color || '#38BDF8',
+          weight: 3.5,
+          opacity: 0.8,
+          dashArray: '5 5'
+        });
+        savedTracksGroup.addLayer(poly);
+      });
+    }
+
+    function fitTrackBounds(points) {
+      if (!points || points.length === 0) return;
+      const latlngs = points.map(function(p) { return [p.latitude || p.lat, p.longitude || p.lng]; });
+      map.fitBounds(L.latLngBounds(latlngs).pad(0.2));
     }
 
     // Measurement functions
@@ -726,6 +838,16 @@ export function buildLeafletHtml() {
           highlightSelectedSpot();
           updateRoute();
           break;
+        case 'setNavTarget':
+          if (cmd.target && isFinite(cmd.target.lat) && isFinite(cmd.target.lng)) {
+            navTarget = { lat: cmd.target.lat, lng: cmd.target.lng, name: cmd.target.name || '' };
+            updateNavTargetMarker();
+          } else {
+            navTarget = null;
+            clearNavTargetMarker();
+          }
+          updateRoute();
+          break;
         case 'setCustomSpots':
           if (Array.isArray(cmd.spots)) {
             SPOTS = cmd.spots;
@@ -749,6 +871,15 @@ export function buildLeafletHtml() {
           break;
         case 'clearMeasurement':
           clearMeasurement();
+          break;
+        case 'setActiveTrack':
+          updateActiveTrack(cmd.points);
+          break;
+        case 'setSavedTracks':
+          updateSavedTracks(cmd.tracks);
+          break;
+        case 'fitTrackBounds':
+          fitTrackBounds(cmd.points);
           break;
       }
     }

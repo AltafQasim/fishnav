@@ -22,15 +22,16 @@ type SlidingSheetContainerProps = {
   children: React.ReactNode;
   onClose: () => void;
   height?: number;
+  heightRatio?: number;
 };
 
 /**
  * 📱 SlidingSheetContainer
- * Clean 80% Bottom Sheet with Dark Dimmed Backdrop Overlay.
- * - Opens at exactly 80% screen height.
- * - Dimmed dark overlay behind the sheet (tap overlay to close).
- * - Drag DOWN on header to dismiss.
- * - Tap [ ✕ ] to close.
+ * Compact Bottom Sheet anchored to bottom of screen (~62% screen height):
+ * - Firmly pinned to bottom: 0 (never renders from the top!)
+ * - Leaves top ~38% open so marine map is always visible
+ * - Drag DOWN on header handle to dismiss
+ * - Tap on top map area or [ ✕ ] to close
  */
 export function SlidingSheetContainer({
   isOpen,
@@ -41,58 +42,45 @@ export function SlidingSheetContainer({
   children,
   onClose,
   height: customHeight,
+  heightRatio = 0.62,
 }: SlidingSheetContainerProps) {
   const { height: windowHeight } = useWindowDimensions();
 
-  // Exactly 80% of screen height
-  const sheetHeight = customHeight ?? Math.round(windowHeight * 0.80);
+  // Exactly 62% of screen height (or customHeight)
+  const sheetHeight = customHeight ?? Math.round(windowHeight * heightRatio);
 
-  const translateY = useRef(new Animated.Value(sheetHeight + 50)).current;
-  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(sheetHeight + 60)).current;
   const heightRef = useRef(sheetHeight);
   heightRef.current = sheetHeight;
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  // Dismiss animation (slides down and fades out overlay)
+  // Dismiss animation (slides down below screen edge)
   const handleDismiss = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: heightRef.current + 50,
-        duration: 180,
-        useNativeDriver: Platform.OS !== 'web',
-      }),
-      Animated.timing(backdropOpacity, {
-        toValue: 0,
-        duration: 180,
-        useNativeDriver: Platform.OS !== 'web',
-      }),
-    ]).start(() => {
+    Animated.timing(translateY, {
+      toValue: heightRef.current + 60,
+      duration: 180,
+      useNativeDriver: Platform.OS !== 'web',
+    }).start(() => {
       onCloseRef.current();
     });
-  }, [translateY, backdropOpacity]);
+  }, [translateY]);
 
-  // Open animation (slides up to 80% and fades in dark overlay)
+  // Open animation (slides up from below screen to bottom: 0)
   useEffect(() => {
     if (isOpen) {
-      translateY.setValue(sheetHeight + 50);
-      backdropOpacity.setValue(0);
-      Animated.parallel([
-        Animated.spring(translateY, {
-          toValue: 0,
-          damping: 24,
-          mass: 0.8,
-          stiffness: 220,
-          useNativeDriver: Platform.OS !== 'web',
-        }),
-        Animated.timing(backdropOpacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: Platform.OS !== 'web',
-        }),
-      ]).start();
+      translateY.setValue(sheetHeight + 60);
+      Animated.spring(translateY, {
+        toValue: 0,
+        damping: 24,
+        mass: 0.8,
+        stiffness: 220,
+        useNativeDriver: Platform.OS !== 'web',
+      }).start();
+    } else {
+      translateY.setValue(sheetHeight + 60);
     }
-  }, [isOpen, sheetHeight, translateY, backdropOpacity]);
+  }, [isOpen, sheetHeight, translateY]);
 
   // Drag down on header to close
   const panResponder = useRef(
@@ -102,30 +90,21 @@ export function SlidingSheetContainer({
       onPanResponderMove: (_, g) => {
         if (g.dy > 0) {
           translateY.setValue(g.dy);
-          const progress = Math.max(0, 1 - g.dy / (heightRef.current || 1));
-          backdropOpacity.setValue(progress);
         } else {
-          // Slight resistance if pulled upward
-          translateY.setValue(g.dy * 0.1);
+          // Rubber-band resistance if dragged upward
+          translateY.setValue(g.dy * 0.15);
         }
       },
       onPanResponderRelease: (_, g) => {
         if (g.dy > 70 || g.vy > 0.4) {
           handleDismiss();
         } else {
-          Animated.parallel([
-            Animated.spring(translateY, {
-              toValue: 0,
-              damping: 22,
-              stiffness: 220,
-              useNativeDriver: Platform.OS !== 'web',
-            }),
-            Animated.timing(backdropOpacity, {
-              toValue: 1,
-              duration: 150,
-              useNativeDriver: Platform.OS !== 'web',
-            }),
-          ]).start();
+          Animated.spring(translateY, {
+            toValue: 0,
+            damping: 22,
+            stiffness: 220,
+            useNativeDriver: Platform.OS !== 'web',
+          }).start();
         }
       },
     }),
@@ -136,25 +115,16 @@ export function SlidingSheetContainer({
   }
 
   return (
-    <View style={styles.overlay} pointerEvents="box-none">
-      {/* 1. Dark Dimmed Overlay (Tapping outside closes the tab) */}
-      <Animated.View
-        style={[
-          styles.backdrop,
-          {
-            opacity: backdropOpacity,
-          },
-        ]}
-      >
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={handleDismiss}
-          accessibilityRole="button"
-          accessibilityLabel="Close sheet and return to map"
-        />
-      </Animated.View>
+    <View style={styles.outerContainer} pointerEvents="box-none">
+      {/* 1. Touch-to-dismiss zone above the card (allows tapping the top map area to close card!) */}
+      <Pressable
+        style={[styles.dismissZone, { height: Math.max(0, windowHeight - sheetHeight) }]}
+        onPress={handleDismiss}
+        accessibilityRole="button"
+        accessibilityLabel="Close sheet and return to map"
+      />
 
-      {/* 2. 80% Bottom Sheet */}
+      {/* 2. Slide-up bottom card (HARD-PINNED TO BOTTOM: 0!) */}
       <Animated.View
         style={[
           styles.sheet,
@@ -209,29 +179,39 @@ export function SlidingSheetContainer({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 70, // Sits above map but below floating AppTabs (150)
-    justifyContent: 'flex-end',
+  outerContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 80, // Sits above map (1) and map controls, below AppTabs (150)
   },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)', // Strong, clear dark overlay
+  dismissZone: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'transparent', // Map is 100% visible and bright!
   },
   sheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     width: '100%',
     backgroundColor: MapColors.navy,
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.16)',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(56, 189, 248, 0.25)',
     borderLeftWidth: 1,
     borderLeftColor: 'rgba(255, 255, 255, 0.08)',
     borderRightWidth: 1,
     borderRightColor: 'rgba(255, 255, 255, 0.08)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.65,
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.6,
     shadowRadius: 20,
     elevation: 30,
     overflow: 'hidden',
@@ -245,7 +225,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(10, 31, 53, 0.98)',
   },
   dragHandle: {
-    width: 40,
+    width: 44,
     height: 5,
     borderRadius: 3,
     backgroundColor: 'rgba(255, 255, 255, 0.35)',

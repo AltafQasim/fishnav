@@ -2,18 +2,20 @@ import React, { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GoogleNavHud } from '@/components/map/google-nav-hud';
 import {
   MapControlStack
 } from '@/components/map/map-overlays';
 import {
-  DroppedPin,
-  MapOverlaysState,
-  NativeMapHandle,
+  type DroppedPin,
+  type MapOverlaysState,
+  type NativeMapHandle,
   NativeMapView,
 } from '@/components/map/native-map-view';
+import { SaveTripModal } from '@/components/map/save-trip-modal';
 import { SpotBottomSheet } from '@/components/map/spot-bottom-sheet';
 import {
-  ActiveTabType,
+  type ActiveTabType,
   AppTabs,
 } from '@/components/navigation/app-tabs';
 import { CalendarSheetContent } from '@/components/sheets/calendar-sheet-content';
@@ -22,8 +24,9 @@ import { SettingsSheetContent } from '@/components/sheets/settings-sheet-content
 import { WaypointsSheetContent } from '@/components/sheets/waypoints-sheet-content';
 import { WeatherSheetContent } from '@/components/sheets/weather-sheet-content';
 import { SlidingSheetContainer } from '@/components/ui/sliding-sheet-container';
-import { FishingSpot } from '@/constants/fishing-spots';
+import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
+import { useTripTracking } from '@/context/trip-context';
 import { useWaypoints } from '@/context/waypoints-context';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { bearingDegrees, distanceNm, etaFromNm, formatBearing, formatNm } from '@/utils/geo';
@@ -36,8 +39,14 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<NativeMapHandle>(null);
 
-  const { waypoints, selectedSpot, selectedSpotId, setSelectedSpotId, setActiveNavigationTarget } =
-    useWaypoints();
+  const {
+    waypoints,
+    selectedSpot,
+    selectedSpotId,
+    setSelectedSpotId,
+    setActiveNavigationTarget,
+    toggleFavorite,
+  } = useWaypoints();
   const { location, status, heading, requestPermissionAndLocate, openSettings, refresh } =
     useUserLocation();
 
@@ -52,6 +61,28 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     seamarks: true,
     dangerZone: true,
   });
+
+  const {
+    isTracking,
+    isNavigating,
+    targetSpot,
+    activePoints,
+    savedTrips,
+    selectedTripForMap,
+    startNavigation,
+    startTracking,
+    finishTracking,
+    exitNavigation,
+    clearSelectedTrip,
+  } = useTripTracking();
+
+  // If a trip was clicked from Trips screen, zoom to it on the map
+  React.useEffect(() => {
+    if (selectedTripForMap && selectedTripForMap.points.length > 0) {
+      mapRef.current?.fitTrackBounds(selectedTripForMap.points);
+      setActiveTab(null);
+    }
+  }, [selectedTripForMap]);
 
   // Handle Tab Click from Bottom Bar
   const handleTabPress = (tab: 'waypoint' | 'weather' | 'compass' | 'calendar' | 'settings') => {
@@ -113,31 +144,31 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     switch (activeTab) {
       case 'waypoint':
         return {
-          title: 'Waypoints',
-          subtitle: `${waypoints.length} saved fishing spots & GPS marks`,
+          title: 'Mark Waypoint',
+          subtitle: 'Save active GPS or dropped pin location',
           badgeText: `${waypoints.length} SPOTS`,
         };
       case 'weather':
         return {
-          title: 'Marine & Tides',
-          subtitle: 'Arabian Sea coastal weather & hydrographic conditions',
-          badgeText: 'MODERATE SEA',
+          title: 'Marine Forecast',
+          subtitle: 'Waves, wind speed, tides & sea surface conditions',
+          badgeText: 'LIVE RADAR',
         };
       case 'compass':
         return {
-          title: 'Marine Compass',
-          subtitle: 'Sensor-stabilized heading & waypoint steering',
-          badgeText: 'LIVE SENSOR',
+          title: 'Marine Compass & HUD',
+          subtitle: 'Magnetic course, target bearing & steering advice',
+          badgeText: 'SENSOR ON',
         };
       case 'calendar':
         return {
-          title: 'Sun & Moon Calendar',
-          subtitle: 'Solunar lunar cycles & fish feeding windows',
-          badgeText: 'WAXING GIBBOUS',
+          title: 'Solunar Fishing Forecast',
+          subtitle: 'Moon phases, feeding windows & prime bite times',
+          badgeText: 'OCT 2026',
         };
       case 'settings':
         return {
-          title: 'Marine Settings',
+          title: 'Navionics & Vessel Settings',
           subtitle: 'Vessel profile, units, navigation alarms & backup',
           badgeText: 'v1.0.0 PRO',
         };
@@ -157,6 +188,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
           mapStyle="standard"
           overlays={overlays}
           location={location}
+          navTarget={targetSpot}
           heading={heading ?? location?.heading ?? 0}
           followUser={followUser}
           headingUp={headingUp}
@@ -164,12 +196,12 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
           spots={waypoints}
           droppedPin={droppedPin}
           measurementActive={false}
+          activeTrackPoints={activePoints}
+          savedTracks={savedTrips}
           onSelectSpot={handleViewSpotOnMap}
           onMapClick={handleMapClick}
           onUserPanned={() => setFollowUser(false)}
         />
-
-
 
         {/* Floating Right Map Controls (Zoom In/Out, Locate, Heading Mode) */}
         <View style={styles.rightControls} pointerEvents="box-none">
@@ -189,34 +221,69 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
             onAddSpot={() => setActiveTab('waypoint')}
           />
         </View>
+      </View>
 
-        {/* Spot Bottom Sheet when clicking any marker on the map */}
-        {activeTab === null && (selectedSpot || droppedPin) ? (
-          <SpotBottomSheet
-            spot={selectedSpot}
-            droppedPin={droppedPin}
-            distanceLabel={navStats.distanceLabel}
-            bearingLabel={navStats.bearingLabel}
-            etaLabel={navStats.etaLabel}
-            isFavorite={!!selectedSpot?.favorite}
-            onGoTo={() => {
-              if (activeTarget) mapRef.current?.fitRoute(activeTarget);
-            }}
-            onSaveSpot={() => setActiveTab('waypoint')}
-            onToggleFavorite={() => { }}
-            onMeasureFromHere={() => { }}
-            onClose={() => {
+      {/* 2. Spot / Dropped Pin Sliding Sheet (Scrollable & Drag-to-dismiss like tab cards!) */}
+      {activeTab === null && !isNavigating && (selectedSpot || droppedPin) ? (
+        <SpotBottomSheet
+          spot={selectedSpot}
+          droppedPin={droppedPin}
+          distanceLabel={navStats.distanceLabel}
+          bearingLabel={navStats.bearingLabel}
+          etaLabel={navStats.etaLabel}
+          isFavorite={!!selectedSpot?.favorite}
+          onGoTo={() => {
+            if (activeTarget) {
+              const destinationSpot =
+                selectedSpot ||
+                (droppedPin
+                  ? {
+                      id: 'pin',
+                      name: 'Dropped Pin',
+                      latitude: droppedPin.latitude,
+                      longitude: droppedPin.longitude,
+                      depthM: 50,
+                      color: '#F59E0B',
+                    }
+                  : null);
+              mapRef.current?.fitRoute(activeTarget);
+              setFollowUser(true);
+              startNavigation(destinationSpot);
               setSelectedSpotId(null);
               setDroppedPin(null);
-              mapRef.current?.clearDroppedPin();
-            }}
-          />
-        ) : null}
-      </View>
+            }
+          }}
+          onSaveSpot={() => setActiveTab('waypoint')}
+          onToggleFavorite={() => {
+            if (selectedSpot) {
+              void toggleFavorite(selectedSpot.id);
+            }
+          }}
+          onMeasureFromHere={() => { }}
+          onClose={() => {
+            setSelectedSpotId(null);
+            setDroppedPin(null);
+            mapRef.current?.clearDroppedPin();
+          }}
+        />
+      ) : null}
+
+      {/* 🟢 GOOGLE MAPS STYLE NAVIGATION COCKPIT & TURN ARROW HUD */}
+      {isNavigating && (
+        <GoogleNavHud
+          onRecenter={handleLocate}
+          onToggleHeadingUp={() => {
+            setHeadingUp((v) => !v);
+            setFollowUser(true);
+            mapRef.current?.centerOnUser();
+          }}
+          headingUp={headingUp}
+        />
+      )}
 
       {/* 2. Compact Sliding Card Sheet (Sits at bottom ~58% so map is ALWAYS visible at top!) */}
       <SlidingSheetContainer
-        isOpen={activeTab !== null}
+        isOpen={activeTab !== null && !isNavigating}
         title={meta.title}
         subtitle={meta.subtitle}
         badge={
@@ -237,11 +304,16 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
         {activeTab === 'settings' && <SettingsSheetContent />}
       </SlidingSheetContainer>
 
-      {/* 3. Curved Floating Bottom Navigation Bar (Always Visible!) */}
-      <AppTabs
-        activeTab={activeTab}
-        onTabPress={handleTabPress}
-      />
+      {/* 3. Curved Floating Bottom Navigation Bar (Hidden during active Google Maps turn-by-turn navigation!) */}
+      {!isNavigating && (
+        <AppTabs
+          activeTab={activeTab}
+          onTabPress={handleTabPress}
+        />
+      )}
+
+      {/* 4. Save Trip Summary Modal */}
+      <SaveTripModal />
     </View>
   );
 }

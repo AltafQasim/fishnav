@@ -89,27 +89,46 @@ type MapControlStackProps = {
   headingUp?: boolean;
   followUser?: boolean;
   measurementActive?: boolean;
+  isTracking?: boolean;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onLocate: () => void;
   onHeading: () => void;
   onToggleMeasure: () => void;
   onAddSpot: () => void;
+  onToggleTrack?: () => void;
 };
 
 export function MapControlStack({
   headingUp = false,
   followUser = true,
   measurementActive = false,
+  isTracking = false,
   onZoomIn,
   onZoomOut,
   onLocate,
   onHeading,
   onToggleMeasure,
   onAddSpot,
+  onToggleTrack,
 }: MapControlStackProps) {
   return (
     <View style={styles.controlStack}>
+      {/* 🔴 Track Recording Action Button */}
+      {onToggleTrack && (
+        <View style={styles.btnGroup}>
+          <Pressable
+            style={[styles.toolBtn, isTracking && styles.toolBtnRecording]}
+            onPress={onToggleTrack}>
+            <MaterialCommunityIcons
+              name={isTracking ? 'record-circle' : 'record-circle-outline'}
+              size={22}
+              color={isTracking ? '#EF4444' : '#00F0FF'}
+            />
+          </Pressable>
+        </View>
+      )}
+
       {/* Zoom In & Out */}
       <View style={styles.btnGroup}>
         <Pressable style={styles.toolBtn} onPress={onZoomIn}>
@@ -289,6 +308,9 @@ const styles = StyleSheet.create({
   },
   toolBtnHighlight: {
     backgroundColor: 'rgba(0, 132, 255, 0.2)',
+  },
+  toolBtnRecording: {
+    backgroundColor: 'rgba(239, 68, 68, 0.25)',
   },
   divider: {
     height: StyleSheet.hairlineWidth,

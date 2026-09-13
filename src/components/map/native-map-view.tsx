@@ -3,10 +3,10 @@ import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 
 import { buildLeafletHtml } from '@/components/map/leaflet-map-html';
-import { MapStyleId } from '@/components/map/map-style-selector';
-import { FishingSpot } from '@/constants/fishing-spots';
+import type { MapStyleId } from '@/components/map/map-style-selector';
+import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
-import { UserLocation } from '@/hooks/use-user-location';
+import type { UserLocation } from '@/hooks/use-user-location';
 
 export type MapOverlaysState = {
   seamarks: boolean;
@@ -25,6 +25,7 @@ export type NativeMapHandle = {
   flyTo: (lat: number, lng: number, zoom?: number) => void;
   goToSpot: (spot: FishingSpot) => void;
   fitRoute: (spot: FishingSpot | DroppedPin) => void;
+  fitTrackBounds: (points: { latitude: number; longitude: number }[]) => void;
   setMeasurementMode: (active: boolean) => void;
   undoMeasurement: () => void;
   clearMeasurement: () => void;
@@ -36,6 +37,7 @@ type NativeMapViewProps = {
   mapStyle: MapStyleId;
   overlays: MapOverlaysState;
   location: UserLocation | null;
+  navTarget?: { latitude: number; longitude: number; name?: string } | null;
   heading?: number | null;
   followUser: boolean;
   headingUp: boolean;
@@ -43,6 +45,8 @@ type NativeMapViewProps = {
   spots: FishingSpot[];
   droppedPin: DroppedPin | null;
   measurementActive: boolean;
+  activeTrackPoints?: { latitude: number; longitude: number }[];
+  savedTracks?: { id: string; name: string; color: string; visibleOnMap?: boolean; points: { latitude: number; longitude: number }[] }[];
   onSelectSpot: (spot: FishingSpot) => void;
   onMapClick: (lat: number, lng: number) => void;
   onMeasureUpdate?: (totalNm: number, pointsCount: number) => void;
@@ -59,7 +63,11 @@ type MapCommand =
   | { type: 'centerOnUser' }
   | { type: 'flyTo'; lat: number; lng: number; zoom?: number }
   | { type: 'fitRoute'; targetLat: number; targetLng: number }
+  | { type: 'fitTrackBounds'; points: { latitude: number; longitude: number }[] }
+  | { type: 'setActiveTrack'; points: { latitude: number; longitude: number }[] }
+  | { type: 'setSavedTracks'; tracks: { id: string; color: string; points: { latitude: number; longitude: number }[] }[] }
   | { type: 'setSelected'; id: string | null }
+  | { type: 'setNavTarget'; target: { lat: number; lng: number; name?: string } | null }
   | { type: 'setCustomSpots'; spots: { id: string; name: string; lat: number; lng: number; color: string; depthM: number; favorite?: boolean }[] }
   | { type: 'setDroppedPin'; lat: number; lng: number }
   | { type: 'clearDroppedPin' }
@@ -73,6 +81,7 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
       mapStyle,
       overlays,
       location,
+      navTarget,
       heading,
       followUser,
       headingUp,
@@ -80,6 +89,8 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
       spots,
       droppedPin,
       measurementActive,
+      activeTrackPoints,
+      savedTracks,
       onSelectSpot,
       onMapClick,
       onMeasureUpdate,
@@ -130,6 +141,9 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
           targetLng: 'longitude' in target ? target.longitude : (target as any).longitude,
         });
       },
+      fitTrackBounds: (points) => {
+        send({ type: 'fitTrackBounds', points });
+      },
       setMeasurementMode: (active) => send({ type: 'setMeasurementMode', active }),
       undoMeasurement: () => send({ type: 'undoMeasurement' }),
       clearMeasurement: () => send({ type: 'clearMeasurement' }),
@@ -166,6 +180,22 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
       send({ type: 'setSelected', id: selectedSpotId });
     }, [selectedSpotId, send]);
 
+    // Synchronize navigation destination target for continuous route line
+    useEffect(() => {
+      if (navTarget && Number.isFinite(navTarget.latitude) && Number.isFinite(navTarget.longitude)) {
+        send({
+          type: 'setNavTarget',
+          target: {
+            lat: navTarget.latitude,
+            lng: navTarget.longitude,
+            name: navTarget.name,
+          },
+        });
+      } else {
+        send({ type: 'setNavTarget', target: null });
+      }
+    }, [navTarget, send]);
+
     // Synchronize dropped pin
     useEffect(() => {
       if (droppedPin) {
@@ -179,6 +209,23 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
     useEffect(() => {
       send({ type: 'setMeasurementMode', active: measurementActive });
     }, [measurementActive, send]);
+
+    // Synchronize active tracking polyline
+    useEffect(() => {
+      send({ type: 'setActiveTrack', points: activeTrackPoints || [] });
+    }, [activeTrackPoints, send]);
+
+    // Synchronize saved visible tracks
+    useEffect(() => {
+      const visible = (savedTracks || [])
+        .filter((t) => t.visibleOnMap !== false)
+        .map((t) => ({
+          id: t.id,
+          color: t.color,
+          points: t.points,
+        }));
+      send({ type: 'setSavedTracks', tracks: visible });
+    }, [savedTracks, send]);
 
     // Synchronize user position & heading
     useEffect(() => {

@@ -13,8 +13,7 @@ import {
   NativeMapView,
 } from '@/components/map/native-map-view';
 import { SpotBottomSheet } from '@/components/map/spot-bottom-sheet';
-import { DANGER_ZONE, FishingSpot } from '@/constants/fishing-spots';
-import { MapColors } from '@/constants/map-theme';
+import { FishingSpot } from '@/constants/fishing-spots';
 import { useWaypoints } from '@/context/waypoints-context';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { bearingDegrees, distanceNm, etaFromNm, formatBearing, formatNm } from '@/utils/geo';
@@ -73,7 +72,7 @@ export function SharedBackgroundMap() {
   }, [activeTarget, location]);
 
   return (
-    <View style={StyleSheet.absoluteFillObject} pointerEvents="box-none">
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {/* Interactive Marine Leaflet Map */}
       <NativeMapView
         ref={mapRef}
@@ -126,8 +125,8 @@ export function SharedBackgroundMap() {
             setFollowUser(true);
             mapRef.current?.centerOnUser();
           }}
-          onToggleMeasure={() => {}}
-          onAddSpot={() => {}}
+          onToggleMeasure={() => { }}
+          onAddSpot={() => { }}
         />
       </View>
 
@@ -143,9 +142,9 @@ export function SharedBackgroundMap() {
           onGoTo={() => {
             if (activeTarget) mapRef.current?.fitRoute(activeTarget);
           }}
-          onSaveSpot={() => {}}
-          onToggleFavorite={() => {}}
-          onMeasureFromHere={() => {}}
+          onSaveSpot={() => { }}
+          onToggleFavorite={() => { }}
+          onMeasureFromHere={() => { }}
           onClose={() => {
             setSelectedSpotId(null);
             setDroppedPin(null);

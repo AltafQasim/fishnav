@@ -1,4 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -12,10 +13,13 @@ import {
 } from 'react-native';
 
 import { MapColors } from '@/constants/map-theme';
+import { useTripTracking } from '@/context/trip-context';
 import { useWaypoints } from '@/context/waypoints-context';
 
 export function SettingsSheetContent() {
+  const router = useRouter();
   const { waypoints, resetWaypoints } = useWaypoints();
+  const { savedTrips } = useTripTracking();
 
   // Vessel Profile
   const [boatName, setBoatName] = useState('Sea Hunter');
@@ -77,6 +81,23 @@ export function SettingsSheetContent() {
       contentContainerStyle={[styles.content, { paddingBottom: 110 }]}
       showsVerticalScrollIndicator={false}
     >
+      {/* 🚀 Trips & Recorded Routes Logbook Shortcut */}
+      <Pressable
+        style={styles.tripsShortcutCard}
+        onPress={() => router.push('/trips')}
+      >
+        <View style={styles.tripsIconWrap}>
+          <MaterialCommunityIcons name="map-marker-path" size={24} color="#00F0FF" />
+        </View>
+        <View style={styles.tripsTextWrap}>
+          <Text style={styles.tripsTitle}>Trips & Routes Logbook</Text>
+          <Text style={styles.tripsSubtitle}>
+            {savedTrips.length} recorded fishing voyages • View tracks on map
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color="#64748B" />
+      </Pressable>
+
       {/* 1. Vessel Profile */}
       <View style={styles.section}>
         <Text style={styles.sectionHeader}>VESSEL & BOAT PROFILE</Text>
@@ -339,6 +360,38 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingTop: 8,
+  },
+  tripsShortcutCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#041728',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0, 240, 255, 0.35)',
+    gap: 12,
+  },
+  tripsIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 240, 255, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tripsTextWrap: {
+    flex: 1,
+  },
+  tripsTitle: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  tripsSubtitle: {
+    color: '#8BA3B8',
+    fontSize: 11,
+    marginTop: 2,
   },
   section: {
     marginBottom: 14,
