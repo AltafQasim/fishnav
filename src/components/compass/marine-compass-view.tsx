@@ -1,25 +1,20 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import * as Location from 'expo-location';
-import React, { useEffect, useRef, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useRef } from 'react';
 import {
   Animated,
   Dimensions,
-  Platform,
-  Pressable,
   StyleSheet,
   Text,
-  View,
+  View
 } from 'react-native';
 import Svg, {
   Circle,
   Defs,
-  G,
   Line,
   LinearGradient,
-  Path,
   Polygon,
   Stop,
-  Text as SvgText,
+  Text as SvgText
 } from 'react-native-svg';
 
 import { MapColors } from '@/constants/map-theme';
@@ -37,50 +32,43 @@ function getCardinalText(deg: number): string {
   return cardinals[index] || 'N';
 }
 
-export function MarineCompassView() {
-  const { location, heading: hookHeading } = useUserLocation();
+export type MarineCompassViewProps = {
+  northMode?: 'magnetic' | 'true';
+};
+
+export function MarineCompassView({ northMode = 'magnetic' }: MarineCompassViewProps) {
+  const { location, heading, magHeading, trueHeading, headingAccuracy } = useUserLocation();
   const { activeNavigationTarget } = useWaypoints();
 
-  const [currentHeading, setCurrentHeading] = useState<number>(hookHeading ?? 0);
-  const [headingAccuracy, setHeadingAccuracy] = useState<number | null>(null);
+  // Pick current heading according to mode, falling back gracefully
+  const currentHeading =
+    (northMode === 'true' && trueHeading != null ? trueHeading : magHeading) ??
+    heading ??
+    (location?.heading != null && Number.isFinite(location.heading) ? Math.round(location.heading) : 0);
 
-  // Animated rotation value
+  // Animated rotation value with continuous angle unwrapping (prevents 360° reverse spin at North)
+  const prevHeadingRef = useRef<number | null>(null);
+  const continuousAngleRef = useRef<number>(0);
   const rotationAnim = useRef(new Animated.Value(0)).current;
 
-  // Real-time sensor heading subscription
   useEffect(() => {
-    let sub: Location.LocationSubscription | null = null;
+    if (prevHeadingRef.current === null) {
+      prevHeadingRef.current = currentHeading;
+      continuousAngleRef.current = currentHeading;
+      rotationAnim.setValue(-currentHeading);
+      return;
+    }
 
-    const startHeadingWatch = async () => {
-      try {
-        const { granted } = await Location.getForegroundPermissionsAsync();
-        if (!granted) {
-          await Location.requestForegroundPermissionsAsync();
-        }
+    let diff = currentHeading - prevHeadingRef.current;
+    // Calculate shortest angular path on circle (-180° to 180°)
+    while (diff > 180) diff -= 360;
+    while (diff < -180) diff += 360;
 
-        sub = await Location.watchHeadingAsync((data) => {
-          const val = data.trueHeading >= 0 ? data.trueHeading : data.magHeading;
-          if (Number.isFinite(val)) {
-            setCurrentHeading(Math.round(val));
-            setHeadingAccuracy(data.accuracy ?? null);
-          }
-        });
-      } catch (e) {
-        // Fallback or sensor not available
-      }
-    };
+    continuousAngleRef.current += diff;
+    prevHeadingRef.current = currentHeading;
 
-    void startHeadingWatch();
-
-    return () => {
-      sub?.remove();
-    };
-  }, []);
-
-  // Update animated value whenever heading changes
-  useEffect(() => {
     Animated.spring(rotationAnim, {
-      toValue: -currentHeading,
+      toValue: -continuousAngleRef.current,
       friction: 8,
       tension: 40,
       useNativeDriver: true,
@@ -142,8 +130,8 @@ export function MarineCompassView() {
             transform: [
               {
                 rotate: rotationAnim.interpolate({
-                  inputRange: [-360, 0, 360],
-                  outputRange: ['-360deg', '0deg', '360deg'],
+                  inputRange: [-360000, 360000],
+                  outputRange: ['-360000deg', '360000deg'],
                 }),
               },
             ],

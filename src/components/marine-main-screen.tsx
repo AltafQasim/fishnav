@@ -1,12 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
-import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-  CompassWidget,
-  GpsInfoCard,
-  MapControlStack,
+  MapControlStack
 } from '@/components/map/map-overlays';
 import {
   DroppedPin,
@@ -17,8 +14,8 @@ import {
 import { SpotBottomSheet } from '@/components/map/spot-bottom-sheet';
 import {
   ActiveTabType,
-  CurvedBottomBar,
-} from '@/components/navigation/curved-bottom-bar';
+  AppTabs,
+} from '@/components/navigation/app-tabs';
 import { CalendarSheetContent } from '@/components/sheets/calendar-sheet-content';
 import { CompassSheetContent } from '@/components/sheets/compass-sheet-content';
 import { SettingsSheetContent } from '@/components/sheets/settings-sheet-content';
@@ -172,25 +169,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
           onUserPanned={() => setFollowUser(false)}
         />
 
-        {/* Floating Top Telemetry (GPS HUD & Quick Compass widget) */}
-        <View style={[styles.topTelemetry, { top: insets.top + 8 }]} pointerEvents="box-none">
-          <GpsInfoCard
-            status={status}
-            location={location}
-            onRequestPermission={() => {
-              if (status === 'denied' || status === 'disabled') {
-                openSettings();
-              } else {
-                void requestPermissionAndLocate();
-              }
-            }}
-          />
 
-          <CompassWidget
-            heading={heading ?? location?.heading ?? 0}
-            onResetNorth={handleResetNorth}
-          />
-        </View>
 
         {/* Floating Right Map Controls (Zoom In/Out, Locate, Heading Mode) */}
         <View style={styles.rightControls} pointerEvents="box-none">
@@ -206,7 +185,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
               setFollowUser(true);
               mapRef.current?.centerOnUser();
             }}
-            onToggleMeasure={() => {}}
+            onToggleMeasure={() => { }}
             onAddSpot={() => setActiveTab('waypoint')}
           />
         </View>
@@ -224,8 +203,8 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
               if (activeTarget) mapRef.current?.fitRoute(activeTarget);
             }}
             onSaveSpot={() => setActiveTab('waypoint')}
-            onToggleFavorite={() => {}}
-            onMeasureFromHere={() => {}}
+            onToggleFavorite={() => { }}
+            onMeasureFromHere={() => { }}
             onClose={() => {
               setSelectedSpotId(null);
               setDroppedPin(null);
@@ -259,7 +238,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
       </SlidingSheetContainer>
 
       {/* 3. Curved Floating Bottom Navigation Bar (Always Visible!) */}
-      <CurvedBottomBar
+      <AppTabs
         activeTab={activeTab}
         onTabPress={handleTabPress}
       />
@@ -274,7 +253,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   mapWrap: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     width: '100%',
     height: '100%',
   },

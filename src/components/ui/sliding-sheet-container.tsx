@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useEffect, useRef } from 'react';
 import {
   Animated,
-  Dimensions,
   PanResponder,
   Platform,
   Pressable,
@@ -13,9 +12,6 @@ import {
 } from 'react-native';
 
 import { MapColors } from '@/constants/map-theme';
-
-// Sits at 75% of the screen as requested, leaving top 25% to preview live marine map
-export const DEFAULT_SHEET_HEIGHT = Math.round(Dimensions.get('window').height * 0.75);
 
 type SlidingSheetContainerProps = {
   isOpen: boolean;
@@ -28,6 +24,14 @@ type SlidingSheetContainerProps = {
   height?: number;
 };
 
+/**
+ * 📱 SlidingSheetContainer
+ * Clean 80% Bottom Sheet with Dark Dimmed Backdrop Overlay.
+ * - Opens at exactly 80% screen height.
+ * - Dimmed dark overlay behind the sheet (tap overlay to close).
+ * - Drag DOWN on header to dismiss.
+ * - Tap [ ✕ ] to close.
+ */
 export function SlidingSheetContainer({
   isOpen,
   title,
@@ -39,25 +43,44 @@ export function SlidingSheetContainer({
   height: customHeight,
 }: SlidingSheetContainerProps) {
   const { height: windowHeight } = useWindowDimensions();
-  // 75% of the screen height
-  const height = customHeight ?? Math.round(windowHeight * 0.75);
 
-  const translateY = useRef(new Animated.Value(height + 40)).current;
+  // Exactly 80% of screen height
+  const sheetHeight = customHeight ?? Math.round(windowHeight * 0.80);
+
+  const translateY = useRef(new Animated.Value(sheetHeight + 50)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const heightRef = useRef(height);
-  heightRef.current = height;
+  const heightRef = useRef(sheetHeight);
+  heightRef.current = sheetHeight;
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  // Animate open whenever isOpen becomes true
+  // Dismiss animation (slides down and fades out overlay)
+  const handleDismiss = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: heightRef.current + 50,
+        duration: 180,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+    ]).start(() => {
+      onCloseRef.current();
+    });
+  }, [translateY, backdropOpacity]);
+
+  // Open animation (slides up to 80% and fades in dark overlay)
   useEffect(() => {
     if (isOpen) {
-      translateY.setValue(height + 40);
+      translateY.setValue(sheetHeight + 50);
       backdropOpacity.setValue(0);
       Animated.parallel([
         Animated.spring(translateY, {
           toValue: 0,
-          damping: 22,
+          damping: 24,
           mass: 0.8,
           stiffness: 220,
           useNativeDriver: Platform.OS !== 'web',
@@ -69,26 +92,9 @@ export function SlidingSheetContainer({
         }),
       ]).start();
     }
-  }, [isOpen, height, translateY, backdropOpacity]);
+  }, [isOpen, sheetHeight, translateY, backdropOpacity]);
 
-  const handleDismiss = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: heightRef.current + 40,
-        duration: 160,
-        useNativeDriver: Platform.OS !== 'web',
-      }),
-      Animated.timing(backdropOpacity, {
-        toValue: 0,
-        duration: 160,
-        useNativeDriver: Platform.OS !== 'web',
-      }),
-    ]).start(() => {
-      onCloseRef.current();
-    });
-  }, [translateY, backdropOpacity]);
-
-  // Pan gesture for dragging down on the header to close
+  // Drag down on header to close
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -99,11 +105,12 @@ export function SlidingSheetContainer({
           const progress = Math.max(0, 1 - g.dy / (heightRef.current || 1));
           backdropOpacity.setValue(progress);
         } else {
+          // Slight resistance if pulled upward
           translateY.setValue(g.dy * 0.1);
         }
       },
       onPanResponderRelease: (_, g) => {
-        if (g.dy > 60 || g.vy > 0.4) {
+        if (g.dy > 70 || g.vy > 0.4) {
           handleDismiss();
         } else {
           Animated.parallel([
@@ -130,7 +137,7 @@ export function SlidingSheetContainer({
 
   return (
     <View style={styles.overlay} pointerEvents="box-none">
-      {/* Dimmed Background Overlay with tap-to-dismiss */}
+      {/* 1. Dark Dimmed Overlay (Tapping outside closes the tab) */}
       <Animated.View
         style={[
           styles.backdrop,
@@ -143,42 +150,52 @@ export function SlidingSheetContainer({
           style={StyleSheet.absoluteFill}
           onPress={handleDismiss}
           accessibilityRole="button"
-          accessibilityLabel="Close tab and return to map"
+          accessibilityLabel="Close sheet and return to map"
         />
       </Animated.View>
 
+      {/* 2. 80% Bottom Sheet */}
       <Animated.View
         style={[
           styles.sheet,
           {
-            height,
+            height: sheetHeight,
             transform: [{ translateY }],
           },
         ]}
       >
-        {/* Top Drag Handle & Header */}
-        <View {...panResponder.panHandlers} style={styles.dragZone}>
+        {/* Top Header & Drag Handle */}
+        <View {...panResponder.panHandlers} style={styles.headerContainer}>
           <View style={styles.dragHandle} />
 
-          <View style={styles.headerRow}>
+          <View style={styles.headerBar}>
+            {/* Title & Info */}
             <View style={styles.titleInfo}>
               <View style={styles.titleWithBadge}>
-                <Text style={styles.titleText}>{title}</Text>
+                <Text style={styles.titleText} numberOfLines={1}>
+                  {title}
+                </Text>
                 {badge}
               </View>
-              {subtitle ? <Text style={styles.subtitleText}>{subtitle}</Text> : null}
+              {subtitle ? (
+                <Text style={styles.subtitleText} numberOfLines={1}>
+                  {subtitle}
+                </Text>
+              ) : null}
             </View>
 
+            {/* Right Actions & Close Button */}
             <View style={styles.actionsWrap}>
               {headerRight}
+
               <Pressable
                 onPress={handleDismiss}
                 hitSlop={14}
                 style={styles.closeBtn}
                 accessibilityRole="button"
-                accessibilityLabel="Close sheet and view full map"
+                accessibilityLabel="Close sheet"
               >
-                <Ionicons name="chevron-down" size={20} color={MapColors.textSecondary} />
+                <Ionicons name="close" size={20} color="#FFFFFF" />
               </Pressable>
             </View>
           </View>
@@ -193,17 +210,13 @@ export function SlidingSheetContainer({
 
 const styles = StyleSheet.create({
   overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 60,
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 70, // Sits above map but below floating AppTabs (150)
     justifyContent: 'flex-end',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 14, 28, 0.55)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)', // Strong, clear dark overlay
   },
   sheet: {
     width: '100%',
@@ -218,18 +231,18 @@ const styles = StyleSheet.create({
     borderRightColor: 'rgba(255, 255, 255, 0.08)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.55,
-    shadowRadius: 18,
-    elevation: 25,
+    shadowOpacity: 0.65,
+    shadowRadius: 20,
+    elevation: 30,
     overflow: 'hidden',
   },
-  dragZone: {
+  headerContainer: {
     paddingTop: 8,
-    paddingBottom: 8,
     paddingHorizontal: 16,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: 'rgba(10, 31, 53, 0.96)',
+    backgroundColor: 'rgba(10, 31, 53, 0.98)',
   },
   dragHandle: {
     width: 40,
@@ -237,9 +250,9 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: 'rgba(255, 255, 255, 0.35)',
     alignSelf: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
   },
-  headerRow: {
+  headerBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -255,7 +268,7 @@ const styles = StyleSheet.create({
   },
   titleText: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
@@ -273,7 +286,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },

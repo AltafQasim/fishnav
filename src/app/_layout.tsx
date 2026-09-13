@@ -6,6 +6,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { MapColors } from '@/constants/map-theme';
+import { LocationProvider } from '@/context/location-context';
 import { WaypointsProvider } from '@/context/waypoints-context';
 
 SplashScreen.preventAutoHideAsync();
@@ -13,12 +14,14 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   return (
     <ThemeProvider value={DarkTheme}>
-      <WaypointsProvider>
-        <View style={styles.root}>
-          <AnimatedSplashOverlay />
-          <Slot />
-        </View>
-      </WaypointsProvider>
+      <LocationProvider>
+        <WaypointsProvider>
+          <View style={styles.root}>
+            <AnimatedSplashOverlay />
+            <Slot />
+          </View>
+        </WaypointsProvider>
+      </LocationProvider>
     </ThemeProvider>
   );
 }

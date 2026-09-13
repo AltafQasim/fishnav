@@ -33,7 +33,7 @@ export function CompassSheetContent() {
       </View>
 
       {/* Full Live Compass Dial */}
-      <MarineCompassView />
+      <MarineCompassView northMode={northMode} />
 
       {/* Marine Steering Guidelines */}
       <View style={styles.guideCard}>
