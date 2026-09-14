@@ -10,7 +10,6 @@ import {
 } from '@/components/map/map-overlays';
 import type { MapStyleId } from '@/components/map/map-style-selector';
 import {
-  type DroppedPin,
   type MapOverlaysState,
   type NativeMapHandle,
   NativeMapView,
@@ -61,7 +60,6 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
   // Map state
   const [followUser, setFollowUser] = useState(true);
   const [headingUp, setHeadingUp] = useState(false);
-  const [droppedPin, setDroppedPin] = useState<DroppedPin | null>(null);
   const [overlays, setOverlays] = useState<MapOverlaysState>({
     seamarks: true,
     dangerZone: true,
@@ -113,25 +111,32 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
   const handleViewSpotOnMap = (spot: FishingSpot) => {
     setSelectedSpotId(spot.id);
     setActiveNavigationTarget(spot);
-    setDroppedPin(null);
     setFollowUser(false);
     mapRef.current?.goToSpot(spot);
     // Dismiss sheet so spot is visible on map
     setActiveTab(null);
   };
 
-  const handleMapClick = (lat: number, lng: number) => {
-    setDroppedPin({ latitude: lat, longitude: lng });
+  const handleStartNavigationToSpot = (spot: FishingSpot) => {
+    mapRef.current?.fitRoute(spot);
+    setFollowUser(true);
+    startNavigation(spot);
+    setSelectedSpotId(null);
+    setActiveTab(null);
+  };
+
+  const handleMapClick = (_lat: number, _lng: number) => {
+    // Dismiss any open spot selection or bottom sheet; no pin is dropped
     setSelectedSpotId(null);
     setFollowUser(false);
+    mapRef.current?.clearDroppedPin();
   };
 
   const handlePlotCoordinate = (lat: number, lng: number, label?: string) => {
-    setDroppedPin({ latitude: lat, longitude: lng });
     setSelectedSpotId(null);
     setFollowUser(false);
     mapRef.current?.flyTo(lat, lng, 14);
-    mapRef.current?.setDroppedPin(lat, lng);
+    mapRef.current?.clearDroppedPin();
   };
 
   const handleLocate = () => {
@@ -145,8 +150,8 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     mapRef.current?.centerOnUser();
   };
 
-  // Nav stats if a spot or pin is tapped on the map
-  const activeTarget = selectedSpot ?? droppedPin;
+  // Nav stats if a spot is tapped on the map
+  const activeTarget = selectedSpot;
   const navStats = React.useMemo(() => {
     if (!activeTarget || !location) {
       return { distanceLabel: '—', bearingLabel: '—', etaLabel: '—' };
@@ -165,7 +170,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
       case 'waypoint':
         return {
           title: 'Mark Waypoint',
-          subtitle: 'Save active GPS or dropped pin location',
+          subtitle: 'Save active GPS coordinates as waypoint',
           badgeText: `${waypoints.length} SPOTS`,
         };
       case 'weather':
@@ -214,7 +219,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
           headingUp={headingUp}
           selectedSpotId={selectedSpotId}
           spots={waypoints}
-          droppedPin={droppedPin}
+          droppedPin={null}
           measurementActive={false}
           activeTrackPoints={activePoints}
           savedTracks={savedTrips}
@@ -228,7 +233,6 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
           <MapControlStack
             headingUp={headingUp}
             followUser={followUser}
-            measurementActive={false}
             onZoomIn={() => mapRef.current?.zoomIn()}
             onZoomOut={() => mapRef.current?.zoomOut()}
             onLocate={handleLocate}
@@ -237,8 +241,6 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
               setFollowUser(true);
               mapRef.current?.centerOnUser();
             }}
-            onToggleMeasure={() => { }}
-            onAddSpot={() => setActiveTab('waypoint')}
           />
         </View>
       </View>
@@ -258,34 +260,17 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
         />
       )}
 
-      {/* 2. Spot / Dropped Pin Sliding Sheet (Scrollable & Drag-to-dismiss like tab cards!) */}
-      {activeTab === null && !isNavigating && (selectedSpot || droppedPin) ? (
+      {/* 2. Spot Sliding Sheet (Scrollable & Drag-to-dismiss like tab cards!) */}
+      {activeTab === null && !isNavigating && selectedSpot ? (
         <SpotBottomSheet
           spot={selectedSpot}
-          droppedPin={droppedPin}
           distanceLabel={navStats.distanceLabel}
           bearingLabel={navStats.bearingLabel}
           etaLabel={navStats.etaLabel}
           isFavorite={!!selectedSpot?.favorite}
           onGoTo={() => {
-            if (activeTarget) {
-              const destinationSpot =
-                selectedSpot ||
-                (droppedPin
-                  ? {
-                      id: 'pin',
-                      name: 'Dropped Pin',
-                      latitude: droppedPin.latitude,
-                      longitude: droppedPin.longitude,
-                      depthM: 50,
-                      color: '#F59E0B',
-                    }
-                  : null);
-              mapRef.current?.fitRoute(activeTarget);
-              setFollowUser(true);
-              startNavigation(destinationSpot);
-              setSelectedSpotId(null);
-              setDroppedPin(null);
+            if (selectedSpot) {
+              handleStartNavigationToSpot(selectedSpot);
             }
           }}
           onSaveSpot={() => setActiveTab('waypoint')}
@@ -294,10 +279,8 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
               void toggleFavorite(selectedSpot.id);
             }
           }}
-          onMeasureFromHere={() => { }}
           onClose={() => {
             setSelectedSpotId(null);
-            setDroppedPin(null);
             mapRef.current?.clearDroppedPin();
           }}
         />
@@ -331,7 +314,10 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
         onClose={handleCloseSheet}
       >
         {activeTab === 'waypoint' && (
-          <WaypointsSheetContent onViewOnMap={handleViewSpotOnMap} />
+          <WaypointsSheetContent
+            onViewOnMap={handleViewSpotOnMap}
+            onStartNavigation={handleStartNavigationToSpot}
+          />
         )}
         {activeTab === 'weather' && <WeatherSheetContent />}
         {activeTab === 'compass' && <CompassSheetContent />}

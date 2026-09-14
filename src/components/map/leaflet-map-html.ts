@@ -388,7 +388,7 @@ export function buildLeafletHtml() {
       // Render spots
       renderSpots();
 
-      // Map Click event for Dropped Pin or Ruler measurement
+      // Map Click event: Clicking empty water/chart deselects any active item (no dropped pin)
       map.on('click', function(e) {
         const lat = e.latlng.lat;
         const lng = e.latlng.lng;
@@ -398,8 +398,7 @@ export function buildLeafletHtml() {
           return;
         }
 
-        // Drop pin at clicked location
-        setDroppedPin(lat, lng);
+        clearDroppedPin();
         post({ type: 'mapClick', lat: lat, lng: lng });
       });
 

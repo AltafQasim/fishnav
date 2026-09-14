@@ -1,6 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
-import React from 'react';
 import {
   Alert,
   Pressable,
@@ -21,7 +20,6 @@ import { toDms } from '@/utils/geo';
 type SpotBottomSheetProps = {
   isOpen?: boolean;
   spot?: FishingSpot | null;
-  droppedPin?: { latitude: number; longitude: number } | null;
   distanceLabel: string;
   bearingLabel: string;
   etaLabel: string;
@@ -29,19 +27,17 @@ type SpotBottomSheetProps = {
   onGoTo?: () => void;
   onSaveSpot?: () => void;
   onToggleFavorite?: () => void;
-  onMeasureFromHere?: () => void;
   onClose?: () => void;
 };
 
 /**
  * 🗺️ SpotBottomSheet
- * Displays fishing spot or dropped pin details in a smooth SlidingSheetContainer
+ * Displays fishing spot details in a smooth SlidingSheetContainer
  * (identical to tab cards, with drag-down to dismiss and full vertical scrolling).
  */
 export function SpotBottomSheet({
   isOpen,
   spot,
-  droppedPin,
   distanceLabel,
   bearingLabel,
   etaLabel,
@@ -49,19 +45,16 @@ export function SpotBottomSheet({
   onGoTo,
   onSaveSpot,
   onToggleFavorite,
-  onMeasureFromHere,
-  onClose = () => {},
+  onClose = () => { },
 }: SpotBottomSheetProps) {
   const insets = useSafeAreaInsets();
 
-  const isDroppedPin = !spot && !!droppedPin;
-  const lat = spot ? spot.latitude : droppedPin?.latitude ?? 0;
-  const lng = spot ? spot.longitude : droppedPin?.longitude ?? 0;
-  const name = spot ? spot.name : 'Dropped Pin';
+  const lat = spot?.latitude ?? 0;
+  const lng = spot?.longitude ?? 0;
+  const name = spot?.name ?? 'Fishing Spot';
   const depthM = spot ? `${spot.depthM} m` : 'Depth ~55 m';
 
-  const isSheetOpen =
-    isOpen !== undefined ? isOpen : spot !== null || droppedPin !== null;
+  const isSheetOpen = isOpen !== undefined ? isOpen : spot !== null;
 
   const handleShare = async () => {
     const dmsLat = toDms(lat, 'N', 'S');
@@ -75,13 +68,6 @@ export function SpotBottomSheet({
   };
 
   const getBadge = () => {
-    if (isDroppedPin) {
-      return (
-        <View style={styles.badgeAmber}>
-          <Text style={styles.badgeAmberText}>DROPPED PIN</Text>
-        </View>
-      );
-    }
     if (isFavorite) {
       return (
         <View style={styles.badgeYellow}>
@@ -169,32 +155,20 @@ export function SpotBottomSheet({
 
         {/* 4. Quick Action Tools Row */}
         <View style={styles.quickActionsRow}>
-          {isDroppedPin ? (
-            <Pressable style={styles.quickActionBtn} onPress={onSaveSpot}>
-              <Ionicons name="bookmark-outline" size={18} color={MapColors.text} />
-              <Text style={styles.quickActionText}>Save Spot</Text>
-            </Pressable>
-          ) : (
-            <Pressable style={styles.quickActionBtn} onPress={onToggleFavorite}>
-              <Ionicons
-                name={isFavorite ? 'star' : 'star-outline'}
-                size={18}
-                color={isFavorite ? MapColors.yellow : MapColors.text}
-              />
-              <Text style={styles.quickActionText}>
-                {isFavorite ? 'Saved' : 'Favorite'}
-              </Text>
-            </Pressable>
-          )}
-
-          <Pressable style={styles.quickActionBtn} onPress={onMeasureFromHere}>
-            <MaterialCommunityIcons name="ruler" size={18} color={MapColors.text} />
-            <Text style={styles.quickActionText}>Measure</Text>
+          <Pressable style={styles.quickActionBtn} onPress={onToggleFavorite}>
+            <Ionicons
+              name={isFavorite ? 'star' : 'star-outline'}
+              size={18}
+              color={isFavorite ? MapColors.yellow : MapColors.text}
+            />
+            <Text style={styles.quickActionText}>
+              {isFavorite ? 'Saved' : 'Favorite'}
+            </Text>
           </Pressable>
 
           <Pressable style={styles.quickActionBtn} onPress={handleShare}>
             <Ionicons name="share-social-outline" size={18} color={MapColors.text} />
-            <Text style={styles.quickActionText}>Share</Text>
+            <Text style={styles.quickActionText}>Share Spot</Text>
           </Pressable>
         </View>
 

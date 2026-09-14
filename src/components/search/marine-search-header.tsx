@@ -425,7 +425,7 @@ export function MarineSearchHeader({
                     Plot GPS Coordinates on Chart
                   </Text>
                   <Text style={styles.coordPlotSub}>
-                    {parsedCoords.lat.toFixed(4)}°N, {parsedCoords.lng.toFixed(4)}°E • Tap to drop pin & zoom
+                    {parsedCoords.lat.toFixed(4)}°N, {parsedCoords.lng.toFixed(4)}°E • Tap to view on chart
                   </Text>
                 </View>
                 <Ionicons name="arrow-forward" size={18} color="#00F0FF" />

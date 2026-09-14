@@ -43,7 +43,7 @@ type NativeMapViewProps = {
   headingUp: boolean;
   selectedSpotId: string | null;
   spots: FishingSpot[];
-  droppedPin: DroppedPin | null;
+  droppedPin?: DroppedPin | null;
   measurementActive: boolean;
   activeTrackPoints?: { latitude: number; longitude: number }[];
   savedTracks?: { id: string; name: string; color: string; visibleOnMap?: boolean; points: { latitude: number; longitude: number }[] }[];

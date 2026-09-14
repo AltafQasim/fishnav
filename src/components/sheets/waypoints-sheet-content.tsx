@@ -21,9 +21,13 @@ type FilterType = 'all' | 'favorites' | 'deep' | 'reef' | 'wreck';
 
 type WaypointsSheetContentProps = {
   onViewOnMap: (spot: FishingSpot) => void;
+  onStartNavigation?: (spot: FishingSpot) => void;
 };
 
-export function WaypointsSheetContent({ onViewOnMap }: WaypointsSheetContentProps) {
+export function WaypointsSheetContent({
+  onViewOnMap,
+  onStartNavigation,
+}: WaypointsSheetContentProps) {
   const { location } = useUserLocation();
   const {
     waypoints,
@@ -180,6 +184,7 @@ export function WaypointsSheetContent({ onViewOnMap }: WaypointsSheetContentProp
             onDelete={handleDeletePrompt}
             onToggleFavorite={toggleFavorite}
             onViewOnMap={handleSelectSpot}
+            onStartNavigation={onStartNavigation || handleSelectSpot}
           />
         )}
       />

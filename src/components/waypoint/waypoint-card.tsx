@@ -14,7 +14,8 @@ type WaypointCardProps = {
   onEdit: (spot: FishingSpot) => void;
   onDelete: (spot: FishingSpot) => void;
   onToggleFavorite: (id: string) => void;
-  onViewOnMap: (spot: FishingSpot) => void;
+  onViewOnMap?: (spot: FishingSpot) => void;
+  onStartNavigation?: (spot: FishingSpot) => void;
 };
 
 // Converts degrees to 16-point cardinal compass text
@@ -35,6 +36,7 @@ export function WaypointCard({
   onDelete,
   onToggleFavorite,
   onViewOnMap,
+  onStartNavigation,
 }: WaypointCardProps) {
   const dist = userLocation
     ? distanceNm(userLocation.latitude, userLocation.longitude, spot.latitude, spot.longitude)
@@ -117,11 +119,20 @@ export function WaypointCard({
         <View style={styles.actionsRow}>
           <Pressable
             style={styles.mapActionBtn}
-            onPress={() => onViewOnMap(spot)}
+            onPress={() => {
+              if (onStartNavigation) {
+                onStartNavigation(spot);
+              } else if (onViewOnMap) {
+                onViewOnMap(spot);
+              } else {
+                onSelect(spot);
+              }
+            }}
             accessibilityRole="button"
+            accessibilityLabel={`Start navigation to ${spot.name}`}
           >
-            <Ionicons name="navigate" size={14} color="#38BDF8" />
-            <Text style={styles.mapActionText}>View on Map</Text>
+            <Ionicons name="navigate" size={14} color="#00F0FF" />
+            <Text style={styles.mapActionText}>Start Navigation</Text>
           </Pressable>
 
           <View style={styles.crudBtns}>
@@ -251,17 +262,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
+    backgroundColor: 'rgba(0, 240, 255, 0.14)',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.25)',
+    borderColor: 'rgba(0, 240, 255, 0.35)',
   },
   mapActionText: {
-    color: '#38BDF8',
+    color: '#00F0FF',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
   crudBtns: {
     flexDirection: 'row',

@@ -94,8 +94,8 @@ type MapControlStackProps = {
   onZoomOut: () => void;
   onLocate: () => void;
   onHeading: () => void;
-  onToggleMeasure: () => void;
-  onAddSpot: () => void;
+  onToggleMeasure?: () => void;
+  onAddSpot?: () => void;
   onToggleTrack?: () => void;
 };
 
@@ -140,22 +140,28 @@ export function MapControlStack({
         </Pressable>
       </View>
 
-      {/* Tools: Measure & Add Spot */}
-      <View style={styles.btnGroup}>
-        <Pressable
-          style={[styles.toolBtn, measurementActive && styles.toolBtnActive]}
-          onPress={onToggleMeasure}>
-          <MaterialCommunityIcons
-            name="ruler"
-            size={20}
-            color={measurementActive ? '#FFFFFF' : '#F59E0B'}
-          />
-        </Pressable>
-        <View style={styles.divider} />
-        <Pressable style={styles.toolBtn} onPress={onAddSpot}>
-          <Ionicons name="add-circle" size={20} color={MapColors.green} />
-        </Pressable>
-      </View>
+      {/* Tools: Measure & Add Spot (only rendered if handlers passed) */}
+      {(onToggleMeasure || onAddSpot) && (
+        <View style={styles.btnGroup}>
+          {onToggleMeasure && (
+            <Pressable
+              style={[styles.toolBtn, measurementActive && styles.toolBtnActive]}
+              onPress={onToggleMeasure}>
+              <MaterialCommunityIcons
+                name="ruler"
+                size={20}
+                color={measurementActive ? '#FFFFFF' : '#F59E0B'}
+              />
+            </Pressable>
+          )}
+          {onToggleMeasure && onAddSpot && <View style={styles.divider} />}
+          {onAddSpot && (
+            <Pressable style={styles.toolBtn} onPress={onAddSpot}>
+              <Ionicons name="add-circle" size={20} color={MapColors.green} />
+            </Pressable>
+          )}
+        </View>
+      )}
 
       {/* Navigation & Location Center */}
       <View style={styles.btnGroup}>

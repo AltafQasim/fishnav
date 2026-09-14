@@ -7,7 +7,6 @@ import {
   MapControlStack,
 } from '@/components/map/map-overlays';
 import {
-  DroppedPin,
   MapOverlaysState,
   NativeMapHandle,
   NativeMapView,
@@ -26,7 +25,6 @@ export function SharedBackgroundMap() {
 
   const [followUser, setFollowUser] = useState(true);
   const [headingUp, setHeadingUp] = useState(false);
-  const [droppedPin, setDroppedPin] = useState<DroppedPin | null>(null);
   const [overlays] = useState<MapOverlaysState>({
     seamarks: true,
     dangerZone: true,
@@ -34,15 +32,14 @@ export function SharedBackgroundMap() {
 
   const handleSelectSpot = (spot: FishingSpot) => {
     setSelectedSpotId(spot.id);
-    setDroppedPin(null);
     setFollowUser(false);
     mapRef.current?.goToSpot(spot);
   };
 
-  const handleMapClick = (lat: number, lng: number) => {
-    setDroppedPin({ latitude: lat, longitude: lng });
+  const handleMapClick = () => {
     setSelectedSpotId(null);
     setFollowUser(false);
+    mapRef.current?.clearDroppedPin();
   };
 
   const handleLocate = () => {
@@ -56,8 +53,8 @@ export function SharedBackgroundMap() {
     mapRef.current?.centerOnUser();
   };
 
-  // Nav stats if a spot or pin is tapped on the map
-  const activeTarget = selectedSpot ?? droppedPin;
+  // Nav stats if a spot is tapped on the map
+  const activeTarget = selectedSpot;
   const navStats = React.useMemo(() => {
     if (!activeTarget || !location) {
       return { distanceLabel: '—', bearingLabel: '—', etaLabel: '—' };
@@ -84,7 +81,7 @@ export function SharedBackgroundMap() {
         headingUp={headingUp}
         selectedSpotId={selectedSpotId}
         spots={waypoints}
-        droppedPin={droppedPin}
+        droppedPin={null}
         measurementActive={false}
         onSelectSpot={handleSelectSpot}
         onMapClick={handleMapClick}
@@ -131,10 +128,9 @@ export function SharedBackgroundMap() {
       </View>
 
       {/* Spot Bottom Sheet if user clicks a pin on the map while sheet is closed */}
-      {(selectedSpot || droppedPin) ? (
+      {selectedSpot ? (
         <SpotBottomSheet
           spot={selectedSpot}
-          droppedPin={droppedPin}
           distanceLabel={navStats.distanceLabel}
           bearingLabel={navStats.bearingLabel}
           etaLabel={navStats.etaLabel}
@@ -144,10 +140,8 @@ export function SharedBackgroundMap() {
           }}
           onSaveSpot={() => { }}
           onToggleFavorite={() => { }}
-          onMeasureFromHere={() => { }}
           onClose={() => {
             setSelectedSpotId(null);
-            setDroppedPin(null);
             mapRef.current?.clearDroppedPin();
           }}
         />
