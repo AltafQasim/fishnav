@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   Animated,
   Platform,
@@ -10,7 +10,7 @@ import Svg, { Circle, Line, Polygon, Text as SvgText } from 'react-native-svg';
 
 import { useUserLocation } from '@/hooks/use-user-location';
 
-const MINI_COMPASS_SIZE = 48;
+const MINI_COMPASS_SIZE = 66;
 
 /**
  * 🧭 WorkingMiniCompass
@@ -171,15 +171,15 @@ export function WorkingMiniCompass() {
 
 const styles = StyleSheet.create({
   container: {
-    width: 48,
-    height: 48,
+    width: 66,
+    height: 66,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   dialWrapper: {
-    width: 48,
-    height: 48,
+    width: 66,
+    height: 66,
     alignItems: 'center',
     justifyContent: 'center',
   },

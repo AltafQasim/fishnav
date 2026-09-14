@@ -13,7 +13,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { useAppTheme } from '@/context/theme-context';
-import { MapColors } from '@/constants/map-theme';
 import {
   CalendarTabIcon,
   SettingsTabIcon,
@@ -105,10 +104,10 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
                 activeTab === 'compass'
                   ? colors.accentGradient
                   : isLight
-                  ? ['#F8FAFC', '#E2E8F0']
-                  : isDark
-                  ? ['#1E293B', '#0F172A']
-                  : ['#082238', '#031424']
+                    ? ['#f8fcf8ff', '#E2E8F0']
+                    : isDark
+                      ? ['#1E293B', '#0F172A']
+                      : ['#082238', '#031424']
               }
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
@@ -197,6 +196,7 @@ const styles = StyleSheet.create({
   },
   barContainer: {
     width: BAR_WIDTH,
+    backgroundColor: 'transparent',
     height: TOTAL_HEIGHT,
     alignItems: 'center',
     justifyContent: 'flex-end',
@@ -222,10 +222,6 @@ const styles = StyleSheet.create({
     top: 7,
     alignSelf: 'center',
     zIndex: 10,
-    shadowColor: '#0284C7',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.6,
-    shadowRadius: 14,
     elevation: 14,
   },
   centerTouch: {
