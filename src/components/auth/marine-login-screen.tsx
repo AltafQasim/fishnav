@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,63 +15,122 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { GoogleLogoSvg } from '@/components/ui/google-logo-svg';
 import { useAuth } from '@/context/auth-context';
 
 type MarineLoginScreenProps = {
   onLoginSuccess: () => void;
 };
 
-type AuthMode = 'login' | 'register';
+type PhoneStep = 'phone' | 'otp';
 
 export function MarineLoginScreen({ onLoginSuccess }: MarineLoginScreenProps) {
   const insets = useSafeAreaInsets();
-  const { login, loginAsDemo } = useAuth();
+  const { loginWithPhone, loginWithGoogle, loginAsDemo } = useAuth();
 
-  const [mode, setMode] = useState<AuthMode>('login');
-  const [identifier, setIdentifier] = useState('capt.vikram@fishnav.pro');
-  const [password, setPassword] = useState('marine123');
+  // Mobile Auth state
+  const [step, setStep] = useState<PhoneStep>('phone');
+  const [phone, setPhone] = useState('9876543210');
+  const [otp, setOtp] = useState('');
   const [captainName, setCaptainName] = useState('Capt. Vikram Rathore');
   const [vesselName, setVesselName] = useState('Sea Hunter II');
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [showVesselCustomization, setShowVesselCustomization] = useState(false);
+
+  const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
+  const [isLoadingPhone, setIsLoadingPhone] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const handleLogin = async () => {
-    if (!identifier.trim()) {
-      setErrorMsg('Please enter Captain ID, Email or Mobile Number');
-      return;
-    }
+  // OTP Countdown timer
+  const [countdown, setCountdown] = useState(30);
 
-    if (mode === 'register' && !captainName.trim()) {
-      setErrorMsg('Please enter Captain / Master Name');
+  useEffect(() => {
+    let timer: any;
+    if (step === 'otp' && countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [step, countdown]);
+
+  // Google Login Handler
+  const handleGoogleLogin = async () => {
+    setErrorMsg(null);
+    setIsLoadingGoogle(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 600)); // Smooth UX transition
+      await loginWithGoogle({
+        name: 'Capt. Vikram Rathore',
+        email: 'capt.vikram@gmail.com',
+      });
+      onLoginSuccess();
+    } catch {
+      setErrorMsg('Google Sign-In failed. Please try again.');
+    } finally {
+      setIsLoadingGoogle(false);
+    }
+  };
+
+  // Mobile Step 1: Send OTP
+  const handleSendOtp = () => {
+    const cleanDigits = phone.replace(/\D/g, '');
+    if (cleanDigits.length < 10) {
+      setErrorMsg('Please enter a valid 10-digit mobile number');
       return;
     }
 
     setErrorMsg(null);
-    setIsLoading(true);
+    setIsLoadingPhone(true);
+
+    setTimeout(() => {
+      setIsLoadingPhone(false);
+      setStep('otp');
+      setCountdown(30);
+      setOtp('1234'); // Pre-fill mock OTP for effortless user testing
+    }, 500);
+  };
+
+  // Mobile Step 2: Verify OTP
+  const handleVerifyOtp = async () => {
+    if (!otp.trim() || otp.trim().length < 4) {
+      setErrorMsg('Please enter the 4-digit verification code');
+      return;
+    }
+
+    setErrorMsg(null);
+    setIsLoadingPhone(true);
 
     try {
-      await login({
-        identifier,
-        password,
-        name: mode === 'register' ? captainName : undefined,
-        vesselName: mode === 'register' ? vesselName : undefined,
-      });
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await loginWithPhone(
+        `+91 ${phone.replace(/\D/g, '').slice(-10)}`,
+        captainName,
+        vesselName,
+      );
       onLoginSuccess();
     } catch {
-      setErrorMsg('Failed to verify vessel credentials. Please try again.');
+      setErrorMsg('Verification failed. Please try again.');
     } finally {
-      setIsLoading(false);
+      setIsLoadingPhone(false);
     }
   };
 
+  // Resend OTP
+  const handleResendOtp = () => {
+    if (countdown > 0) return;
+    setCountdown(30);
+    setOtp('1234');
+    Alert.alert('OTP Sent', `New verification code 1234 sent to +91 ${phone}`);
+  };
+
+  // 1-Tap Offline Demo Login
   const handleDemoLogin = () => {
-    setIsLoading(true);
+    setIsLoadingPhone(true);
     setTimeout(() => {
       loginAsDemo();
-      setIsLoading(false);
+      setIsLoadingPhone(false);
       onLoginSuccess();
-    }, 400);
+    }, 350);
   };
 
   return (
@@ -103,7 +162,7 @@ export function MarineLoginScreen({ onLoginSuccess }: MarineLoginScreenProps) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Brand Header */}
+        {/* Brand Logo Header */}
         <View style={styles.brandHeader}>
           <View style={styles.logoBadge}>
             <LinearGradient
@@ -119,199 +178,287 @@ export function MarineLoginScreen({ onLoginSuccess }: MarineLoginScreenProps) {
           </Text>
 
           <Text style={styles.brandTagline}>
-            OFFSHORE MARINE CHARTPLOTTER & NAUTICAL LOGBOOK
+            OFFSHORE MARINE CHARTPLOTTER & NAUTICAL NAVIGATION
           </Text>
         </View>
 
         {/* Auth Glass Card */}
         <View style={styles.authCard}>
-          {/* Mode Switcher Tabs */}
-          <View style={styles.tabBar}>
-            <Pressable
-              style={[styles.tabBtn, mode === 'login' && styles.tabBtnActive]}
-              onPress={() => {
-                setMode('login');
-                setErrorMsg(null);
-              }}
-            >
-              <Ionicons
-                name="log-in-outline"
-                size={16}
-                color={mode === 'login' ? '#00F0FF' : '#94A3B8'}
-              />
-              <Text style={[styles.tabBtnText, mode === 'login' && styles.tabBtnTextActive]}>
-                Vessel Sign In
-              </Text>
-            </Pressable>
-
-            <Pressable
-              style={[styles.tabBtn, mode === 'register' && styles.tabBtnActive]}
-              onPress={() => {
-                setMode('register');
-                setErrorMsg(null);
-              }}
-            >
-              <Ionicons
-                name="boat-outline"
-                size={16}
-                color={mode === 'register' ? '#00F0FF' : '#94A3B8'}
-              />
-              <Text style={[styles.tabBtnText, mode === 'register' && styles.tabBtnTextActive]}>
-                Register Vessel
-              </Text>
-            </Pressable>
+          {/* Card Title Banner */}
+          <View style={styles.cardHeader}>
+            <MaterialCommunityIcons name="shield-account" size={22} color="#00F0FF" />
+            <Text style={styles.cardTitle}>CAPTAIN & VESSEL SIGN IN</Text>
           </View>
 
-          {/* Form Fields */}
-          <View style={styles.formWrap}>
-            {mode === 'register' && (
+          {/* 1. GOOGLE LOGIN BUTTON (Top Primary Action) */}
+          <Pressable
+            style={[styles.googleBtn, isLoadingGoogle && styles.btnDisabled]}
+            onPress={handleGoogleLogin}
+            disabled={isLoadingGoogle || isLoadingPhone}
+          >
+            {isLoadingGoogle ? (
+              <ActivityIndicator color="#020B14" size="small" />
+            ) : (
               <>
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>CAPTAIN / MASTER NAME</Text>
-                  <View style={styles.inputWrap}>
-                    <Ionicons name="person-outline" size={18} color="#38BDF8" style={styles.inputIcon} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="e.g. Capt. Vikram Rathore"
-                      placeholderTextColor="#64748B"
-                      value={captainName}
-                      onChangeText={setCaptainName}
-                    />
-                  </View>
+                <View style={styles.googleIconBox}>
+                  <GoogleLogoSvg size={20} />
                 </View>
-
-                <View style={styles.fieldGroup}>
-                  <Text style={styles.fieldLabel}>VESSEL NAME & REGISTRATION</Text>
-                  <View style={styles.inputWrap}>
-                    <Ionicons name="boat-outline" size={18} color="#38BDF8" style={styles.inputIcon} />
-                    <TextInput
-                      style={styles.input}
-                      placeholder="e.g. Sea Hunter II (IND-GJ)"
-                      placeholderTextColor="#64748B"
-                      value={vesselName}
-                      onChangeText={setVesselName}
-                    />
-                  </View>
+                <View style={styles.googleTextWrap}>
+                  <Text style={styles.googleBtnText}>Continue with Google</Text>
+                  <Text style={styles.googleBtnSub}>Fast 1-Tap Marine Sign-In</Text>
                 </View>
+                <Ionicons name="arrow-forward" size={18} color="#020B14" />
               </>
             )}
+          </Pressable>
 
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>CAPTAIN ID / EMAIL / MOBILE</Text>
-              <View style={styles.inputWrap}>
-                <Ionicons name="mail-outline" size={18} color="#38BDF8" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="capt.vikram@fishnav.pro"
-                  placeholderTextColor="#64748B"
-                  value={identifier}
-                  onChangeText={setIdentifier}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                />
+          {/* Divider */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR LOGIN WITH MOBILE NUMBER</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* 2. MOBILE NUMBER LOGIN FLOW */}
+          {step === 'phone' ? (
+            <View style={styles.formWrap}>
+              {/* Phone Input */}
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>CAPTAIN MOBILE NUMBER</Text>
+                <View style={styles.phoneInputRow}>
+                  {/* Country Code Pill */}
+                  <View style={styles.countryCodePill}>
+                    <Text style={styles.flagEmoji}>🇮🇳</Text>
+                    <Text style={styles.countryCodeText}>+91</Text>
+                  </View>
+
+                  {/* Number Input */}
+                  <View style={styles.phoneInputWrap}>
+                    <Ionicons name="call-outline" size={18} color="#38BDF8" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="98765 43210"
+                      placeholderTextColor="#64748B"
+                      value={phone}
+                      onChangeText={(val) => setPhone(val.replace(/\D/g, ''))}
+                      keyboardType="phone-pad"
+                      maxLength={10}
+                    />
+                  </View>
+                </View>
               </View>
-            </View>
 
-            <View style={styles.fieldGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.fieldLabel}>SECURITY PIN / ACCESS KEY</Text>
-                {mode === 'login' && (
-                  <Pressable
-                    onPress={() =>
-                      Alert.alert(
-                        'Demo Credentials',
-                        'Use "capt.vikram@fishnav.pro" and PIN "marine123", or tap "Quick Captain Demo Login" below!',
-                      )
-                    }
-                  >
-                    <Text style={styles.forgotText}>Forgot PIN?</Text>
+              {/* Optional: Add Vessel Details accordion */}
+              <Pressable
+                style={styles.accordionHeader}
+                onPress={() => setShowVesselCustomization((v) => !v)}
+              >
+                <Ionicons
+                  name={showVesselCustomization ? 'boat' : 'boat-outline'}
+                  size={16}
+                  color="#38BDF8"
+                />
+                <Text style={styles.accordionTitle}>
+                  {showVesselCustomization ? 'Hide Vessel Details' : '+ Add Vessel & Captain Details (Optional)'}
+                </Text>
+                <Ionicons
+                  name={showVesselCustomization ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  color="#64748B"
+                />
+              </Pressable>
+
+              {showVesselCustomization && (
+                <View style={styles.vesselFields}>
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>CAPTAIN / MASTER NAME</Text>
+                    <View style={styles.inputWrap}>
+                      <Ionicons name="person-outline" size={18} color="#38BDF8" style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="e.g. Capt. Vikram Rathore"
+                        placeholderTextColor="#64748B"
+                        value={captainName}
+                        onChangeText={setCaptainName}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.fieldGroup}>
+                    <Text style={styles.fieldLabel}>VESSEL NAME</Text>
+                    <View style={styles.inputWrap}>
+                      <Ionicons name="boat-outline" size={18} color="#38BDF8" style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="e.g. Sea Hunter II"
+                        placeholderTextColor="#64748B"
+                        value={vesselName}
+                        onChangeText={setVesselName}
+                      />
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {/* Error box */}
+              {errorMsg && (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle" size={16} color="#EF4444" />
+                  <Text style={styles.errorText}>{errorMsg}</Text>
+                </View>
+              )}
+
+              {/* Get OTP Button */}
+              <Pressable
+                style={[styles.submitBtn, isLoadingPhone && styles.btnDisabled]}
+                onPress={handleSendOtp}
+                disabled={isLoadingPhone || isLoadingGoogle}
+              >
+                <LinearGradient
+                  colors={['#0284C7', '#00F0FF']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.submitGradient}
+                >
+                  {isLoadingPhone ? (
+                    <ActivityIndicator color="#020B14" size="small" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="cellphone-message" size={20} color="#020B14" />
+                      <Text style={styles.submitText}>GET VERIFICATION OTP</Text>
+                      <Ionicons name="arrow-forward" size={18} color="#020B14" />
+                    </>
+                  )}
+                </LinearGradient>
+              </Pressable>
+            </View>
+          ) : (
+            /* STEP 2: OTP VERIFICATION */
+            <View style={styles.formWrap}>
+              {/* OTP Info Card */}
+              <View style={styles.otpBanner}>
+                <View style={styles.otpBannerIcon}>
+                  <Ionicons name="shield-checkmark" size={22} color="#00F0FF" />
+                </View>
+                <View style={styles.otpBannerTextWrap}>
+                  <Text style={styles.otpBannerTitle}>Enter Verification Code</Text>
+                  <Text style={styles.otpBannerSub}>
+                    Sent to <Text style={styles.phoneHighlight}>+91 {phone}</Text>
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={() => {
+                    setStep('phone');
+                    setErrorMsg(null);
+                  }}
+                  hitSlop={10}
+                  style={styles.changePhoneBtn}
+                >
+                  <Text style={styles.changePhoneText}>Change</Text>
+                </Pressable>
+              </View>
+
+              {/* OTP Input */}
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>4-DIGIT VERIFICATION CODE</Text>
+                <View style={styles.inputWrap}>
+                  <Ionicons name="key-outline" size={18} color="#00F0FF" style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, styles.otpInput]}
+                    placeholder="1 2 3 4"
+                    placeholderTextColor="#64748B"
+                    value={otp}
+                    onChangeText={(v) => setOtp(v.replace(/\D/g, ''))}
+                    keyboardType="number-pad"
+                    maxLength={4}
+                    autoFocus
+                  />
+                </View>
+              </View>
+
+              {/* Auto-fill demo badge */}
+              <Pressable
+                style={styles.mockOtpBadge}
+                onPress={() => setOtp('1234')}
+              >
+                <Ionicons name="sparkles" size={14} color="#FBBF24" />
+                <Text style={styles.mockOtpText}>
+                  Demo Auto-fill OTP: <Text style={styles.otpBold}>1234</Text> (Tap to fill)
+                </Text>
+              </Pressable>
+
+              {/* Resend Countdown */}
+              <View style={styles.resendRow}>
+                {countdown > 0 ? (
+                  <Text style={styles.resendTimerText}>
+                    Resend code in <Text style={styles.resendTimerCount}>{countdown}s</Text>
+                  </Text>
+                ) : (
+                  <Pressable onPress={handleResendOtp}>
+                    <Text style={styles.resendBtnText}>Resend OTP Code</Text>
                   </Pressable>
                 )}
               </View>
-              <View style={styles.inputWrap}>
-                <Ionicons name="lock-closed-outline" size={18} color="#38BDF8" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter 6-digit PIN or password"
-                  placeholderTextColor="#64748B"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                />
-                <Pressable
-                  onPress={() => setShowPassword((prev) => !prev)}
-                  hitSlop={10}
-                  style={styles.eyeBtn}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={18}
-                    color="#94A3B8"
-                  />
-                </Pressable>
-              </View>
-            </View>
 
-            {errorMsg ? (
-              <View style={styles.errorBox}>
-                <Ionicons name="alert-circle" size={16} color="#EF4444" />
-                <Text style={styles.errorText}>{errorMsg}</Text>
-              </View>
-            ) : null}
+              {/* Error box */}
+              {errorMsg && (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle" size={16} color="#EF4444" />
+                  <Text style={styles.errorText}>{errorMsg}</Text>
+                </View>
+              )}
 
-            {/* Primary Action Button */}
-            <Pressable
-              style={[styles.submitBtn, isLoading && styles.submitBtnDisabled]}
-              onPress={handleLogin}
-              disabled={isLoading}
-            >
-              <LinearGradient
-                colors={['#0284C7', '#00F0FF']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.submitGradient}
+              {/* Verify & Launch Button */}
+              <Pressable
+                style={[styles.submitBtn, isLoadingPhone && styles.btnDisabled]}
+                onPress={handleVerifyOtp}
+                disabled={isLoadingPhone || isLoadingGoogle}
               >
-                {isLoading ? (
-                  <ActivityIndicator color="#020B14" size="small" />
-                ) : (
-                  <>
-                    <MaterialCommunityIcons name="steering" size={20} color="#020B14" />
-                    <Text style={styles.submitText}>
-                      {mode === 'login' ? 'BOARD VESSEL & LAUNCH MAP' : 'REGISTER & COMMENCE VOYAGE'}
-                    </Text>
-                  </>
-                )}
-              </LinearGradient>
-            </Pressable>
-
-            {/* Divider */}
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR QUICK ACCESS</Text>
-              <View style={styles.dividerLine} />
+                <LinearGradient
+                  colors={['#0284C7', '#00F0FF']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.submitGradient}
+                >
+                  {isLoadingPhone ? (
+                    <ActivityIndicator color="#020B14" size="small" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="steering" size={20} color="#020B14" />
+                      <Text style={styles.submitText}>VERIFY & BOARD VESSEL</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </Pressable>
             </View>
+          )}
 
-            {/* 1-Tap Quick Demo Captain Login */}
-            <Pressable
-              style={styles.demoBtn}
-              onPress={handleDemoLogin}
-              disabled={isLoading}
-            >
-              <Ionicons name="flash" size={16} color="#FBBF24" />
-              <View style={styles.demoTextWrap}>
-                <Text style={styles.demoTitle}>QUICK CAPTAIN ACCESS (DEMO)</Text>
-                <Text style={styles.demoSub}>Capt. Vikram Rathore • Sea Hunter II</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#38BDF8" />
-            </Pressable>
+          {/* Quick Demo Bypass */}
+          <View style={styles.demoDividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR INSTANT PREVIEW</Text>
+            <View style={styles.dividerLine} />
           </View>
+
+          <Pressable
+            style={styles.demoBtn}
+            onPress={handleDemoLogin}
+            disabled={isLoadingPhone || isLoadingGoogle}
+          >
+            <Ionicons name="flash" size={16} color="#FBBF24" />
+            <View style={styles.demoTextWrap}>
+              <Text style={styles.demoTitle}>QUICK CAPTAIN ACCESS (DEMO)</Text>
+              <Text style={styles.demoSub}>Capt. Vikram Rathore • Sea Hunter II</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#38BDF8" />
+          </Pressable>
         </View>
 
         {/* Offline Assurance Card */}
         <View style={styles.offlineNotice}>
           <Ionicons name="shield-checkmark" size={16} color="#10B981" />
           <Text style={styles.offlineText}>
-            100% Offline Capable • Nautical charts & waypoints cache locally for open-ocean operations.
+            100% Offline Marine Ready • High-res coastal charts cache locally for open-ocean voyages.
           </Text>
         </View>
 
@@ -368,8 +515,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#38BDF8',
   },
   scrollContent: {
-    flexGrow: 1,
     paddingHorizontal: 20,
+    flexGrow: 1,
     justifyContent: 'center',
   },
   brandHeader: {
@@ -380,171 +527,118 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    shadowColor: '#00F0FF',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 12,
+    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+    padding: 3,
     marginBottom: 12,
+    shadowColor: '#00F0FF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 14,
+    elevation: 12,
   },
   logoBadgeInner: {
     width: '100%',
     height: '100%',
-    borderRadius: 34,
+    borderRadius: 31,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#00F0FF',
   },
   brandName: {
-    color: '#FFFFFF',
     fontSize: 26,
     fontWeight: '900',
+    color: '#FFFFFF',
     letterSpacing: 2,
   },
   brandPro: {
     color: '#00F0FF',
-    fontWeight: '900',
   },
   brandTagline: {
-    color: '#94A3B8',
     fontSize: 10,
     fontWeight: '700',
+    color: '#38BDF8',
     letterSpacing: 1.2,
     marginTop: 4,
     textAlign: 'center',
   },
   authCard: {
-    backgroundColor: 'rgba(10, 31, 53, 0.85)',
+    backgroundColor: 'rgba(4, 23, 40, 0.95)',
     borderRadius: 24,
     borderWidth: 1.5,
-    borderColor: 'rgba(56, 189, 248, 0.25)',
-    overflow: 'hidden',
+    borderColor: 'rgba(56, 189, 248, 0.35)',
+    padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.6,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.7,
     shadowRadius: 24,
     elevation: 20,
   },
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(4, 23, 40, 0.95)',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  tabBtn: {
-    flex: 1,
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
-    paddingVertical: 14,
+    gap: 8,
+    marginBottom: 18,
   },
-  tabBtnActive: {
-    backgroundColor: 'rgba(2, 132, 199, 0.18)',
-    borderBottomWidth: 2.5,
-    borderBottomColor: '#00F0FF',
-  },
-  tabBtnText: {
-    color: '#94A3B8',
+  cardTitle: {
+    color: '#E2E8F0',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: 1,
   },
-  tabBtnTextActive: {
-    color: '#00F0FF',
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    shadowColor: '#FFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+    gap: 12,
+  },
+  googleIconBox: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleTextWrap: {
+    flex: 1,
+  },
+  googleBtnText: {
+    color: '#020B14',
+    fontSize: 15,
     fontWeight: '800',
   },
-  formWrap: {
-    padding: 20,
-    gap: 14,
-  },
-  fieldGroup: {
-    gap: 6,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  fieldLabel: {
-    color: '#94A3B8',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-  },
-  forgotText: {
-    color: '#38BDF8',
-    fontSize: 11,
+  googleBtnSub: {
+    color: '#64748B',
+    fontSize: 10,
     fontWeight: '600',
+    marginTop: 1,
   },
-  inputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(4, 23, 40, 0.8)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    paddingHorizontal: 12,
-  },
-  inputIcon: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 14,
-    paddingVertical: 12,
-  },
-  eyeBtn: {
-    padding: 4,
-  },
-  errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    borderRadius: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-  },
-  errorText: {
-    color: '#EF4444',
-    fontSize: 12,
-    fontWeight: '600',
-    flex: 1,
-  },
-  submitBtn: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    marginTop: 4,
-  },
-  submitBtnDisabled: {
-    opacity: 0.7,
-  },
-  submitGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-  },
-  submitText: {
-    color: '#020B14',
-    fontSize: 14,
-    fontWeight: '900',
-    letterSpacing: 0.6,
+  btnDisabled: {
+    opacity: 0.6,
   },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginVertical: 18,
     gap: 10,
-    marginVertical: 4,
+  },
+  demoDividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 18,
+    marginBottom: 12,
+    gap: 10,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   dividerText: {
     color: '#64748B',
@@ -552,15 +646,231 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.8,
   },
+  formWrap: {
+    gap: 14,
+  },
+  fieldGroup: {
+    gap: 6,
+  },
+  fieldLabel: {
+    color: '#94A3B8',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginLeft: 2,
+  },
+  phoneInputRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
+  countryCodePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.25)',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 6,
+  },
+  flagEmoji: {
+    fontSize: 16,
+  },
+  countryCodeText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  phoneInputWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.25)',
+    paddingHorizontal: 12,
+  },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.25)',
+    paddingHorizontal: 12,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    paddingVertical: 12,
+  },
+  otpInput: {
+    fontSize: 20,
+    letterSpacing: 8,
+    fontWeight: '800',
+    textAlign: 'center',
+    color: '#00F0FF',
+  },
+  accordionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    gap: 6,
+  },
+  accordionTitle: {
+    flex: 1,
+    color: '#38BDF8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  vesselFields: {
+    gap: 12,
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  otpBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(2, 132, 199, 0.2)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.4)',
+    padding: 12,
+    gap: 10,
+  },
+  otpBannerIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 240, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  otpBannerTextWrap: {
+    flex: 1,
+  },
+  otpBannerTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  otpBannerSub: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  phoneHighlight: {
+    color: '#00F0FF',
+    fontWeight: '700',
+  },
+  changePhoneBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  changePhoneText: {
+    color: '#38BDF8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  mockOtpBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    gap: 6,
+  },
+  mockOtpText: {
+    color: '#FBBF24',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  otpBold: {
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  resendRow: {
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  resendTimerText: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  resendTimerCount: {
+    color: '#38BDF8',
+    fontWeight: '700',
+  },
+  resendBtnText: {
+    color: '#00F0FF',
+    fontSize: 12,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderRadius: 10,
+    padding: 10,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  errorText: {
+    color: '#FCA5A5',
+    fontSize: 11,
+    fontWeight: '600',
+    flex: 1,
+  },
+  submitBtn: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#00F0FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+    marginTop: 4,
+  },
+  submitGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  submitText: {
+    color: '#020B14',
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
   demoBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(2, 132, 199, 0.12)',
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: 'rgba(56, 189, 248, 0.35)',
-    paddingHorizontal: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     paddingVertical: 12,
+    paddingHorizontal: 14,
     gap: 10,
   },
   demoTextWrap: {
@@ -568,38 +878,40 @@ const styles = StyleSheet.create({
   },
   demoTitle: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 0.4,
+    letterSpacing: 0.5,
   },
   demoSub: {
-    color: '#38BDF8',
-    fontSize: 11,
+    color: '#94A3B8',
+    fontSize: 10,
     marginTop: 2,
   },
   offlineNotice: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
     backgroundColor: 'rgba(16, 185, 129, 0.1)',
     borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(16, 185, 129, 0.25)',
-    padding: 12,
-    marginTop: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginTop: 18,
+    gap: 10,
   },
   offlineText: {
     color: '#A7F3D0',
     fontSize: 11,
+    fontWeight: '600',
     flex: 1,
-    lineHeight: 16,
+    lineHeight: 15,
   },
   footerWrap: {
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: 20,
   },
   footerVersion: {
-    color: '#64748B',
+    color: '#475569',
     fontSize: 10,
     fontWeight: '600',
   },

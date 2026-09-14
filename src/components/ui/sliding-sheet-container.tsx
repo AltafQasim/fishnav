@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     zIndex: 80, // Sits above map (1) and map controls, below AppTabs (150)
   },
   dismissZone: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'transparent', // Map is 100% visible and bright!
   },
   sheet: {

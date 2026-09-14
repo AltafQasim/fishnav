@@ -70,19 +70,25 @@ export function MapLayersModal({
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="slide"
       onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.card, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]} onPress={(e) => e.stopPropagation()}>
+      <View style={styles.backdrop}>
+        <Pressable style={styles.backdropTouch} onPress={onClose} />
+        <View style={[styles.card, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
           {/* Header */}
           <View style={styles.handle} />
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>
-              <Ionicons name="layers" size={20} color={MapColors.accent} />
-              <Text style={styles.title}>Map Layers & Nautical Details</Text>
+              <View style={styles.iconCircle}>
+                <Ionicons name="layers" size={20} color="#00F0FF" />
+              </View>
+              <View>
+                <Text style={styles.title}>Map Layers & Nautical Details</Text>
+                <Text style={styles.subtitle}>Base chart styles & marine overlays</Text>
+              </View>
             </View>
-            <Pressable onPress={onClose} hitSlop={10} style={styles.closeBtn}>
-              <Ionicons name="close" size={22} color={MapColors.textSecondary} />
+            <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
+              <Ionicons name="close" size={20} color="#94A3B8" />
             </Pressable>
           </View>
 
@@ -144,8 +150,8 @@ export function MapLayersModal({
               onValueChange={onToggleGpsHud}
             />
           </View>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
@@ -173,7 +179,7 @@ function ToggleRow({
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: 'rgba(255,255,255,0.15)', true: MapColors.accent }}
+        trackColor={{ false: 'rgba(255,255,255,0.15)', true: '#00F0FF' }}
         thumbColor="#FFFFFF"
       />
     </View>
@@ -183,28 +189,31 @@ function ToggleRow({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 8, 16, 0.72)',
+    backgroundColor: 'rgba(0, 8, 16, 0.75)',
     justifyContent: 'flex-end',
   },
+  backdropTouch: {
+    ...StyleSheet.absoluteFillObject,
+  },
   card: {
-    backgroundColor: MapColors.navyPanel,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: '#041728',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingHorizontal: 20,
     paddingTop: 10,
-    borderTopWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderTopWidth: 1.5,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
     shadowColor: '#000',
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.6,
     shadowRadius: 20,
-    shadowOffset: { width: 0, height: -6 },
-    elevation: 16,
+    shadowOffset: { width: 0, height: -8 },
+    elevation: 24,
   },
   handle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     alignSelf: 'center',
     marginBottom: 12,
   },
@@ -217,12 +226,25 @@ const styles = StyleSheet.create({
   headerTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 240, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
-    color: MapColors.text,
-    fontSize: 17,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  subtitle: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 2,
   },
   closeBtn: {
     width: 32,
@@ -253,8 +275,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.08)',
   },
   styleCardSelected: {
-    backgroundColor: 'rgba(0, 132, 255, 0.15)',
-    borderColor: MapColors.accent,
+    backgroundColor: 'rgba(2, 132, 199, 0.22)',
+    borderColor: '#00F0FF',
+    borderWidth: 1.5,
   },
   styleIconWrap: {
     width: 40,
@@ -272,24 +295,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   styleName: {
-    color: MapColors.text,
+    color: '#E2E8F0',
     fontSize: 14,
     fontWeight: '600',
   },
   styleNameSelected: {
-    color: '#FFFFFF',
+    color: '#00F0FF',
     fontWeight: '700',
   },
   styleDesc: {
-    color: MapColors.textSecondary,
+    color: '#94A3B8',
     fontSize: 11,
     marginTop: 2,
   },
   togglesList: {
-    backgroundColor: MapColors.navyGlass,
-    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(56, 189, 248, 0.2)',
     paddingVertical: 4,
   },
   toggleRow: {

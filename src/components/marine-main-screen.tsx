@@ -23,7 +23,6 @@ import {
 } from '@/components/navigation/app-tabs';
 import { CaptainProfileModal } from '@/components/search/captain-profile-modal';
 import { MarineSearchHeader } from '@/components/search/marine-search-header';
-import { MoreOptionsModal } from '@/components/search/more-options-modal';
 import { CalendarSheetContent } from '@/components/sheets/calendar-sheet-content';
 import { CompassSheetContent } from '@/components/sheets/compass-sheet-content';
 import { SettingsSheetContent } from '@/components/sheets/settings-sheet-content';
@@ -71,7 +70,6 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
   const [showGpsHud, setShowGpsHud] = useState(false);
 
   // Search & Navigation Modals state
-  const [showMoreModal, setShowMoreModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showCoordsModal, setShowCoordsModal] = useState(false);
   const [showLayersModal, setShowLayersModal] = useState(false);
@@ -249,7 +247,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
       {!isNavigating && (
         <MarineSearchHeader
           userLocation={location}
-          onOpenMore={() => setShowMoreModal(true)}
+          onOpenMore={() => setShowLayersModal(true)}
           onOpenProfile={() => setShowProfileModal(true)}
           onSelectSpot={handleViewSpotOnMap}
           onPlotCoordinate={handlePlotCoordinate}
@@ -352,16 +350,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
       {/* 4. Save Trip Summary Modal */}
       <SaveTripModal />
 
-      {/* 5. More Options Command Hub Modal */}
-      <MoreOptionsModal
-        visible={showMoreModal}
-        onClose={() => setShowMoreModal(false)}
-        onOpenTab={(tab) => setActiveTab(tab)}
-        onOpenCoordsModal={() => setShowCoordsModal(true)}
-        onOpenLayersModal={() => setShowLayersModal(true)}
-      />
-
-      {/* 6. Captain & Vessel Profile Modal */}
+      {/* 5. Captain & Vessel Profile Modal */}
       <CaptainProfileModal
         visible={showProfileModal}
         onClose={() => setShowProfileModal(false)}

@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Image,
   Keyboard,
   Linking,
   Platform,
@@ -329,7 +330,7 @@ export function MarineSearchHeader({
     >
       {/* 🟢 Search Bar Pill Row (Left: More, Center: Search Input, Right: Captain Avatar) */}
       <View style={styles.searchBarRow}>
-        {/* 1. START: More / Hamburger Menu Button */}
+        {/* 1. START: Map Layers & Nautical Details Button */}
         {isFocused ? (
           <Pressable
             onPress={handleCloseSearch}
@@ -346,9 +347,9 @@ export function MarineSearchHeader({
             hitSlop={10}
             style={styles.actionPillBtn}
             accessibilityRole="button"
-            accessibilityLabel="More application tools and menu"
+            accessibilityLabel="Map Layers & Nautical Details"
           >
-            <MaterialCommunityIcons name="menu" size={22} color="#FFFFFF" />
+            <Ionicons name="layers" size={20} color="#00F0FF" />
           </Pressable>
         )}
 
@@ -386,7 +387,11 @@ export function MarineSearchHeader({
           accessibilityLabel="Captain and vessel profile"
         >
           <View style={styles.avatarInner}>
-            <MaterialCommunityIcons name="ship-wheel" size={18} color="#00F0FF" />
+            {captain?.avatarUrl ? (
+              <Image source={{ uri: captain.avatarUrl }} style={styles.avatarImg} />
+            ) : (
+              <MaterialCommunityIcons name="ship-wheel" size={18} color="#00F0FF" />
+            )}
           </View>
         </Pressable>
       </View>
@@ -666,6 +671,12 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 19,
   },
   resultsCard: {
     backgroundColor: 'rgba(4, 23, 40, 0.98)',

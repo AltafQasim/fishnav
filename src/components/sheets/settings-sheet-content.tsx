@@ -1,8 +1,9 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+import { GoogleLogoSvg } from '@/components/ui/google-logo-svg';
 import { MapColors } from '@/constants/map-theme';
 import { useAuth } from '@/context/auth-context';
 import { useTripTracking } from '@/context/trip-context';
@@ -19,14 +21,36 @@ import { useWaypoints } from '@/context/waypoints-context';
 
 export function SettingsSheetContent() {
   const router = useRouter();
-  const { captain, logout } = useAuth();
+  const { captain, logout, updateCaptain } = useAuth();
   const { waypoints, resetWaypoints } = useWaypoints();
   const { savedTrips } = useTripTracking();
 
   // Vessel Profile
   const [boatName, setBoatName] = useState(captain?.vesselName || 'Sea Hunter II');
-  const [boatDraft, setBoatDraft] = useState('1.8');
-  const [cruiseSpeed, setCruiseSpeed] = useState('12');
+  const [boatDraft, setBoatDraft] = useState(captain?.boatDraftM || '1.8');
+  const [cruiseSpeed, setCruiseSpeed] = useState(captain?.cruiseSpeedKnots || '12');
+
+  // Sync state if captain changes from profile modal
+  useEffect(() => {
+    if (captain) {
+      if (captain.vesselName) setBoatName(captain.vesselName);
+      if (captain.boatDraftM) setBoatDraft(captain.boatDraftM);
+      if (captain.cruiseSpeedKnots) setCruiseSpeed(captain.cruiseSpeedKnots);
+    }
+  }, [captain]);
+
+  const handleSaveVessel = () => {
+    if (!boatName.trim()) {
+      Alert.alert('Required Field', 'Please enter a valid boat name.');
+      return;
+    }
+    updateCaptain({
+      vesselName: boatName.trim(),
+      boatDraftM: boatDraft.trim(),
+      cruiseSpeedKnots: cruiseSpeed.trim(),
+    });
+    Alert.alert('Vessel Saved', 'Boat specifications updated successfully.');
+  };
 
   // Units
   const [distanceUnit, setDistanceUnit] = useState<'NM' | 'KM' | 'MI'>('NM');
@@ -86,7 +110,11 @@ export function SettingsSheetContent() {
       {/* ⚓ Active Captain & Vessel Profile Badge */}
       <View style={styles.captainCard}>
         <View style={styles.captainAvatarWrap}>
-          <MaterialCommunityIcons name="shield-account" size={26} color="#00F0FF" />
+          {captain?.avatarUrl ? (
+            <Image source={{ uri: captain.avatarUrl }} style={styles.captainAvatarImg} />
+          ) : (
+            <MaterialCommunityIcons name="shield-account" size={26} color="#00F0FF" />
+          )}
         </View>
         <View style={styles.captainTextWrap}>
           <Text style={styles.captainName}>
@@ -95,6 +123,18 @@ export function SettingsSheetContent() {
           <Text style={styles.captainVessel}>
             {captain?.vesselName || 'Sea Hunter II'} • {captain?.callSign || 'IND-GJ-8821'}
           </Text>
+          <View style={styles.authBadgeRow}>
+            {captain?.authProvider === 'google' ? (
+              <GoogleLogoSvg size={13} />
+            ) : captain?.authProvider === 'phone' ? (
+              <Ionicons name="call" size={12} color="#00F0FF" />
+            ) : (
+              <Ionicons name="flash" size={12} color="#FBBF24" />
+            )}
+            <Text style={styles.authBadgeText}>
+              {captain?.emailOrPhone || '+91 98765 43210'}
+            </Text>
+          </View>
         </View>
         <Pressable
           style={styles.logoutBtn}
@@ -169,6 +209,13 @@ export function SettingsSheetContent() {
               keyboardType="numeric"
             />
           </View>
+
+          <View style={styles.divider} />
+
+          <Pressable style={styles.saveVesselBtn} onPress={handleSaveVessel}>
+            <Ionicons name="checkmark-circle" size={16} color="#020B14" />
+            <Text style={styles.saveVesselBtnText}>Save Vessel Specs</Text>
+          </Pressable>
         </View>
       </View>
 
@@ -415,6 +462,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(0, 240, 255, 0.3)',
+    overflow: 'hidden',
+  },
+  captainAvatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 22,
   },
   captainTextWrap: {
     flex: 1,
@@ -428,6 +481,17 @@ const styles = StyleSheet.create({
     color: '#38BDF8',
     fontSize: 11,
     marginTop: 2,
+  },
+  authBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  authBadgeText: {
+    color: '#00F0FF',
+    fontSize: 10,
+    fontWeight: '700',
   },
   logoutBtn: {
     flexDirection: 'row',
@@ -607,5 +671,20 @@ const styles = StyleSheet.create({
     color: MapColors.textSecondary,
     fontSize: 11,
     marginTop: 2,
+  },
+  saveVesselBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#00F0FF',
+    borderRadius: 8,
+    paddingVertical: 8,
+    marginTop: 6,
+    gap: 6,
+  },
+  saveVesselBtnText: {
+    color: '#020B14',
+    fontSize: 12,
+    fontWeight: '800',
   },
 });
