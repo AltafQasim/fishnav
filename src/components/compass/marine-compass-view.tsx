@@ -18,6 +18,7 @@ import Svg, {
 } from 'react-native-svg';
 
 import { MapColors } from '@/constants/map-theme';
+import { useAppTheme } from '@/context/theme-context';
 import { useWaypoints } from '@/context/waypoints-context';
 import { formatLatitude, formatLongitude, useUserLocation } from '@/hooks/use-user-location';
 import { bearingDegrees, distanceNm, etaFromNm, formatBearing, formatNm } from '@/utils/geo';
@@ -37,6 +38,7 @@ export type MarineCompassViewProps = {
 };
 
 export function MarineCompassView({ northMode = 'magnetic' }: MarineCompassViewProps) {
+  const { colors, isLight } = useAppTheme();
   const { location, heading, magHeading, trueHeading, headingAccuracy } = useUserLocation();
   const { activeNavigationTarget } = useWaypoints();
 
@@ -96,13 +98,27 @@ export function MarineCompassView({ northMode = 'magnetic' }: MarineCompassViewP
     <View style={styles.container}>
       {/* Target Waypoint Steer Banner if navigating */}
       {activeNavigationTarget && targetBearing != null && targetDistNm != null ? (
-        <View style={styles.steerBanner}>
-          <View style={styles.steerIconWrap}>
-            <Ionicons name="navigate" size={20} color="#38BDF8" style={{ transform: [{ rotate: `${relativeSteerAngle ?? 0}deg` }] }} />
+        <View
+          style={[
+            styles.steerBanner,
+            {
+              backgroundColor: isLight ? '#F0FDF4' : 'rgba(56, 189, 248, 0.12)',
+              borderColor: isLight ? '#BBF7D0' : 'rgba(56, 189, 248, 0.3)',
+            },
+          ]}>
+          <View style={[styles.steerIconWrap, { backgroundColor: isLight ? '#DCFCE7' : 'rgba(56, 189, 248, 0.2)' }]}>
+            <Ionicons
+              name="navigate"
+              size={20}
+              color={isLight ? '#166534' : '#38BDF8'}
+              style={{ transform: [{ rotate: `${relativeSteerAngle ?? 0}deg` }] }}
+            />
           </View>
           <View style={styles.steerInfo}>
-            <Text style={styles.steerTitle}>STEER TO: {activeNavigationTarget.name}</Text>
-            <Text style={styles.steerSub}>
+            <Text style={[styles.steerTitle, { color: isLight ? '#166534' : '#38BDF8' }]}>
+              STEER TO: {activeNavigationTarget.name}
+            </Text>
+            <Text style={[styles.steerSub, { color: isLight ? '#15803D' : colors.textSecondary }]}>
               Bearing {formatBearing(targetBearing)} • {formatNm(targetDistNm)} • ETA {etaFromNm(targetDistNm, 12)}
             </Text>
           </View>
@@ -111,8 +127,8 @@ export function MarineCompassView({ northMode = 'magnetic' }: MarineCompassViewP
 
       {/* Main Digital Heading HUD */}
       <View style={styles.headingHud}>
-        <Text style={styles.headingDeg}>{String(currentHeading).padStart(3, '0')}°</Text>
-        <Text style={styles.headingCardinal}>{getCardinalText(currentHeading)}</Text>
+        <Text style={[styles.headingDeg, { color: colors.text }]}>{String(currentHeading).padStart(3, '0')}°</Text>
+        <Text style={[styles.headingCardinal, { color: colors.accent }]}>{getCardinalText(currentHeading)}</Text>
       </View>
 
       {/* Rotating SVG Compass Rose */}
@@ -137,21 +153,40 @@ export function MarineCompassView({ northMode = 'magnetic' }: MarineCompassViewP
             ],
           }}
         >
-          <Svg width={COMPASS_SIZE} height={COMPASS_SIZE} viewBox={`0 0 ${COMPASS_SIZE} ${COMPASS_SIZE}`}>
+          <Svg
+            key={`compass-dial-svg-${isLight ? 'light' : 'dark'}`}
+            width={COMPASS_SIZE}
+            height={COMPASS_SIZE}
+            viewBox={`0 0 ${COMPASS_SIZE} ${COMPASS_SIZE}`}
+          >
             <Defs>
-              <LinearGradient id="dialGrad" x1="0" y1="0" x2="0" y2="1">
-                <Stop offset="0%" stopColor="#0B233C" />
-                <Stop offset="100%" stopColor="#041221" />
+              <LinearGradient id={isLight ? 'dialGrad_light' : 'dialGrad_dark'} x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0%" stopColor={isLight ? '#F8FAFC' : '#0B233C'} />
+                <Stop offset="100%" stopColor={isLight ? '#E2E8F0' : '#041221'} />
               </LinearGradient>
-              <LinearGradient id="outerRing" x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0%" stopColor="rgba(56, 189, 248, 0.4)" />
-                <Stop offset="100%" stopColor="rgba(2, 132, 199, 0.1)" />
+              <LinearGradient id={isLight ? 'outerRing_light' : 'outerRing_dark'} x1="0" y1="0" x2="1" y2="1">
+                <Stop offset="0%" stopColor={colors.accent} stopOpacity={isLight ? 0.8 : 0.4} />
+                <Stop offset="100%" stopColor={isLight ? '#0284C7' : 'rgba(2, 132, 199, 0.1)'} stopOpacity={isLight ? 0.4 : 0.1} />
               </LinearGradient>
             </Defs>
 
             {/* Dial Background Disc */}
-            <Circle cx={RADIUS} cy={RADIUS} r={RADIUS - 4} fill="url(#dialGrad)" stroke="url(#outerRing)" strokeWidth={2.5} />
-            <Circle cx={RADIUS} cy={RADIUS} r={RADIUS - 22} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
+            <Circle
+              cx={RADIUS}
+              cy={RADIUS}
+              r={RADIUS - 4}
+              fill={`url(#${isLight ? 'dialGrad_light' : 'dialGrad_dark'})`}
+              stroke={`url(#${isLight ? 'outerRing_light' : 'outerRing_dark'})`}
+              strokeWidth={2.5}
+            />
+            <Circle
+              cx={RADIUS}
+              cy={RADIUS}
+              r={RADIUS - 22}
+              fill="none"
+              stroke={isLight ? '#CBD5E1' : 'rgba(255,255,255,0.08)'}
+              strokeWidth={1}
+            />
 
             {/* 360 Degree Ticks */}
             {Array.from({ length: 72 }).map((_, i) => {
@@ -172,7 +207,7 @@ export function MarineCompassView({ northMode = 'magnetic' }: MarineCompassViewP
                   y1={y1}
                   x2={x2}
                   y2={y2}
-                  stroke={isMajor ? '#FFFFFF' : 'rgba(255,255,255,0.35)'}
+                  stroke={isMajor ? (isLight ? '#0F172A' : '#FFFFFF') : (isLight ? '#94A3B8' : 'rgba(255,255,255,0.35)')}
                   strokeWidth={isMajor ? 2 : 1}
                 />
               );
@@ -188,7 +223,7 @@ export function MarineCompassView({ northMode = 'magnetic' }: MarineCompassViewP
                   key={`deg-${deg}`}
                   x={x}
                   y={y}
-                  fill={MapColors.textSecondary}
+                  fill={colors.textSecondary}
                   fontSize={10}
                   fontWeight="600"
                   textAnchor="middle"
@@ -204,52 +239,60 @@ export function MarineCompassView({ northMode = 'magnetic' }: MarineCompassViewP
               N
             </SvgText>
             {/* South */}
-            <SvgText x={RADIUS} y={COMPASS_SIZE - 26} fill="#FFFFFF" fontSize={16} fontWeight="800" textAnchor="middle">
+            <SvgText x={RADIUS} y={COMPASS_SIZE - 26} fill={isLight ? '#0F172A' : '#FFFFFF'} fontSize={16} fontWeight="800" textAnchor="middle">
               S
             </SvgText>
             {/* East */}
-            <SvgText x={COMPASS_SIZE - 30} y={RADIUS + 6} fill="#FFFFFF" fontSize={16} fontWeight="800" textAnchor="middle">
+            <SvgText x={COMPASS_SIZE - 30} y={RADIUS + 6} fill={isLight ? '#0F172A' : '#FFFFFF'} fontSize={16} fontWeight="800" textAnchor="middle">
               E
             </SvgText>
             {/* West */}
-            <SvgText x={30} y={RADIUS + 6} fill="#FFFFFF" fontSize={16} fontWeight="800" textAnchor="middle">
+            <SvgText x={30} y={RADIUS + 6} fill={isLight ? '#0F172A' : '#FFFFFF'} fontSize={16} fontWeight="800" textAnchor="middle">
               W
             </SvgText>
 
             {/* Center Rose Star */}
             <Polygon
               points={`${RADIUS},${RADIUS - 38} ${RADIUS + 8},${RADIUS - 10} ${RADIUS + 38},${RADIUS} ${RADIUS + 10},${RADIUS + 8} ${RADIUS},${RADIUS + 38} ${RADIUS - 8},${RADIUS + 10} ${RADIUS - 38},${RADIUS} ${RADIUS - 10},${RADIUS - 8}`}
-              fill="rgba(56, 189, 248, 0.15)"
-              stroke="#38BDF8"
+              fill={colors.chipBg}
+              stroke={colors.accent}
               strokeWidth={1}
             />
 
             {/* Center Pivot Point */}
-            <Circle cx={RADIUS} cy={RADIUS} r={8} fill="#0284C7" stroke="#FFFFFF" strokeWidth={2} />
+            <Circle cx={RADIUS} cy={RADIUS} r={8} fill={colors.accent} stroke={isLight ? '#FFFFFF' : '#020B14'} strokeWidth={2} />
           </Svg>
         </Animated.View>
       </View>
 
       {/* Marine Telemetry Row (SOG, COG, Lat, Lng) */}
       <View style={styles.telemetryGrid}>
-        <View style={styles.telemetryCard}>
-          <Text style={styles.telemLabel}>SPEED (SOG)</Text>
-          <Text style={styles.telemVal}>{speedKnots} <Text style={styles.telemUnit}>kts</Text></Text>
+        <View style={[styles.telemetryCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Text style={[styles.telemLabel, { color: colors.textMuted }]}>SPEED (SOG)</Text>
+          <Text style={[styles.telemVal, { color: colors.text }]}>
+            {speedKnots} <Text style={[styles.telemUnit, { color: colors.accent }]}>kts</Text>
+          </Text>
         </View>
 
-        <View style={styles.telemetryCard}>
-          <Text style={styles.telemLabel}>COURSE (COG)</Text>
-          <Text style={styles.telemVal}>{location?.heading != null ? `${Math.round(location.heading)}°` : `${currentHeading}°`}</Text>
+        <View style={[styles.telemetryCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Text style={[styles.telemLabel, { color: colors.textMuted }]}>COURSE (COG)</Text>
+          <Text style={[styles.telemVal, { color: colors.text }]}>
+            {location?.heading != null ? `${Math.round(location.heading)}°` : `${currentHeading}°`}
+          </Text>
         </View>
 
-        <View style={styles.telemetryCard}>
-          <Text style={styles.telemLabel}>LATITUDE</Text>
-          <Text style={styles.telemValSmall}>{location ? formatLatitude(location.latitude) : '20° 21\' 00" N'}</Text>
+        <View style={[styles.telemetryCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Text style={[styles.telemLabel, { color: colors.textMuted }]}>LATITUDE</Text>
+          <Text style={[styles.telemValSmall, { color: colors.text }]}>
+            {location ? formatLatitude(location.latitude) : '20° 21\' 00" N'}
+          </Text>
         </View>
 
-        <View style={styles.telemetryCard}>
-          <Text style={styles.telemLabel}>LONGITUDE</Text>
-          <Text style={styles.telemValSmall}>{location ? formatLongitude(location.longitude) : '70° 52\' 41" E'}</Text>
+        <View style={[styles.telemetryCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Text style={[styles.telemLabel, { color: colors.textMuted }]}>LONGITUDE</Text>
+          <Text style={[styles.telemValSmall, { color: colors.text }]}>
+            {location ? formatLongitude(location.longitude) : '70° 52\' 41" E'}
+          </Text>
         </View>
       </View>
     </View>
@@ -346,31 +389,25 @@ const styles = StyleSheet.create({
   telemetryCard: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: MapColors.navyPanel,
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   telemLabel: {
-    color: MapColors.textMuted,
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   telemVal: {
-    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '800',
     marginTop: 4,
   },
   telemUnit: {
     fontSize: 12,
-    color: MapColors.textSecondary,
     fontWeight: '600',
   },
   telemValSmall: {
-    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
     marginTop: 4,

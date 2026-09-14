@@ -25,11 +25,20 @@ export function WeatherSheetContent() {
       showsVerticalScrollIndicator={false}
     >
       {/* Coastal Safety Advisory */}
-      <View style={styles.advisoryBanner}>
+      <View
+        style={[
+          styles.advisoryBanner,
+          {
+            backgroundColor: isLight ? '#F0FDF4' : 'rgba(34, 197, 94, 0.12)',
+            borderColor: isLight ? '#BBF7D0' : 'rgba(34, 197, 94, 0.3)',
+          },
+        ]}>
         <Ionicons name="shield-checkmark" size={18} color="#22C55E" />
         <View style={styles.advisoryInfo}>
-          <Text style={styles.advisoryTitle}>COASTAL SAFETY ADVISORY: NORMAL</Text>
-          <Text style={styles.advisorySub}>
+          <Text style={[styles.advisoryTitle, { color: isLight ? '#166534' : '#22C55E' }]}>
+            COASTAL SAFETY ADVISORY: NORMAL
+          </Text>
+          <Text style={[styles.advisorySub, { color: isLight ? '#15803D' : colors.textSecondary }]}>
             Sea state suitable for nearshore & deep sea fishing. Swell height 1.0 - 1.4m.
           </Text>
         </View>
@@ -41,7 +50,7 @@ export function WeatherSheetContent() {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.cardHeader}>
             <MaterialCommunityIcons name="wave" size={16} color="#38BDF8" />
-            <Text style={styles.cardLabel}>WAVE & SWELL</Text>
+            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>WAVE & SWELL</Text>
           </View>
           <Text style={[styles.cardValue, { color: colors.text }]}>1.2 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>m</Text></Text>
           <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Period: 7.2s • Swell: SSW</Text>
@@ -50,7 +59,7 @@ export function WeatherSheetContent() {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.cardHeader}>
             <Feather name="wind" size={16} color="#F59E0B" />
-            <Text style={styles.cardLabel}>WIND (SOG)</Text>
+            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>WIND (SOG)</Text>
           </View>
           <Text style={[styles.cardValue, { color: colors.text }]}>14 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>kts</Text></Text>
           <Text style={[styles.cardSub, { color: colors.textSecondary }]}>WSW 245° • Force 4</Text>
@@ -59,7 +68,7 @@ export function WeatherSheetContent() {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.cardHeader}>
             <MaterialCommunityIcons name="coolant-temperature" size={16} color="#06B6D4" />
-            <Text style={styles.cardLabel}>WATER TEMP</Text>
+            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>WATER TEMP</Text>
           </View>
           <Text style={[styles.cardValue, { color: colors.text }]}>27.5 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>°C</Text></Text>
           <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Ideal for Pelagic Catch</Text>
@@ -68,7 +77,7 @@ export function WeatherSheetContent() {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.cardHeader}>
             <MaterialCommunityIcons name="gauge" size={16} color="#A855F7" />
-            <Text style={styles.cardLabel}>BAROMETER</Text>
+            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>BAROMETER</Text>
           </View>
           <Text style={[styles.cardValue, { color: colors.text }]}>1012 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>hPa</Text></Text>
           <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Steady • Fair Marine</Text>
@@ -77,7 +86,7 @@ export function WeatherSheetContent() {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.cardHeader}>
             <Ionicons name="eye-outline" size={16} color="#10B981" />
-            <Text style={styles.cardLabel}>VISIBILITY</Text>
+            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>VISIBILITY</Text>
           </View>
           <Text style={[styles.cardValue, { color: colors.text }]}>10 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>NM</Text></Text>
           <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Clear Horizon • No Fog</Text>
@@ -86,7 +95,7 @@ export function WeatherSheetContent() {
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.cardHeader}>
             <MaterialCommunityIcons name="compass-rose" size={16} color="#EC4899" />
-            <Text style={styles.cardLabel}>TIDAL CURRENT</Text>
+            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>TIDAL CURRENT</Text>
           </View>
           <Text style={[styles.cardValue, { color: colors.text }]}>0.8 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>kts</Text></Text>
           <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Bearing: 110° ESE</Text>
@@ -94,6 +103,9 @@ export function WeatherSheetContent() {
       </View>
 
       {/* 24-Hour Tide Chart */}
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 4 }]}>
+        24-HOUR TIDE CYCLE & EXTREMES
+      </Text>
       <TideChart />
 
       {/* Hourly Marine Forecast */}
@@ -135,28 +147,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(34, 197, 94, 0.12)',
     borderRadius: 14,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.3)',
     marginBottom: 12,
   },
   advisoryInfo: {
     flex: 1,
   },
   advisoryTitle: {
-    color: '#22C55E',
     fontSize: 12,
     fontWeight: '800',
   },
   advisorySub: {
-    color: MapColors.textSecondary,
     fontSize: 11,
     marginTop: 2,
   },
   sectionTitle: {
-    color: MapColors.textSecondary,
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -171,11 +178,9 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     minWidth: '46%',
-    backgroundColor: MapColors.navyPanel,
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -184,21 +189,17 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   cardLabel: {
-    color: MapColors.textMuted,
     fontSize: 10,
     fontWeight: '700',
   },
   cardValue: {
-    color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '800',
   },
   cardUnit: {
     fontSize: 12,
-    color: MapColors.textSecondary,
   },
   cardSub: {
-    color: MapColors.textSecondary,
     fontSize: 10,
     marginTop: 2,
   },
@@ -208,13 +209,11 @@ const styles = StyleSheet.create({
   },
   hourlyCard: {
     alignItems: 'center',
-    backgroundColor: MapColors.navyPanel,
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 12,
     marginRight: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   hourlyHour: {
     color: MapColors.textSecondary,

@@ -11,8 +11,8 @@ import {
   View,
 } from 'react-native';
 
-import { useTripTracking } from '@/context/trip-context';
 import { useAppTheme } from '@/context/theme-context';
+import { useTripTracking } from '@/context/trip-context';
 import { formatNm } from '@/utils/geo';
 
 export function SaveTripModal() {

@@ -10,7 +10,7 @@ import Svg, {
   Text as SvgText,
 } from 'react-native-svg';
 
-import { MapColors } from '@/constants/map-theme';
+import { useAppTheme } from '@/context/theme-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_WIDTH = Math.min(SCREEN_WIDTH - 48, 380);
@@ -35,6 +35,7 @@ const DEMO_TIDES: TidePoint[] = [
 ];
 
 export function TideChart() {
+  const { colors, isLight } = useAppTheme();
   const plotWidth = CHART_WIDTH - PADDING_LEFT - PADDING_RIGHT;
   const plotHeight = CHART_HEIGHT - PADDING_TOP - PADDING_BOTTOM;
 
@@ -80,33 +81,70 @@ export function TideChart() {
   const currentX = getX(currentHour);
   const currentY = getY(2.35 + 1.45 * Math.cos(((currentHour - 4.25) / 12.4) * 2 * Math.PI));
 
+  // Dynamic gradient IDs to ensure react-native-svg busts native cache on theme change
+  const gradAreaId = isLight ? 'tideAreaGrad_light' : 'tideAreaGrad_dark';
+  const gradLineId = isLight ? 'tideLineGrad_light' : 'tideLineGrad_dark';
+
   return (
     <View style={styles.container}>
-      <View style={styles.chartCard}>
+      <View
+        style={[
+          styles.chartCard,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.cardBorder,
+          },
+        ]}>
         {/* Header */}
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.title}>24-Hour Arabian Sea Tide Cycle</Text>
-            <Text style={styles.subtitle}>Semi-diurnal tidal curves with predicted extremes</Text>
+            <Text style={[styles.title, { color: colors.text }]}>24-Hour Arabian Sea Tide Cycle</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              Semi-diurnal tidal curves with predicted extremes
+            </Text>
           </View>
-          <View style={styles.liveTag}>
+          <View
+            style={[
+              styles.liveTag,
+              {
+                backgroundColor: isLight ? '#FEE2E2' : 'rgba(239, 68, 68, 0.15)',
+                borderColor: isLight ? '#FCA5A5' : 'rgba(239, 68, 68, 0.3)',
+              },
+            ]}>
             <View style={styles.liveDot} />
-            <Text style={styles.liveText}>LIVE</Text>
+            <Text style={[styles.liveText, { color: isLight ? '#DC2626' : '#EF4444' }]}>LIVE</Text>
           </View>
         </View>
 
-        {/* SVG Graphic */}
-        <Svg width={CHART_WIDTH} height={CHART_HEIGHT} style={styles.svg}>
+        {/* SVG Graphic with dynamic key to force native redraw across theme switches */}
+        <Svg
+          key={`tide-chart-svg-${isLight ? 'light' : 'dark'}`}
+          width={CHART_WIDTH}
+          height={CHART_HEIGHT}
+          style={styles.svg}
+        >
           <Defs>
-            <LinearGradient id="tideAreaGrad" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor="#0284C7" stopOpacity="0.45" />
-              <Stop offset="80%" stopColor="#0369A1" stopOpacity="0.12" />
-              <Stop offset="100%" stopColor="#082F49" stopOpacity="0.0" />
+            <LinearGradient id={gradAreaId} x1="0" y1="0" x2="0" y2="1">
+              <Stop
+                offset="0%"
+                stopColor={isLight ? '#0284C7' : colors.accent}
+                stopOpacity={isLight ? 0.28 : 0.45}
+              />
+              <Stop
+                offset="80%"
+                stopColor={isLight ? '#0284C7' : colors.accent}
+                stopOpacity={isLight ? 0.06 : 0.12}
+              />
+              <Stop
+                offset="100%"
+                stopColor={isLight ? '#0284C7' : colors.accent}
+                stopOpacity={0.0}
+              />
             </LinearGradient>
-            <LinearGradient id="tideLineGrad" x1="0" y1="0" x2="1" y2="0">
-              <Stop offset="0%" stopColor="#38BDF8" />
-              <Stop offset="50%" stopColor="#60A5FA" />
-              <Stop offset="100%" stopColor="#38BDF8" />
+            <LinearGradient id={gradLineId} x1="0" y1="0" x2="1" y2="0">
+              <Stop offset="0%" stopColor={isLight ? '#0284C7' : colors.accent} />
+              <Stop offset="50%" stopColor={isLight ? '#0369A1' : '#60A5FA'} />
+              <Stop offset="100%" stopColor={isLight ? '#0284C7' : colors.accent} />
             </LinearGradient>
           </Defs>
 
@@ -120,14 +158,14 @@ export function TideChart() {
                   y1={y}
                   x2={CHART_WIDTH - PADDING_RIGHT}
                   y2={y}
-                  stroke="rgba(255, 255, 255, 0.08)"
+                  stroke={isLight ? '#CBD5E1' : 'rgba(255, 255, 255, 0.08)'}
                   strokeDasharray="4 4"
                   strokeWidth={1}
                 />
                 <SvgText
                   x={PADDING_LEFT - 8}
                   y={y + 4}
-                  fill={MapColors.textMuted}
+                  fill={colors.textMuted}
                   fontSize={10}
                   textAnchor="end"
                 >
@@ -138,13 +176,13 @@ export function TideChart() {
           })}
 
           {/* Area under curve */}
-          <Path d={areaD} fill="url(#tideAreaGrad)" />
+          <Path d={areaD} fill={`url(#${gradAreaId})`} />
 
           {/* Curve Stroke */}
           <Path
             d={pathD}
             fill="none"
-            stroke="url(#tideLineGrad)"
+            stroke={`url(#${gradLineId})`}
             strokeWidth={3}
             strokeLinecap="round"
           />
@@ -155,31 +193,45 @@ export function TideChart() {
             y1={PADDING_TOP}
             x2={currentX}
             y2={PADDING_TOP + plotHeight}
-            stroke="#EF4444"
+            stroke={isLight ? '#DC2626' : '#EF4444'}
             strokeWidth={1.5}
             strokeDasharray="3 3"
           />
-          <Circle cx={currentX} cy={currentY} r={5} fill="#EF4444" stroke="#FFFFFF" strokeWidth={1.5} />
+          <Circle
+            cx={currentX}
+            cy={currentY}
+            r={5}
+            fill={isLight ? '#DC2626' : '#EF4444'}
+            stroke={isLight ? '#FFFFFF' : '#041728'}
+            strokeWidth={1.5}
+          />
 
           {/* Extreme Tide Points (High & Low markers) */}
           {DEMO_TIDES.map((pt, idx) => {
             const x = getX(pt.hour);
             const y = getY(pt.heightM);
             const isHigh = pt.type === 'high';
+            const markerColor = isHigh
+              ? isLight
+                ? '#0284C7'
+                : colors.accent
+              : isLight
+              ? '#D97706'
+              : '#F59E0B';
             return (
               <React.Fragment key={`pt-${idx}`}>
                 <Circle
                   cx={x}
                   cy={y}
                   r={4.5}
-                  fill={isHigh ? '#38BDF8' : '#F59E0B'}
-                  stroke="#0A1F35"
+                  fill={markerColor}
+                  stroke={isLight ? '#FFFFFF' : '#041728'}
                   strokeWidth={2}
                 />
                 <SvgText
                   x={x}
                   y={isHigh ? y - 8 : y + 16}
-                  fill={isHigh ? '#38BDF8' : '#F59E0B'}
+                  fill={markerColor}
                   fontSize={10}
                   fontWeight="bold"
                   textAnchor="middle"
@@ -189,7 +241,7 @@ export function TideChart() {
                 <SvgText
                   x={x}
                   y={CHART_HEIGHT - 6}
-                  fill={MapColors.textSecondary}
+                  fill={colors.textSecondary}
                   fontSize={9}
                   textAnchor="middle"
                 >
@@ -201,17 +253,31 @@ export function TideChart() {
         </Svg>
 
         {/* Tide Indicators Summary Row */}
-        <View style={styles.summaryRow}>
-          <View style={styles.tideCard}>
-            <Text style={styles.tideLabel}>NEXT HIGH TIDE</Text>
-            <Text style={styles.tideVal}>3.5 m</Text>
-            <Text style={styles.tideTime}>at 16:45 (in 2h 15m)</Text>
+        <View style={[styles.summaryRow, { borderTopColor: colors.divider }]}>
+          <View
+            style={[
+              styles.tideCard,
+              {
+                backgroundColor: isLight ? '#F8FAFC' : 'rgba(255, 255, 255, 0.04)',
+                borderColor: colors.cardBorder,
+              },
+            ]}>
+            <Text style={[styles.tideLabel, { color: colors.textMuted }]}>NEXT HIGH TIDE</Text>
+            <Text style={[styles.tideVal, { color: isLight ? '#0284C7' : colors.accent }]}>3.5 m</Text>
+            <Text style={[styles.tideTime, { color: colors.textSecondary }]}>at 16:45 (in 2h 15m)</Text>
           </View>
 
-          <View style={styles.tideCard}>
-            <Text style={styles.tideLabel}>NEXT LOW TIDE</Text>
-            <Text style={[styles.tideVal, { color: '#F59E0B' }]}>1.1 m</Text>
-            <Text style={styles.tideTime}>at 22:50 (in 8h 20m)</Text>
+          <View
+            style={[
+              styles.tideCard,
+              {
+                backgroundColor: isLight ? '#F8FAFC' : 'rgba(255, 255, 255, 0.04)',
+                borderColor: colors.cardBorder,
+              },
+            ]}>
+            <Text style={[styles.tideLabel, { color: colors.textMuted }]}>NEXT LOW TIDE</Text>
+            <Text style={[styles.tideVal, { color: isLight ? '#D97706' : '#F59E0B' }]}>1.1 m</Text>
+            <Text style={[styles.tideTime, { color: colors.textSecondary }]}>at 22:50 (in 8h 20m)</Text>
           </View>
         </View>
       </View>
@@ -224,11 +290,9 @@ const styles = StyleSheet.create({
     marginVertical: 6,
   },
   chartCard: {
-    backgroundColor: MapColors.navyPanel,
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   headerRow: {
     flexDirection: 'row',
@@ -237,12 +301,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   title: {
-    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
   },
   subtitle: {
-    color: MapColors.textSecondary,
     fontSize: 11,
     marginTop: 2,
   },
@@ -250,12 +312,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
     paddingHorizontal: 7,
     paddingVertical: 3,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   liveDot: {
     width: 6,
@@ -264,7 +324,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#EF4444',
   },
   liveText: {
-    color: '#EF4444',
     fontSize: 9,
     fontWeight: '800',
   },
@@ -278,28 +337,24 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.06)',
   },
   tideCard: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderRadius: 12,
     padding: 10,
+    borderWidth: 1,
   },
   tideLabel: {
-    color: MapColors.textMuted,
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.5,
   },
   tideVal: {
-    color: '#38BDF8',
     fontSize: 18,
     fontWeight: '800',
     marginVertical: 2,
   },
   tideTime: {
-    color: MapColors.textSecondary,
     fontSize: 11,
   },
 });
