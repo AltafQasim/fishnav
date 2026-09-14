@@ -1,65 +1,73 @@
-import React from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Svg, {
   Circle,
   Defs,
-  LinearGradient,
   Line,
+  LinearGradient,
   Path,
+  Rect,
   Stop,
   Text as SvgText,
 } from 'react-native-svg';
 
 import { useAppTheme } from '@/context/theme-context';
+import { AstronomicalTidePoint, TideCycleData } from '@/services/marine-weather-service';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CHART_WIDTH = Math.min(SCREEN_WIDTH - 48, 380);
-const CHART_HEIGHT = 160;
-const PADDING_TOP = 25;
-const PADDING_BOTTOM = 28;
+const TOTAL_HOURS = 48; // 48-hour continuous cycle (Today + Tomorrow)
+const PX_PER_HOUR = 32;
+const CHART_WIDTH = TOTAL_HOURS * PX_PER_HOUR + 70; // ~1606px scrollable width
+const CHART_HEIGHT = 175;
+const PADDING_TOP = 28;
+const PADDING_BOTTOM = 30;
 const PADDING_LEFT = 35;
-const PADDING_RIGHT = 15;
 
-export type TidePoint = {
-  time: string; // "04:15"
-  hour: number; // 4.25
-  heightM: number; // 3.8
-  type: 'high' | 'low';
+export type TideChartProps = {
+  tideData?: TideCycleData;
+  isOffline?: boolean;
 };
 
-const DEMO_TIDES: TidePoint[] = [
-  { time: '04:15', hour: 4.25, heightM: 3.8, type: 'high' },
-  { time: '10:30', hour: 10.5, heightM: 0.9, type: 'low' },
-  { time: '16:45', hour: 16.75, heightM: 3.5, type: 'high' },
-  { time: '22:50', hour: 22.83, heightM: 1.1, type: 'low' },
-];
-
-export function TideChart() {
+export function TideChart({ tideData, isOffline = false }: TideChartProps) {
   const { colors, isLight } = useAppTheme();
-  const plotWidth = CHART_WIDTH - PADDING_LEFT - PADDING_RIGHT;
+  const scrollRef = useRef<ScrollView>(null);
+  const [activeTab, setActiveTab] = useState<'now' | 'today' | 'tomorrow'>('now');
+
+  const minHeight = 0.2;
+  const maxHeight = 4.2;
   const plotHeight = CHART_HEIGHT - PADDING_TOP - PADDING_BOTTOM;
 
-  const minHeight = 0;
-  const maxHeight = 4.2;
+  // Convert hour (0 - 48) to X coordinate
+  const getX = (hour: number) => PADDING_LEFT + hour * PX_PER_HOUR;
 
-  // Convert hour (0-24) to X
-  const getX = (hour: number) => PADDING_LEFT + (hour / 24) * plotWidth;
-
-  // Convert water height to Y (inverted)
+  // Convert water height (meters) to Y coordinate
   const getY = (h: number) =>
     PADDING_TOP + plotHeight - ((h - minHeight) / (maxHeight - minHeight)) * plotHeight;
 
-  // Generate smooth sine curve path for 24 hours
-  // Baseline average height is 2.3m, amplitude is 1.4m, period is 12.4 hours
-  const points: { x: number; y: number }[] = [];
-  const steps = 48; // every 30 mins
+  // Real device clock time (0 - 24)
+  const now = new Date();
+  const currentHour = now.getHours() + now.getMinutes() / 60;
+  const currentX = getX(currentHour);
+
+  // Tidal harmonic curve parameters (48-hour wave)
+  const baseline = tideData?.tidalCurveCoeff?.baselineM ?? 2.15;
+  const amplitude = tideData?.tidalCurveCoeff?.amplitudeM ?? 1.35;
+  const phase = tideData?.tidalCurveCoeff?.phaseHour ?? 4.15;
+
+  // Generate 96 points (every 30 mins for 48 hours)
+  const points: { x: number; y: number; hour: number; height: number }[] = [];
+  const steps = 96;
   for (let i = 0; i <= steps; i++) {
-    const hour = (i / steps) * 24;
-    // Approximating semi-diurnal tide in Arabian Sea
-    const rad = ((hour - 4.25) / 12.4) * 2 * Math.PI;
-    const wave = Math.cos(rad);
-    const heightM = 2.35 + 1.45 * wave;
-    points.push({ x: getX(hour), y: getY(heightM) });
+    const hour = (i / steps) * TOTAL_HOURS;
+    const rad = ((hour - phase) / 12.42) * 2 * Math.PI;
+    const heightM = Math.max(0.4, Number((baseline + amplitude * Math.cos(rad)).toFixed(2)));
+    points.push({ x: getX(hour), y: getY(heightM), hour, height: heightM });
   }
 
   // Build SVG path
@@ -71,19 +79,42 @@ export function TideChart() {
     pathD += ` C ${midX} ${prev.y}, ${midX} ${curr.y}, ${curr.x} ${curr.y}`;
   }
 
-  // Area under curve fill path
+  // Area under curve
   const areaD = `${pathD} L ${points[points.length - 1].x} ${PADDING_TOP + plotHeight} L ${
     points[0].x
   } ${PADDING_TOP + plotHeight} Z`;
 
-  // Current hour marker (e.g. 14:30)
-  const currentHour = 14.5;
-  const currentX = getX(currentHour);
-  const currentY = getY(2.35 + 1.45 * Math.cos(((currentHour - 4.25) / 12.4) * 2 * Math.PI));
+  // Live water level
+  const currentCalculatedHeight =
+    tideData?.currentHeightM ?? Number((baseline + amplitude * Math.cos(((currentHour - phase) / 12.42) * 2 * Math.PI)).toFixed(2));
+  const currentY = getY(currentCalculatedHeight);
 
-  // Dynamic gradient IDs to ensure react-native-svg busts native cache on theme change
-  const gradAreaId = isLight ? 'tideAreaGrad_light' : 'tideAreaGrad_dark';
-  const gradLineId = isLight ? 'tideLineGrad_light' : 'tideLineGrad_dark';
+  // All 8 extreme high and low points across 48h
+  const activeExtremes: AstronomicalTidePoint[] = tideData?.points ?? [];
+
+  // Dynamic gradient IDs for SVG native cache busting
+  const gradAreaId = isLight ? 'tideAreaGrad_48h_light' : 'tideAreaGrad_48h_dark';
+  const gradLineId = isLight ? 'tideLineGrad_48h_light' : 'tideLineGrad_48h_dark';
+
+  // Auto-scroll to current hour on initial load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      scrollRef.current?.scrollTo({ x: Math.max(0, currentX - 110), animated: false });
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [currentX]);
+
+  // Jump handlers
+  const handleJumpTo = (target: 'now' | 'today' | 'tomorrow') => {
+    setActiveTab(target);
+    if (target === 'now') {
+      scrollRef.current?.scrollTo({ x: Math.max(0, currentX - 110), animated: true });
+    } else if (target === 'today') {
+      scrollRef.current?.scrollTo({ x: 0, animated: true });
+    } else if (target === 'tomorrow') {
+      scrollRef.current?.scrollTo({ x: getX(24) - 20, animated: true });
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -97,162 +128,383 @@ export function TideChart() {
         ]}>
         {/* Header */}
         <View style={styles.headerRow}>
-          <View>
-            <Text style={[styles.title, { color: colors.text }]}>24-Hour Arabian Sea Tide Cycle</Text>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Text style={[styles.title, { color: colors.text }]}>48-Hour Arabian Sea Tide Cycle</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Semi-diurnal tidal curves with predicted extremes
+              {isOffline
+                ? 'Astronomical tidal harmonic model (100% Offline computed)'
+                : 'Live semi-diurnal continuous 48h curve & extremes'}
             </Text>
           </View>
           <View
             style={[
               styles.liveTag,
               {
-                backgroundColor: isLight ? '#FEE2E2' : 'rgba(239, 68, 68, 0.15)',
-                borderColor: isLight ? '#FCA5A5' : 'rgba(239, 68, 68, 0.3)',
+                backgroundColor: isOffline
+                  ? isLight
+                    ? '#FEF3C7'
+                    : 'rgba(245, 158, 11, 0.15)'
+                  : isLight
+                  ? '#FEE2E2'
+                  : 'rgba(239, 68, 68, 0.15)',
+                borderColor: isOffline
+                  ? isLight
+                    ? '#FCD34D'
+                    : 'rgba(245, 158, 11, 0.3)'
+                  : isLight
+                  ? '#FCA5A5'
+                  : 'rgba(239, 68, 68, 0.3)',
               },
             ]}>
-            <View style={styles.liveDot} />
-            <Text style={[styles.liveText, { color: isLight ? '#DC2626' : '#EF4444' }]}>LIVE</Text>
+            <View
+              style={[
+                styles.liveDot,
+                { backgroundColor: isOffline ? '#F59E0B' : '#EF4444' },
+              ]}
+            />
+            <Text
+              style={[
+                styles.liveText,
+                {
+                  color: isOffline
+                    ? isLight
+                      ? '#B45309'
+                      : '#F59E0B'
+                    : isLight
+                    ? '#DC2626'
+                    : '#EF4444',
+                },
+              ]}>
+              {isOffline ? 'OFFLINE 48H' : 'LIVE 48H'}
+            </Text>
           </View>
         </View>
 
-        {/* SVG Graphic with dynamic key to force native redraw across theme switches */}
-        <Svg
-          key={`tide-chart-svg-${isLight ? 'light' : 'dark'}`}
-          width={CHART_WIDTH}
-          height={CHART_HEIGHT}
-          style={styles.svg}
+        {/* Quick Jump Timeline Navigation Bar */}
+        <View style={styles.controlsRow}>
+          <View style={styles.jumpBtnGroup}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => handleJumpTo('now')}
+              style={[
+                styles.jumpBtn,
+                activeTab === 'now' && {
+                  backgroundColor: isLight ? '#0284C7' : colors.accent,
+                },
+                {
+                  borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
+                },
+              ]}>
+              <Feather
+                name="crosshair"
+                size={11}
+                color={activeTab === 'now' ? (isLight ? '#FFFFFF' : '#041728') : colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.jumpBtnText,
+                  {
+                    color: activeTab === 'now' ? (isLight ? '#FFFFFF' : '#041728') : colors.textSecondary,
+                    fontWeight: activeTab === 'now' ? '800' : '600',
+                  },
+                ]}>
+                Now ({now.getHours()}:{String(now.getMinutes()).padStart(2, '0')})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => handleJumpTo('today')}
+              style={[
+                styles.jumpBtn,
+                activeTab === 'today' && {
+                  backgroundColor: isLight ? '#0284C7' : colors.accent,
+                },
+                {
+                  borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
+                },
+              ]}>
+              <Text
+                style={[
+                  styles.jumpBtnText,
+                  {
+                    color: activeTab === 'today' ? (isLight ? '#FFFFFF' : '#041728') : colors.textSecondary,
+                    fontWeight: activeTab === 'today' ? '800' : '600',
+                  },
+                ]}>
+                Today
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => handleJumpTo('tomorrow')}
+              style={[
+                styles.jumpBtn,
+                activeTab === 'tomorrow' && {
+                  backgroundColor: isLight ? '#0284C7' : colors.accent,
+                },
+                {
+                  borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
+                },
+              ]}>
+              <Text
+                style={[
+                  styles.jumpBtnText,
+                  {
+                    color: activeTab === 'tomorrow' ? (isLight ? '#FFFFFF' : '#041728') : colors.textSecondary,
+                    fontWeight: activeTab === 'tomorrow' ? '800' : '600',
+                  },
+                ]}>
+                Tomorrow
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={[styles.swipeHint, { color: colors.textMuted }]}>
+            👉 Swipe to inspect full 48h
+          </Text>
+        </View>
+
+        {/* Scrollable 48-Hour SVG Tide Canvas */}
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.scrollCanvas}
+          contentContainerStyle={{ paddingRight: 35 }}
         >
-          <Defs>
-            <LinearGradient id={gradAreaId} x1="0" y1="0" x2="0" y2="1">
-              <Stop
-                offset="0%"
-                stopColor={isLight ? '#0284C7' : colors.accent}
-                stopOpacity={isLight ? 0.28 : 0.45}
-              />
-              <Stop
-                offset="80%"
-                stopColor={isLight ? '#0284C7' : colors.accent}
-                stopOpacity={isLight ? 0.06 : 0.12}
-              />
-              <Stop
-                offset="100%"
-                stopColor={isLight ? '#0284C7' : colors.accent}
-                stopOpacity={0.0}
-              />
-            </LinearGradient>
-            <LinearGradient id={gradLineId} x1="0" y1="0" x2="1" y2="0">
-              <Stop offset="0%" stopColor={isLight ? '#0284C7' : colors.accent} />
-              <Stop offset="50%" stopColor={isLight ? '#0369A1' : '#60A5FA'} />
-              <Stop offset="100%" stopColor={isLight ? '#0284C7' : colors.accent} />
-            </LinearGradient>
-          </Defs>
-
-          {/* Grid Lines */}
-          {[1, 2, 3, 4].map((level) => {
-            const y = getY(level);
-            return (
-              <React.Fragment key={`grid-${level}`}>
-                <Line
-                  x1={PADDING_LEFT}
-                  y1={y}
-                  x2={CHART_WIDTH - PADDING_RIGHT}
-                  y2={y}
-                  stroke={isLight ? '#CBD5E1' : 'rgba(255, 255, 255, 0.08)'}
-                  strokeDasharray="4 4"
-                  strokeWidth={1}
+          <Svg
+            key={`tide-chart-48h-${isLight ? 'light' : 'dark'}`}
+            width={CHART_WIDTH}
+            height={CHART_HEIGHT}
+          >
+            <Defs>
+              <LinearGradient id={gradAreaId} x1="0" y1="0" x2="0" y2="1">
+                <Stop
+                  offset="0%"
+                  stopColor={isLight ? '#0284C7' : colors.accent}
+                  stopOpacity={isLight ? 0.3 : 0.45}
                 />
-                <SvgText
-                  x={PADDING_LEFT - 8}
-                  y={y + 4}
-                  fill={colors.textMuted}
-                  fontSize={10}
-                  textAnchor="end"
-                >
-                  {level}m
-                </SvgText>
-              </React.Fragment>
-            );
-          })}
-
-          {/* Area under curve */}
-          <Path d={areaD} fill={`url(#${gradAreaId})`} />
-
-          {/* Curve Stroke */}
-          <Path
-            d={pathD}
-            fill="none"
-            stroke={`url(#${gradLineId})`}
-            strokeWidth={3}
-            strokeLinecap="round"
-          />
-
-          {/* Current Time Line */}
-          <Line
-            x1={currentX}
-            y1={PADDING_TOP}
-            x2={currentX}
-            y2={PADDING_TOP + plotHeight}
-            stroke={isLight ? '#DC2626' : '#EF4444'}
-            strokeWidth={1.5}
-            strokeDasharray="3 3"
-          />
-          <Circle
-            cx={currentX}
-            cy={currentY}
-            r={5}
-            fill={isLight ? '#DC2626' : '#EF4444'}
-            stroke={isLight ? '#FFFFFF' : '#041728'}
-            strokeWidth={1.5}
-          />
-
-          {/* Extreme Tide Points (High & Low markers) */}
-          {DEMO_TIDES.map((pt, idx) => {
-            const x = getX(pt.hour);
-            const y = getY(pt.heightM);
-            const isHigh = pt.type === 'high';
-            const markerColor = isHigh
-              ? isLight
-                ? '#0284C7'
-                : colors.accent
-              : isLight
-              ? '#D97706'
-              : '#F59E0B';
-            return (
-              <React.Fragment key={`pt-${idx}`}>
-                <Circle
-                  cx={x}
-                  cy={y}
-                  r={4.5}
-                  fill={markerColor}
-                  stroke={isLight ? '#FFFFFF' : '#041728'}
-                  strokeWidth={2}
+                <Stop
+                  offset="80%"
+                  stopColor={isLight ? '#0284C7' : colors.accent}
+                  stopOpacity={isLight ? 0.07 : 0.12}
                 />
-                <SvgText
-                  x={x}
-                  y={isHigh ? y - 8 : y + 16}
-                  fill={markerColor}
-                  fontSize={10}
-                  fontWeight="bold"
-                  textAnchor="middle"
-                >
-                  {isHigh ? '▲' : '▼'} {pt.heightM}m
-                </SvgText>
-                <SvgText
-                  x={x}
-                  y={CHART_HEIGHT - 6}
-                  fill={colors.textSecondary}
-                  fontSize={9}
-                  textAnchor="middle"
-                >
-                  {pt.time}
-                </SvgText>
-              </React.Fragment>
-            );
-          })}
-        </Svg>
+                <Stop
+                  offset="100%"
+                  stopColor={isLight ? '#0284C7' : colors.accent}
+                  stopOpacity={0.0}
+                />
+              </LinearGradient>
+              <LinearGradient id={gradLineId} x1="0" y1="0" x2="1" y2="0">
+                <Stop offset="0%" stopColor={isLight ? '#0284C7' : colors.accent} />
+                <Stop offset="50%" stopColor={isLight ? '#0369A1' : '#60A5FA'} />
+                <Stop offset="100%" stopColor={isLight ? '#0284C7' : colors.accent} />
+              </LinearGradient>
+            </Defs>
 
-        {/* Tide Indicators Summary Row */}
+            {/* Horizontal Water Level Meter Grid Lines */}
+            {[1, 2, 3, 4].map((level) => {
+              const y = getY(level);
+              return (
+                <React.Fragment key={`grid-${level}`}>
+                  <Line
+                    x1={PADDING_LEFT}
+                    y1={y}
+                    x2={CHART_WIDTH - 20}
+                    y2={y}
+                    stroke={isLight ? '#E2E8F0' : 'rgba(255, 255, 255, 0.08)'}
+                    strokeDasharray="4 4"
+                    strokeWidth={1}
+                  />
+                  <SvgText
+                    x={PADDING_LEFT - 8}
+                    y={y + 4}
+                    fill={colors.textMuted}
+                    fontSize={10}
+                    textAnchor="end"
+                  >
+                    {level}m
+                  </SvgText>
+                </React.Fragment>
+              );
+            })}
+
+            {/* Day 1 / Day 2 Boundary Separation at Hour 24 */}
+            <Line
+              x1={getX(24)}
+              y1={PADDING_TOP - 10}
+              x2={getX(24)}
+              y2={PADDING_TOP + plotHeight}
+              stroke={colors.accent}
+              strokeWidth={1.5}
+              strokeDasharray="5 5"
+            />
+            {/* Day Header Badges */}
+            <Rect
+              x={getX(0) + 10}
+              y={PADDING_TOP - 18}
+              width={56}
+              height={18}
+              rx={5}
+              fill={isLight ? '#F1F5F9' : 'rgba(255,255,255,0.08)'}
+            />
+            <SvgText
+              x={getX(0) + 38}
+              y={PADDING_TOP - 5}
+              fill={colors.text}
+              fontSize={10}
+              fontWeight="bold"
+              textAnchor="middle"
+            >
+              TODAY
+            </SvgText>
+
+            <Rect
+              x={getX(24) + 10}
+              y={PADDING_TOP - 18}
+              width={82}
+              height={18}
+              rx={5}
+              fill={isLight ? '#F1F5F9' : 'rgba(255,255,255,0.08)'}
+            />
+            <SvgText
+              x={getX(24) + 51}
+              y={PADDING_TOP - 5}
+              fill={colors.accent}
+              fontSize={10}
+              fontWeight="bold"
+              textAnchor="middle"
+            >
+              TOMORROW
+            </SvgText>
+
+            {/* Timeline Hour Marks (Every 3 hours) */}
+            {Array.from({ length: 17 }).map((_, i) => {
+              const h = i * 3;
+              const x = getX(h);
+              const isMidnight = h === 0 || h === 24 || h === 48;
+              const displayHour = h % 24;
+              const label = `${String(displayHour).padStart(2, '0')}:00`;
+
+              return (
+                <React.Fragment key={`hour-tick-${h}`}>
+                  <Line
+                    x1={x}
+                    y1={PADDING_TOP + plotHeight}
+                    x2={x}
+                    y2={PADDING_TOP + plotHeight + 6}
+                    stroke={isLight ? '#CBD5E1' : 'rgba(255,255,255,0.2)'}
+                    strokeWidth={isMidnight ? 2 : 1}
+                  />
+                  <SvgText
+                    x={x}
+                    y={CHART_HEIGHT - 6}
+                    fill={isMidnight ? (isLight ? '#0F172A' : colors.accent) : colors.textSecondary}
+                    fontSize={9}
+                    fontWeight={isMidnight ? 'bold' : 'normal'}
+                    textAnchor="middle"
+                  >
+                    {label}
+                  </SvgText>
+                </React.Fragment>
+              );
+            })}
+
+            {/* Tidal Wave Shaded Fill Area */}
+            <Path d={areaD} fill={`url(#${gradAreaId})`} />
+
+            {/* Continuous 48-Hour Wave Line */}
+            <Path
+              d={pathD}
+              fill="none"
+              stroke={`url(#${gradLineId})`}
+              strokeWidth={3}
+              strokeLinecap="round"
+            />
+
+            {/* Live Current Time Line & Marker */}
+            <Line
+              x1={currentX}
+              y1={PADDING_TOP}
+              x2={currentX}
+              y2={PADDING_TOP + plotHeight}
+              stroke={isLight ? '#DC2626' : '#EF4444'}
+              strokeWidth={1.8}
+              strokeDasharray="3 3"
+            />
+            <Circle
+              cx={currentX}
+              cy={currentY}
+              r={5.5}
+              fill={isLight ? '#DC2626' : '#EF4444'}
+              stroke={isLight ? '#FFFFFF' : '#041728'}
+              strokeWidth={2}
+            />
+            <SvgText
+              x={currentX}
+              y={Math.max(PADDING_TOP + 12, currentY - 10)}
+              fill={isLight ? '#DC2626' : '#EF4444'}
+              fontSize={10}
+              fontWeight="bold"
+              textAnchor="middle"
+            >
+              NOW {currentCalculatedHeight}m
+            </SvgText>
+
+            {/* All Astronomical High and Low Points across 48h */}
+            {activeExtremes.map((pt, idx) => {
+              const x = getX(pt.hour);
+              const y = getY(pt.heightM);
+              const isHigh = pt.type === 'high';
+              const markerColor = isHigh
+                ? isLight
+                  ? '#0284C7'
+                  : colors.accent
+                : isLight
+                ? '#D97706'
+                : '#F59E0B';
+
+              return (
+                <React.Fragment key={`extreme-pt-${idx}`}>
+                  <Circle
+                    cx={x}
+                    cy={y}
+                    r={4.5}
+                    fill={markerColor}
+                    stroke={isLight ? '#FFFFFF' : '#041728'}
+                    strokeWidth={2}
+                  />
+                  {/* Extreme Height Value & Arrow */}
+                  <SvgText
+                    x={x}
+                    y={isHigh ? y - 8 : y + 16}
+                    fill={markerColor}
+                    fontSize={10}
+                    fontWeight="bold"
+                    textAnchor="middle"
+                  >
+                    {isHigh ? '▲' : '▼'} {pt.heightM}m
+                  </SvgText>
+                  {/* Extreme Time */}
+                  <SvgText
+                    x={x}
+                    y={isHigh ? y - 20 : y + 27}
+                    fill={colors.textSecondary}
+                    fontSize={9}
+                    fontWeight="600"
+                    textAnchor="middle"
+                  >
+                    {pt.time}
+                  </SvgText>
+                </React.Fragment>
+              );
+            })}
+          </Svg>
+        </ScrollView>
+
+        {/* Tide Summary Cards (Next High & Low) */}
         <View style={[styles.summaryRow, { borderTopColor: colors.divider }]}>
           <View
             style={[
@@ -263,8 +515,12 @@ export function TideChart() {
               },
             ]}>
             <Text style={[styles.tideLabel, { color: colors.textMuted }]}>NEXT HIGH TIDE</Text>
-            <Text style={[styles.tideVal, { color: isLight ? '#0284C7' : colors.accent }]}>3.5 m</Text>
-            <Text style={[styles.tideTime, { color: colors.textSecondary }]}>at 16:45 (in 2h 15m)</Text>
+            <Text style={[styles.tideVal, { color: isLight ? '#0284C7' : colors.accent }]}>
+              {tideData?.nextHighTide?.heightM != null ? `${tideData.nextHighTide.heightM} m` : '3.5 m'}
+            </Text>
+            <Text style={[styles.tideTime, { color: colors.textSecondary }]}>
+              {tideData?.nextHighTide?.relativeText ?? 'at 16:45 (in 2h 15m)'}
+            </Text>
           </View>
 
           <View
@@ -276,8 +532,12 @@ export function TideChart() {
               },
             ]}>
             <Text style={[styles.tideLabel, { color: colors.textMuted }]}>NEXT LOW TIDE</Text>
-            <Text style={[styles.tideVal, { color: isLight ? '#D97706' : '#F59E0B' }]}>1.1 m</Text>
-            <Text style={[styles.tideTime, { color: colors.textSecondary }]}>at 22:50 (in 8h 20m)</Text>
+            <Text style={[styles.tideVal, { color: isLight ? '#D97706' : '#F59E0B' }]}>
+              {tideData?.nextLowTide?.heightM != null ? `${tideData.nextLowTide.heightM} m` : '1.1 m'}
+            </Text>
+            <Text style={[styles.tideTime, { color: colors.textSecondary }]}>
+              {tideData?.nextLowTide?.relativeText ?? 'at 22:50 (in 8h 20m)'}
+            </Text>
           </View>
         </View>
       </View>
@@ -291,7 +551,7 @@ const styles = StyleSheet.create({
   },
   chartCard: {
     borderRadius: 18,
-    padding: 16,
+    padding: 14,
     borderWidth: 1,
   },
   headerRow: {
@@ -327,15 +587,42 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '800',
   },
-  svg: {
-    alignSelf: 'center',
+  controlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginVertical: 6,
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  jumpBtnGroup: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  jumpBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  jumpBtnText: {
+    fontSize: 10,
+  },
+  swipeHint: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  scrollCanvas: {
     marginVertical: 4,
   },
   summaryRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
-    paddingTop: 12,
+    gap: 10,
+    marginTop: 10,
+    paddingTop: 10,
     borderTopWidth: 1,
   },
   tideCard: {
