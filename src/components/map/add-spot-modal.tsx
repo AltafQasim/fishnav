@@ -107,7 +107,7 @@ export function AddSpotModal({
             </Pressable>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
             {/* Spot Name */}
             <Text style={styles.label}>SPOT / REEF NAME</Text>
             <TextInput

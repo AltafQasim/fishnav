@@ -258,7 +258,8 @@ function Stat({
 
 const styles = StyleSheet.create({
   scrollBody: {
-    flex: 1,
+    flexGrow: 0,
+    flexShrink: 1,
   },
   scrollContent: {
     paddingHorizontal: 16,

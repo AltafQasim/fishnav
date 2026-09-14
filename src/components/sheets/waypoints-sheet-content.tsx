@@ -158,6 +158,7 @@ export function WaypointsSheetContent({ onViewOnMap }: WaypointsSheetContentProp
       {/* Waypoints List */}
       <FlatList
         data={filteredSpots}
+        style={styles.list}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[styles.listContent, { paddingBottom: 110 }]}
         showsVerticalScrollIndicator={false}
@@ -197,9 +198,14 @@ export function WaypointsSheetContent({ onViewOnMap }: WaypointsSheetContentProp
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 0,
+    flexShrink: 1,
     paddingHorizontal: 16,
     paddingTop: 10,
+  },
+  list: {
+    flexGrow: 0,
+    flexShrink: 1,
   },
   topActionRow: {
     flexDirection: 'row',

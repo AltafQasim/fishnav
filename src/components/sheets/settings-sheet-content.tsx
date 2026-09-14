@@ -13,16 +13,18 @@ import {
 } from 'react-native';
 
 import { MapColors } from '@/constants/map-theme';
+import { useAuth } from '@/context/auth-context';
 import { useTripTracking } from '@/context/trip-context';
 import { useWaypoints } from '@/context/waypoints-context';
 
 export function SettingsSheetContent() {
   const router = useRouter();
+  const { captain, logout } = useAuth();
   const { waypoints, resetWaypoints } = useWaypoints();
   const { savedTrips } = useTripTracking();
 
   // Vessel Profile
-  const [boatName, setBoatName] = useState('Sea Hunter');
+  const [boatName, setBoatName] = useState(captain?.vesselName || 'Sea Hunter II');
   const [boatDraft, setBoatDraft] = useState('1.8');
   const [cruiseSpeed, setCruiseSpeed] = useState('12');
 
@@ -59,16 +61,16 @@ export function SettingsSheetContent() {
 
   const handleResetPrompt = () => {
     Alert.alert(
-      'Reset Waypoints',
-      'This will restore default Arabian Sea fishing spots (Ghol, Tuna, King Fish) and clear custom spots. Continue?',
+      'Reset All Waypoints',
+      'This will restore standard Gujarat & Arabian Sea marine hotspots. Custom markers will be erased.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Reset Defaults',
+          text: 'Reset to Defaults',
           style: 'destructive',
           onPress: async () => {
             await resetWaypoints();
-            Alert.alert('Reset Complete', 'Waypoints restored to default.');
+            Alert.alert('Restored', 'Fishing spots reset to defaults.');
           },
         },
       ],
@@ -81,6 +83,37 @@ export function SettingsSheetContent() {
       contentContainerStyle={[styles.content, { paddingBottom: 110 }]}
       showsVerticalScrollIndicator={false}
     >
+      {/* ⚓ Active Captain & Vessel Profile Badge */}
+      <View style={styles.captainCard}>
+        <View style={styles.captainAvatarWrap}>
+          <MaterialCommunityIcons name="shield-account" size={26} color="#00F0FF" />
+        </View>
+        <View style={styles.captainTextWrap}>
+          <Text style={styles.captainName}>
+            {captain?.name || 'Capt. Vikram Rathore'}
+          </Text>
+          <Text style={styles.captainVessel}>
+            {captain?.vesselName || 'Sea Hunter II'} • {captain?.callSign || 'IND-GJ-8821'}
+          </Text>
+        </View>
+        <Pressable
+          style={styles.logoutBtn}
+          onPress={() => {
+            Alert.alert(
+              'Switch Vessel / Logout',
+              'Are you sure you want to sign out and return to the login screen?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Logout', style: 'destructive', onPress: logout },
+              ],
+            );
+          }}
+        >
+          <Ionicons name="log-out-outline" size={16} color="#EF4444" />
+          <Text style={styles.logoutBtnText}>Logout</Text>
+        </Pressable>
+      </View>
+
       {/* 🚀 Trips & Recorded Routes Logbook Shortcut */}
       <Pressable
         style={styles.tripsShortcutCard}
@@ -355,11 +388,62 @@ export function SettingsSheetContent() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 0,
+    flexShrink: 1,
   },
   content: {
     paddingHorizontal: 16,
     paddingTop: 8,
+  },
+  captainCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(2, 132, 199, 0.12)',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(56, 189, 248, 0.35)',
+    gap: 12,
+  },
+  captainAvatarWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0, 240, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.3)',
+  },
+  captainTextWrap: {
+    flex: 1,
+  },
+  captainName: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  captainVessel: {
+    color: '#38BDF8',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  logoutBtnText: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '700',
   },
   tripsShortcutCard: {
     flexDirection: 'row',

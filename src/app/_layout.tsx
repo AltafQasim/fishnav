@@ -1,30 +1,35 @@
 import { DarkTheme, ThemeProvider } from 'expo-router';
 import { Slot } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { MapColors } from '@/constants/map-theme';
+import { AuthProvider } from '@/context/auth-context';
 import { LocationProvider } from '@/context/location-context';
 import { TripProvider } from '@/context/trip-context';
 import { WaypointsProvider } from '@/context/waypoints-context';
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function RootLayout() {
+  useEffect(() => {
+    SplashScreen.hideAsync().catch(() => {});
+  }, []);
+
   return (
     <ThemeProvider value={DarkTheme}>
-      <LocationProvider>
-        <WaypointsProvider>
-          <TripProvider>
-            <View style={styles.root}>
-              <AnimatedSplashOverlay />
-              <Slot />
-            </View>
-          </TripProvider>
-        </WaypointsProvider>
-      </LocationProvider>
+      <AuthProvider>
+        <LocationProvider>
+          <WaypointsProvider>
+            <TripProvider>
+              <View style={styles.root}>
+                <Slot />
+              </View>
+            </TripProvider>
+          </WaypointsProvider>
+        </LocationProvider>
+      </AuthProvider>
     </ThemeProvider>
   );
 }

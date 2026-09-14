@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  LayoutChangeEvent,
   PanResponder,
   Platform,
   Pressable,
@@ -23,13 +24,15 @@ type SlidingSheetContainerProps = {
   onClose: () => void;
   height?: number;
   heightRatio?: number;
+  maxHeightRatio?: number;
 };
 
 /**
  * 📱 SlidingSheetContainer
- * Compact Bottom Sheet anchored to bottom of screen (~62% screen height):
- * - Firmly pinned to bottom: 0 (never renders from the top!)
- * - Leaves top ~38% open so marine map is always visible
+ * Dynamic Bottom Sheet anchored to bottom of screen:
+ * - Auto-sizes to fit content up to 85% screen height
+ * - If content > 85%, caps at 85% and enables scrolling
+ * - Leaves map area visible above
  * - Drag DOWN on header handle to dismiss
  * - Tap on top map area or [ ✕ ] to close
  */
@@ -42,18 +45,33 @@ export function SlidingSheetContainer({
   children,
   onClose,
   height: customHeight,
-  heightRatio = 0.62,
+  heightRatio,
+  maxHeightRatio = 0.85,
 }: SlidingSheetContainerProps) {
   const { height: windowHeight } = useWindowDimensions();
 
-  // Exactly 62% of screen height (or customHeight)
-  const sheetHeight = customHeight ?? Math.round(windowHeight * heightRatio);
+  // Maximum 85% of screen height (or custom maxHeightRatio)
+  const maxSheetHeight = Math.round(windowHeight * (maxHeightRatio ?? 0.85));
 
-  const translateY = useRef(new Animated.Value(sheetHeight + 60)).current;
-  const heightRef = useRef(sheetHeight);
-  heightRef.current = sheetHeight;
+  // If an explicit fixed height or heightRatio was provided, use it, otherwise let content size up to 85%
+  const effectiveFixed = customHeight ?? (heightRatio ? Math.round(windowHeight * heightRatio) : undefined);
+
+  const [measuredHeight, setMeasuredHeight] = useState<number>(effectiveFixed ?? maxSheetHeight);
+  const heightRef = useRef(effectiveFixed ?? maxSheetHeight);
+  heightRef.current = measuredHeight;
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
+
+  const translateY = useRef(new Animated.Value(heightRef.current + 60)).current;
+
+  // Track layout to adjust dismissal and pan limits based on actual rendered content height
+  const handleSheetLayout = useCallback((e: LayoutChangeEvent) => {
+    const h = Math.round(e.nativeEvent.layout.height);
+    if (h > 0 && Math.abs(h - heightRef.current) > 2) {
+      heightRef.current = h;
+      setMeasuredHeight(h);
+    }
+  }, []);
 
   // Dismiss animation (slides down below screen edge)
   const handleDismiss = useCallback(() => {
@@ -69,7 +87,7 @@ export function SlidingSheetContainer({
   // Open animation (slides up from below screen to bottom: 0)
   useEffect(() => {
     if (isOpen) {
-      translateY.setValue(sheetHeight + 60);
+      translateY.setValue(heightRef.current + 60);
       Animated.spring(translateY, {
         toValue: 0,
         damping: 24,
@@ -78,9 +96,9 @@ export function SlidingSheetContainer({
         useNativeDriver: Platform.OS !== 'web',
       }).start();
     } else {
-      translateY.setValue(sheetHeight + 60);
+      translateY.setValue(heightRef.current + 60);
     }
-  }, [isOpen, sheetHeight, translateY]);
+  }, [isOpen, translateY]);
 
   // Drag down on header to close
   const panResponder = useRef(
@@ -116,20 +134,22 @@ export function SlidingSheetContainer({
 
   return (
     <View style={styles.outerContainer} pointerEvents="box-none">
-      {/* 1. Touch-to-dismiss zone above the card (allows tapping the top map area to close card!) */}
+      {/* 1. Touch-to-dismiss zone above/behind the card */}
       <Pressable
-        style={[styles.dismissZone, { height: Math.max(0, windowHeight - sheetHeight) }]}
+        style={styles.dismissZone}
         onPress={handleDismiss}
         accessibilityRole="button"
         accessibilityLabel="Close sheet and return to map"
       />
 
-      {/* 2. Slide-up bottom card (HARD-PINNED TO BOTTOM: 0!) */}
+      {/* 2. Slide-up bottom card (up to 85% max height, fit-content if smaller) */}
       <Animated.View
+        onLayout={handleSheetLayout}
         style={[
           styles.sheet,
           {
-            height: sheetHeight,
+            maxHeight: maxSheetHeight,
+            ...(effectiveFixed ? { height: effectiveFixed } : {}),
             transform: [{ translateY }],
           },
         ]}
@@ -172,7 +192,7 @@ export function SlidingSheetContainer({
         </View>
 
         {/* Sheet Content Body */}
-        <View style={styles.contentBody}>{children}</View>
+        <View style={[styles.contentBody, { maxHeight: maxSheetHeight - 64 }]}>{children}</View>
       </Animated.View>
     </View>
   );
@@ -188,10 +208,7 @@ const styles = StyleSheet.create({
     zIndex: 80, // Sits above map (1) and map controls, below AppTabs (150)
   },
   dismissZone: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'transparent', // Map is 100% visible and bright!
   },
   sheet: {
@@ -271,6 +288,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   contentBody: {
-    flex: 1,
+    flexShrink: 1,
   },
 });

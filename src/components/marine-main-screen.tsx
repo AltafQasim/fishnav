@@ -2,10 +2,13 @@ import React, { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CoordinateInputModal } from '@/components/map/coordinate-input-modal';
 import { GoogleNavHud } from '@/components/map/google-nav-hud';
+import { MapLayersModal } from '@/components/map/map-layers-modal';
 import {
   MapControlStack
 } from '@/components/map/map-overlays';
+import type { MapStyleId } from '@/components/map/map-style-selector';
 import {
   type DroppedPin,
   type MapOverlaysState,
@@ -18,6 +21,9 @@ import {
   type ActiveTabType,
   AppTabs,
 } from '@/components/navigation/app-tabs';
+import { CaptainProfileModal } from '@/components/search/captain-profile-modal';
+import { MarineSearchHeader } from '@/components/search/marine-search-header';
+import { MoreOptionsModal } from '@/components/search/more-options-modal';
 import { CalendarSheetContent } from '@/components/sheets/calendar-sheet-content';
 import { CompassSheetContent } from '@/components/sheets/compass-sheet-content';
 import { SettingsSheetContent } from '@/components/sheets/settings-sheet-content';
@@ -57,10 +63,18 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
   const [followUser, setFollowUser] = useState(true);
   const [headingUp, setHeadingUp] = useState(false);
   const [droppedPin, setDroppedPin] = useState<DroppedPin | null>(null);
-  const [overlays] = useState<MapOverlaysState>({
+  const [overlays, setOverlays] = useState<MapOverlaysState>({
     seamarks: true,
     dangerZone: true,
   });
+  const [activeMapStyle, setActiveMapStyle] = useState<MapStyleId>('standard');
+  const [showGpsHud, setShowGpsHud] = useState(false);
+
+  // Search & Navigation Modals state
+  const [showMoreModal, setShowMoreModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showCoordsModal, setShowCoordsModal] = useState(false);
+  const [showLayersModal, setShowLayersModal] = useState(false);
 
   const {
     isTracking,
@@ -112,6 +126,14 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     setDroppedPin({ latitude: lat, longitude: lng });
     setSelectedSpotId(null);
     setFollowUser(false);
+  };
+
+  const handlePlotCoordinate = (lat: number, lng: number, label?: string) => {
+    setDroppedPin({ latitude: lat, longitude: lng });
+    setSelectedSpotId(null);
+    setFollowUser(false);
+    mapRef.current?.flyTo(lat, lng, 14);
+    mapRef.current?.setDroppedPin(lat, lng);
   };
 
   const handleLocate = () => {
@@ -185,7 +207,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
       <View style={styles.mapWrap}>
         <NativeMapView
           ref={mapRef}
-          mapStyle="standard"
+          mapStyle={activeMapStyle}
           overlays={overlays}
           location={location}
           navTarget={targetSpot}
@@ -222,6 +244,21 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
           />
         </View>
       </View>
+
+      {/* 🟢 Universal Top Search Bar (Google Maps Style: More | Search | Captain Profile) */}
+      {!isNavigating && (
+        <MarineSearchHeader
+          userLocation={location}
+          onOpenMore={() => setShowMoreModal(true)}
+          onOpenProfile={() => setShowProfileModal(true)}
+          onSelectSpot={handleViewSpotOnMap}
+          onPlotCoordinate={handlePlotCoordinate}
+          onOpenTab={(tab) => setActiveTab(tab)}
+          onOpenCoordsModal={() => setShowCoordsModal(true)}
+          onOpenLayersModal={() => setShowLayersModal(true)}
+          onFocus={() => setActiveTab(null)}
+        />
+      )}
 
       {/* 2. Spot / Dropped Pin Sliding Sheet (Scrollable & Drag-to-dismiss like tab cards!) */}
       {activeTab === null && !isNavigating && (selectedSpot || droppedPin) ? (
@@ -314,6 +351,42 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
 
       {/* 4. Save Trip Summary Modal */}
       <SaveTripModal />
+
+      {/* 5. More Options Command Hub Modal */}
+      <MoreOptionsModal
+        visible={showMoreModal}
+        onClose={() => setShowMoreModal(false)}
+        onOpenTab={(tab) => setActiveTab(tab)}
+        onOpenCoordsModal={() => setShowCoordsModal(true)}
+        onOpenLayersModal={() => setShowLayersModal(true)}
+      />
+
+      {/* 6. Captain & Vessel Profile Modal */}
+      <CaptainProfileModal
+        visible={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+      />
+
+      {/* 7. Quick Coordinate Input Modal */}
+      <CoordinateInputModal
+        visible={showCoordsModal}
+        onClose={() => setShowCoordsModal(false)}
+        onPlot={handlePlotCoordinate}
+      />
+
+      {/* 8. Map Layers & Bathymetry Modal */}
+      <MapLayersModal
+        visible={showLayersModal}
+        activeStyle={activeMapStyle}
+        overlays={overlays}
+        showGpsHud={showGpsHud}
+        onClose={() => setShowLayersModal(false)}
+        onSelectStyle={(style) => setActiveMapStyle(style)}
+        onToggleOverlay={(key) =>
+          setOverlays((prev) => ({ ...prev, [key]: !prev[key] }))
+        }
+        onToggleGpsHud={() => setShowGpsHud((v) => !v)}
+      />
     </View>
   );
 }

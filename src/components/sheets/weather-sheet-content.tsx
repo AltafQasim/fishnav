@@ -113,7 +113,8 @@ export function WeatherSheetContent() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 0,
+    flexShrink: 1,
   },
   content: {
     paddingHorizontal: 16,

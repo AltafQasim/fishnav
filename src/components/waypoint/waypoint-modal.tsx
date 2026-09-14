@@ -359,6 +359,7 @@ const styles = StyleSheet.create({
   },
   formScroll: {
     marginVertical: 14,
+    flexShrink: 1,
   },
   fieldGroup: {
     marginBottom: 14,
