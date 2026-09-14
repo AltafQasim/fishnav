@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, G, Line, Path, Text as SvgText } from 'react-native-svg';
 
 import { MapColors } from '@/constants/map-theme';
+import { useAppTheme } from '@/context/theme-context';
 import {
   formatAccuracy,
   formatLatitude,
@@ -112,37 +113,43 @@ export function MapControlStack({
   onAddSpot,
   onToggleTrack,
 }: MapControlStackProps) {
+  const { colors, isLight } = useAppTheme();
+  const groupBg = isLight ? 'rgba(255, 255, 255, 0.95)' : colors.card;
+  const groupBorder = colors.cardBorder;
+  const iconColor = colors.text;
+  const dividerBg = colors.divider;
+
   return (
     <View style={styles.controlStack}>
       {/* 🔴 Track Recording Action Button */}
       {onToggleTrack && (
-        <View style={styles.btnGroup}>
+        <View style={[styles.btnGroup, { backgroundColor: groupBg, borderColor: groupBorder }]}>
           <Pressable
             style={[styles.toolBtn, isTracking && styles.toolBtnRecording]}
             onPress={onToggleTrack}>
             <MaterialCommunityIcons
               name={isTracking ? 'record-circle' : 'record-circle-outline'}
               size={22}
-              color={isTracking ? '#EF4444' : '#00F0FF'}
+              color={isTracking ? '#EF4444' : colors.accent}
             />
           </Pressable>
         </View>
       )}
 
       {/* Zoom In & Out */}
-      <View style={styles.btnGroup}>
+      <View style={[styles.btnGroup, { backgroundColor: groupBg, borderColor: groupBorder }]}>
         <Pressable style={styles.toolBtn} onPress={onZoomIn}>
-          <Ionicons name="add" size={22} color={MapColors.text} />
+          <Ionicons name="add" size={22} color={iconColor} />
         </Pressable>
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: dividerBg }]} />
         <Pressable style={styles.toolBtn} onPress={onZoomOut}>
-          <Ionicons name="remove" size={22} color={MapColors.text} />
+          <Ionicons name="remove" size={22} color={iconColor} />
         </Pressable>
       </View>
 
       {/* Tools: Measure & Add Spot (only rendered if handlers passed) */}
       {(onToggleMeasure || onAddSpot) && (
-        <View style={styles.btnGroup}>
+        <View style={[styles.btnGroup, { backgroundColor: groupBg, borderColor: groupBorder }]}>
           {onToggleMeasure && (
             <Pressable
               style={[styles.toolBtn, measurementActive && styles.toolBtnActive]}
@@ -154,7 +161,7 @@ export function MapControlStack({
               />
             </Pressable>
           )}
-          {onToggleMeasure && onAddSpot && <View style={styles.divider} />}
+          {onToggleMeasure && onAddSpot && <View style={[styles.divider, { backgroundColor: dividerBg }]} />}
           {onAddSpot && (
             <Pressable style={styles.toolBtn} onPress={onAddSpot}>
               <Ionicons name="add-circle" size={20} color={MapColors.green} />
@@ -164,24 +171,24 @@ export function MapControlStack({
       )}
 
       {/* Navigation & Location Center */}
-      <View style={styles.btnGroup}>
+      <View style={[styles.btnGroup, { backgroundColor: groupBg, borderColor: groupBorder }]}>
         <Pressable
-          style={[styles.toolBtn, followUser && styles.toolBtnHighlight]}
+          style={[styles.toolBtn, followUser && { backgroundColor: colors.chipBg }]}
           onPress={onLocate}>
           <Ionicons
             name="locate"
             size={20}
-            color={followUser ? MapColors.accent : MapColors.text}
+            color={followUser ? colors.accent : iconColor}
           />
         </Pressable>
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: dividerBg }]} />
         <Pressable
-          style={[styles.toolBtn, headingUp && styles.toolBtnHighlight]}
+          style={[styles.toolBtn, headingUp && { backgroundColor: colors.chipBg }]}
           onPress={onHeading}>
           <Ionicons
             name="navigate"
             size={18}
-            color={headingUp ? MapColors.accent : MapColors.text}
+            color={headingUp ? colors.accent : iconColor}
           />
         </Pressable>
       </View>

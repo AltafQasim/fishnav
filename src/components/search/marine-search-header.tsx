@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
+import { useAppTheme } from '@/context/theme-context';
 import { useAuth } from '@/context/auth-context';
 import { useWaypoints } from '@/context/waypoints-context';
 import type { UserLocation } from '@/hooks/use-user-location';
@@ -205,6 +206,7 @@ export function MarineSearchHeader({
   onOpenLayersModal,
   onFocus,
 }: MarineSearchHeaderProps) {
+  const { colors, isLight } = useAppTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { captain } = useAuth();
@@ -329,36 +331,44 @@ export function MarineSearchHeader({
       pointerEvents="box-none"
     >
       {/* 🟢 Search Bar Pill Row (Left: More, Center: Search Input, Right: Captain Avatar) */}
-      <View style={styles.searchBarRow}>
+      <View
+        style={[
+          styles.searchBarRow,
+          {
+            backgroundColor: colors.searchBarBg,
+            borderColor: colors.searchBarBorder,
+          },
+        ]}
+      >
         {/* 1. START: Map Layers & Nautical Details Button */}
         {isFocused ? (
           <Pressable
             onPress={handleCloseSearch}
             hitSlop={10}
-            style={styles.actionPillBtn}
+            style={[styles.actionPillBtn, { backgroundColor: colors.chipBg }]}
             accessibilityRole="button"
             accessibilityLabel="Back to map"
           >
-            <Ionicons name="arrow-back" size={20} color="#00F0FF" />
+            <Ionicons name="arrow-back" size={20} color={colors.accent} />
           </Pressable>
         ) : (
           <Pressable
             onPress={onOpenMore}
             hitSlop={10}
-            style={styles.actionPillBtn}
+            style={[styles.actionPillBtn, { backgroundColor: colors.chipBg }]}
             accessibilityRole="button"
             accessibilityLabel="Map Layers & Nautical Details"
           >
-            <Ionicons name="layers" size={20} color="#00F0FF" />
+            <Ionicons name="layers" size={20} color={colors.accent} />
           </Pressable>
         )}
 
         {/* 2. CENTER: Google-Style Search Input Bar */}
         <View style={styles.inputContainer}>
-          <Ionicons name="search" size={17} color="#38BDF8" style={styles.searchIcon} />
+          <Ionicons name="search" size={17} color={colors.accent} style={styles.searchIcon} />
           <TextInput
             ref={inputRef}
-            style={styles.textInput}
+            style={[styles.textInput, { color: colors.text }]}
             value={query}
             onChangeText={setQuery}
             onFocus={() => {
@@ -366,14 +376,14 @@ export function MarineSearchHeader({
               onFocus?.();
             }}
             placeholder="Search spots, coords, weather, ports..."
-            placeholderTextColor="#8BA3B8"
+            placeholderTextColor={colors.textSecondary}
             returnKeyType="search"
             autoCorrect={false}
           />
 
           {query.length > 0 && (
             <Pressable onPress={handleClear} hitSlop={10} style={styles.clearBtn}>
-              <Ionicons name="close-circle" size={18} color="#94A3B8" />
+              <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
             </Pressable>
           )}
         </View>
@@ -382,7 +392,7 @@ export function MarineSearchHeader({
         <Pressable
           onPress={onOpenProfile}
           hitSlop={10}
-          style={styles.profileBtn}
+          style={[styles.profileBtn, { borderColor: colors.accent }]}
           accessibilityRole="button"
           accessibilityLabel="Captain and vessel profile"
         >
@@ -390,7 +400,7 @@ export function MarineSearchHeader({
             {captain?.avatarUrl ? (
               <Image source={{ uri: captain.avatarUrl }} style={styles.avatarImg} />
             ) : (
-              <MaterialCommunityIcons name="ship-wheel" size={18} color="#00F0FF" />
+              <MaterialCommunityIcons name="ship-wheel" size={18} color={colors.accent} />
             )}
           </View>
         </Pressable>
@@ -398,7 +408,15 @@ export function MarineSearchHeader({
 
       {/* 🟡 Universal Search Results / Suggestions Dropdown */}
       {isFocused && (
-        <View style={styles.resultsCard}>
+        <View
+          style={[
+            styles.resultsCard,
+            {
+              backgroundColor: colors.sheetBg,
+              borderColor: colors.sheetBorder,
+            },
+          ]}
+        >
           <ScrollView
             style={styles.resultsScroll}
             keyboardShouldPersistTaps="handled"

@@ -4,8 +4,10 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MarineCompassView } from '@/components/compass/marine-compass-view';
 import { MapColors } from '@/constants/map-theme';
+import { useAppTheme } from '@/context/theme-context';
 
 export function CompassSheetContent() {
+  const { colors, isLight } = useAppTheme();
   const [northMode, setNorthMode] = useState<'magnetic' | 'true'>('magnetic');
 
   return (
@@ -22,11 +24,11 @@ export function CompassSheetContent() {
         </View>
 
         <Pressable
-          style={styles.modeBtn}
+          style={[styles.modeBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
           onPress={() => setNorthMode((prev) => (prev === 'magnetic' ? 'true' : 'magnetic'))}
           accessibilityRole="button"
         >
-          <Text style={styles.modeBtnText}>
+          <Text style={[styles.modeBtnText, { color: colors.accent }]}>
             {northMode === 'magnetic' ? 'MAG NORTH' : 'TRUE NORTH'}
           </Text>
         </Pressable>
@@ -36,12 +38,12 @@ export function CompassSheetContent() {
       <MarineCompassView northMode={northMode} />
 
       {/* Marine Steering Guidelines */}
-      <View style={styles.guideCard}>
+      <View style={[styles.guideCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
         <View style={styles.guideHeader}>
-          <Ionicons name="compass" size={16} color="#38BDF8" />
-          <Text style={styles.guideTitle}>MARINE STEERING GUIDANCE</Text>
+          <Ionicons name="compass" size={16} color={colors.accent} />
+          <Text style={[styles.guideTitle, { color: colors.accent }]}>MARINE STEERING GUIDANCE</Text>
         </View>
-        <Text style={styles.guideText}>
+        <Text style={[styles.guideText, { color: colors.textSecondary }]}>
           The red Lubber Line marks your boat's bow orientation. When you tap a waypoint and start navigation, a blue arrow will point directly to your target.
         </Text>
       </View>

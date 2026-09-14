@@ -7,6 +7,7 @@ import { StyleSheet, View } from 'react-native';
 import { MarineLoginScreen } from '@/components/auth/marine-login-screen';
 import { MarineSplashScreen } from '@/components/auth/marine-splash-screen';
 import { MapColors } from '@/constants/map-theme';
+import { AppThemeProvider, useAppTheme } from '@/context/theme-context';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { LocationProvider } from '@/context/location-context';
 import { TripProvider } from '@/context/trip-context';
@@ -53,33 +54,40 @@ function ProtectedAuthGate({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RootContent() {
+  const { colors } = useAppTheme();
+  return (
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <ProtectedAuthGate>
+        <Slot />
+      </ProtectedAuthGate>
+    </View>
+  );
+}
+
 export default function RootLayout() {
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
   }, []);
 
   return (
-    <ThemeProvider value={DarkTheme}>
+    <AppThemeProvider>
       <AuthProvider>
         <LocationProvider>
           <WaypointsProvider>
             <TripProvider>
-              <View style={styles.root}>
-                <ProtectedAuthGate>
-                  <Slot />
-                </ProtectedAuthGate>
-              </View>
+              <RootContent />
             </TripProvider>
           </WaypointsProvider>
         </LocationProvider>
       </AuthProvider>
-    </ThemeProvider>
+    </AppThemeProvider>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: MapColors.navy,
+    backgroundColor: '#020B14',
   },
 });

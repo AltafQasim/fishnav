@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { useAppTheme } from '@/context/theme-context';
 import { MapColors } from '@/constants/map-theme';
 
 type SlidingSheetContainerProps = {
@@ -48,6 +49,7 @@ export function SlidingSheetContainer({
   heightRatio,
   maxHeightRatio = 0.85,
 }: SlidingSheetContainerProps) {
+  const { colors, isLight } = useAppTheme();
   const { height: windowHeight } = useWindowDimensions();
 
   // Maximum 85% of screen height (or custom maxHeightRatio)
@@ -77,21 +79,19 @@ export function SlidingSheetContainer({
   const handleDismiss = useCallback(() => {
     Animated.timing(translateY, {
       toValue: heightRef.current + 60,
-      duration: 180,
+      duration: 220,
       useNativeDriver: Platform.OS !== 'web',
     }).start(() => {
       onCloseRef.current();
     });
   }, [translateY]);
 
-  // Open animation (slides up from below screen to bottom: 0)
+  // Handle open animation when opened or height changes
   useEffect(() => {
     if (isOpen) {
-      translateY.setValue(heightRef.current + 60);
       Animated.spring(translateY, {
         toValue: 0,
         damping: 24,
-        mass: 0.8,
         stiffness: 220,
         useNativeDriver: Platform.OS !== 'web',
       }).start();
@@ -100,21 +100,20 @@ export function SlidingSheetContainer({
     }
   }, [isOpen, translateY]);
 
-  // Drag down on header to close
+  // Pan Responder for Drag-down to dismiss
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, g) => g.dy > 5,
-      onPanResponderMove: (_, g) => {
-        if (g.dy > 0) {
-          translateY.setValue(g.dy);
-        } else {
-          // Rubber-band resistance if dragged upward
-          translateY.setValue(g.dy * 0.15);
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dy > 5;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (gestureState.dy > 0) {
+          translateY.setValue(gestureState.dy);
         }
       },
-      onPanResponderRelease: (_, g) => {
-        if (g.dy > 70 || g.vy > 0.4) {
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > 90 || gestureState.vy > 0.6) {
           handleDismiss();
         } else {
           Animated.spring(translateY, {
@@ -148,6 +147,10 @@ export function SlidingSheetContainer({
         style={[
           styles.sheet,
           {
+            backgroundColor: colors.sheetBg,
+            borderTopColor: colors.sheetBorder,
+            borderLeftColor: colors.cardBorder,
+            borderRightColor: colors.cardBorder,
             maxHeight: maxSheetHeight,
             ...(effectiveFixed ? { height: effectiveFixed } : {}),
             transform: [{ translateY }],
@@ -155,20 +158,44 @@ export function SlidingSheetContainer({
         ]}
       >
         {/* Top Header & Drag Handle */}
-        <View {...panResponder.panHandlers} style={styles.headerContainer}>
-          <View style={styles.dragHandle} />
+        <View
+          {...panResponder.panHandlers}
+          style={[
+            styles.headerContainer,
+            {
+              backgroundColor: colors.sheetHeaderBg,
+              borderBottomColor: colors.divider,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.dragHandle,
+              {
+                backgroundColor: isLight
+                  ? 'rgba(0, 0, 0, 0.25)'
+                  : 'rgba(255, 255, 255, 0.35)',
+              },
+            ]}
+          />
 
           <View style={styles.headerBar}>
             {/* Title & Info */}
             <View style={styles.titleInfo}>
               <View style={styles.titleWithBadge}>
-                <Text style={styles.titleText} numberOfLines={1}>
+                <Text
+                  style={[styles.titleText, { color: colors.text }]}
+                  numberOfLines={1}
+                >
                   {title}
                 </Text>
                 {badge}
               </View>
               {subtitle ? (
-                <Text style={styles.subtitleText} numberOfLines={1}>
+                <Text
+                  style={[styles.subtitleText, { color: colors.textSecondary }]}
+                  numberOfLines={1}
+                >
                   {subtitle}
                 </Text>
               ) : null}
@@ -181,11 +208,17 @@ export function SlidingSheetContainer({
               <Pressable
                 onPress={handleDismiss}
                 hitSlop={14}
-                style={styles.closeBtn}
+                style={[
+                  styles.closeBtn,
+                  {
+                    backgroundColor: colors.chipBg,
+                    borderColor: colors.chipBorder,
+                  },
+                ]}
                 accessibilityRole="button"
                 accessibilityLabel="Close sheet"
               >
-                <Ionicons name="close" size={20} color="#FFFFFF" />
+                <Ionicons name="close" size={20} color={colors.text} />
               </Pressable>
             </View>
           </View>

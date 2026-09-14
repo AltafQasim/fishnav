@@ -14,6 +14,7 @@ import { WaypointCard } from '@/components/waypoint/waypoint-card';
 import { WaypointModal } from '@/components/waypoint/waypoint-modal';
 import { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
+import { useAppTheme } from '@/context/theme-context';
 import { useWaypoints } from '@/context/waypoints-context';
 import { useUserLocation } from '@/hooks/use-user-location';
 
@@ -108,30 +109,44 @@ export function WaypointsSheetContent({
     onViewOnMap(spot);
   };
 
+  const { colors, isLight } = useAppTheme();
+
   return (
     <View style={styles.container}>
       {/* Search & Add Bar */}
       <View style={styles.topActionRow}>
-        <View style={styles.searchWrap}>
-          <Ionicons name="search" size={17} color={MapColors.textMuted} style={styles.searchIcon} />
+        <View
+          style={[
+            styles.searchWrap,
+            {
+              backgroundColor: isLight ? '#F1F5F9' : 'rgba(255, 255, 255, 0.06)',
+              borderColor: colors.divider,
+            },
+          ]}
+        >
+          <Ionicons name="search" size={17} color={colors.textMuted} style={styles.searchIcon} />
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: colors.text }]}
             placeholder="Search waypoints or species..."
-            placeholderTextColor={MapColors.textMuted}
+            placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
             clearButtonMode="while-editing"
           />
           {searchQuery ? (
             <Pressable onPress={() => setSearchQuery('')} hitSlop={8}>
-              <Ionicons name="close-circle" size={16} color={MapColors.textMuted} />
+              <Ionicons name="close-circle" size={16} color={colors.textMuted} />
             </Pressable>
           ) : null}
         </View>
 
-        <Pressable style={styles.addBtn} onPress={handleOpenAdd} accessibilityRole="button">
-          <Ionicons name="add" size={18} color="#FFFFFF" />
-          <Text style={styles.addBtnText}>Add</Text>
+        <Pressable
+          style={[styles.addBtn, { backgroundColor: colors.accent }]}
+          onPress={handleOpenAdd}
+          accessibilityRole="button"
+        >
+          <Ionicons name="add" size={18} color={isLight ? '#FFFFFF' : '#020B14'} />
+          <Text style={[styles.addBtnText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>Add</Text>
         </Pressable>
       </View>
 
@@ -148,10 +163,26 @@ export function WaypointsSheetContent({
           return (
             <Pressable
               key={item.id}
-              style={[styles.filterPill, isSelected && styles.filterPillActive]}
+              style={[
+                styles.filterPill,
+                {
+                  backgroundColor: isLight ? '#F1F5F9' : 'rgba(255, 255, 255, 0.06)',
+                  borderColor: colors.divider,
+                },
+                isSelected && {
+                  backgroundColor: colors.chipBg,
+                  borderColor: colors.accent,
+                },
+              ]}
               onPress={() => setActiveFilter(item.id as FilterType)}
             >
-              <Text style={[styles.filterText, isSelected && styles.filterTextActive]}>
+              <Text
+                style={[
+                  styles.filterText,
+                  { color: colors.textSecondary },
+                  isSelected && { color: colors.accent, fontWeight: '700' },
+                ]}
+              >
                 {item.label}
               </Text>
             </Pressable>

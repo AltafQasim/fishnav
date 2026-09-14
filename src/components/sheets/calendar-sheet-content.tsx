@@ -5,8 +5,10 @@ import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg'
 
 import { SolunarChart } from '@/components/calendar/solunar-chart';
 import { MapColors } from '@/constants/map-theme';
+import { useAppTheme } from '@/context/theme-context';
 
 export function CalendarSheetContent() {
+  const { colors, isLight } = useAppTheme();
   const [selectedDayOffset, setSelectedDayOffset] = useState(0);
 
   const days = Array.from({ length: 7 }).map((_, i) => {
@@ -33,16 +35,44 @@ export function CalendarSheetContent() {
           return (
             <Pressable
               key={item.offset}
-              style={[styles.datePill, isSelected && styles.datePillActive]}
+              style={[
+                styles.datePill,
+                {
+                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(255, 255, 255, 0.06)',
+                  borderColor: colors.divider,
+                },
+                isSelected && {
+                  backgroundColor: colors.chipBg,
+                  borderColor: colors.accent,
+                },
+              ]}
               onPress={() => setSelectedDayOffset(item.offset)}
             >
-              <Text style={[styles.dayName, isSelected && styles.dayNameActive]}>
+              <Text
+                style={[
+                  styles.dayName,
+                  { color: colors.textSecondary },
+                  isSelected && { color: colors.accent, fontWeight: '700' },
+                ]}
+              >
                 {item.dayName}
               </Text>
-              <Text style={[styles.dateNum, isSelected && styles.dateNumActive]}>
+              <Text
+                style={[
+                  styles.dateNum,
+                  { color: colors.text },
+                  isSelected && { color: colors.accent, fontWeight: '800' },
+                ]}
+              >
                 {item.dateNum}
               </Text>
-              <Text style={[styles.monthText, isSelected && styles.monthTextActive]}>
+              <Text
+                style={[
+                  styles.monthText,
+                  { color: colors.textMuted },
+                  isSelected && { color: colors.accent },
+                ]}
+              >
                 {item.month}
               </Text>
             </Pressable>
@@ -51,11 +81,11 @@ export function CalendarSheetContent() {
       </ScrollView>
 
       {/* Moon Phase Card */}
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleWrap}>
             <Ionicons name="moon" size={18} color="#FBBF24" />
-            <Text style={styles.cardTitle}>MOON PHASE & ILLUMINATION</Text>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>MOON PHASE & ILLUMINATION</Text>
           </View>
           <View style={styles.illuminationBadge}>
             <Text style={styles.illuminationText}>84% ILLUMINATED</Text>
@@ -77,38 +107,38 @@ export function CalendarSheetContent() {
           </View>
 
           <View style={styles.moonInfoWrap}>
-            <Text style={styles.moonPhaseName}>Waxing Gibbous</Text>
-            <Text style={styles.moonSub}>Moon Age: Day 11.4 of 29.53</Text>
-            <Text style={styles.moonDistance}>Distance: 382,410 km</Text>
+            <Text style={[styles.moonPhaseName, { color: colors.text }]}>Waxing Gibbous</Text>
+            <Text style={[styles.moonSub, { color: colors.textSecondary }]}>Moon Age: Day 11.4 of 29.53</Text>
+            <Text style={[styles.moonDistance, { color: colors.textMuted }]}>Distance: 382,410 km</Text>
           </View>
         </View>
 
         <View style={styles.timingsGrid}>
           <View style={styles.timingItem}>
-            <Text style={styles.timingLabel}>MOONRISE</Text>
-            <Text style={styles.timingValue}>15:24</Text>
+            <Text style={[styles.timingLabel, { color: colors.textSecondary }]}>MOONRISE</Text>
+            <Text style={[styles.timingValue, { color: colors.text }]}>15:24</Text>
           </View>
           <View style={styles.timingItem}>
-            <Text style={styles.timingLabel}>MOONSET</Text>
-            <Text style={styles.timingValue}>04:12</Text>
+            <Text style={[styles.timingLabel, { color: colors.textSecondary }]}>MOONSET</Text>
+            <Text style={[styles.timingValue, { color: colors.text }]}>04:12</Text>
           </View>
           <View style={styles.timingItem}>
-            <Text style={styles.timingLabel}>OVERHEAD</Text>
-            <Text style={styles.timingValue}>21:48</Text>
+            <Text style={[styles.timingLabel, { color: colors.textSecondary }]}>OVERHEAD</Text>
+            <Text style={[styles.timingValue, { color: colors.text }]}>21:48</Text>
           </View>
           <View style={styles.timingItem}>
-            <Text style={styles.timingLabel}>UNDERFOOT</Text>
-            <Text style={styles.timingValue}>09:22</Text>
+            <Text style={[styles.timingLabel, { color: colors.textSecondary }]}>UNDERFOOT</Text>
+            <Text style={[styles.timingValue, { color: colors.text }]}>09:22</Text>
           </View>
         </View>
       </View>
 
       {/* Sun Card */}
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
         <View style={styles.cardHeader}>
           <View style={styles.cardTitleWrap}>
             <Ionicons name="sunny" size={18} color="#F59E0B" />
-            <Text style={styles.cardTitle}>SUN & DAYLIGHT HOURS</Text>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>SUN & DAYLIGHT HOURS</Text>
           </View>
           <View style={[styles.illuminationBadge, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
             <Text style={[styles.illuminationText, { color: '#F59E0B' }]}>12h 26m DAYLIGHT</Text>
@@ -119,37 +149,37 @@ export function CalendarSheetContent() {
           <View style={styles.timingItem}>
             <View style={styles.timingHeaderRow}>
               <Feather name="sunrise" size={12} color="#F59E0B" />
-              <Text style={styles.timingLabel}>SUNRISE</Text>
+              <Text style={[styles.timingLabel, { color: colors.textSecondary }]}>SUNRISE</Text>
             </View>
-            <Text style={styles.timingValue}>06:22</Text>
-            <Text style={styles.timingSub}>Dawn: 06:01</Text>
+            <Text style={[styles.timingValue, { color: colors.text }]}>06:22</Text>
+            <Text style={[styles.timingSub, { color: colors.textMuted }]}>Dawn: 06:01</Text>
           </View>
 
           <View style={styles.timingItem}>
             <View style={styles.timingHeaderRow}>
               <Feather name="sunset" size={12} color="#EF4444" />
-              <Text style={styles.timingLabel}>SUNSET</Text>
+              <Text style={[styles.timingLabel, { color: colors.textSecondary }]}>SUNSET</Text>
             </View>
-            <Text style={styles.timingValue}>18:48</Text>
-            <Text style={styles.timingSub}>Dusk: 19:09</Text>
+            <Text style={[styles.timingValue, { color: colors.text }]}>18:48</Text>
+            <Text style={[styles.timingSub, { color: colors.textMuted }]}>Dusk: 19:09</Text>
           </View>
 
           <View style={styles.timingItem}>
             <View style={styles.timingHeaderRow}>
               <Feather name="sun" size={12} color="#F59E0B" />
-              <Text style={styles.timingLabel}>SOLAR NOON</Text>
+              <Text style={[styles.timingLabel, { color: colors.textSecondary }]}>SOLAR NOON</Text>
             </View>
-            <Text style={styles.timingValue}>12:35</Text>
-            <Text style={styles.timingSub}>Angle: 68°</Text>
+            <Text style={[styles.timingValue, { color: colors.text }]}>12:35</Text>
+            <Text style={[styles.timingSub, { color: colors.textMuted }]}>Angle: 68°</Text>
           </View>
 
           <View style={styles.timingItem}>
             <View style={styles.timingHeaderRow}>
               <Ionicons name="sparkles" size={12} color="#A855F7" />
-              <Text style={styles.timingLabel}>GOLDEN HOUR</Text>
+              <Text style={[styles.timingLabel, { color: colors.textSecondary }]}>GOLDEN HOUR</Text>
             </View>
-            <Text style={styles.timingValue}>18:10</Text>
-            <Text style={styles.timingSub}>Prime Catch</Text>
+            <Text style={[styles.timingValue, { color: colors.text }]}>18:10</Text>
+            <Text style={[styles.timingSub, { color: colors.textMuted }]}>Prime Catch</Text>
           </View>
         </View>
       </View>

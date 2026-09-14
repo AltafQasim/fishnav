@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
+import { useAppTheme } from '@/context/theme-context';
 import { MapColors } from '@/constants/map-theme';
 import {
   CalendarTabIcon,
@@ -40,6 +41,7 @@ export type AppTabsProps = {
  * - 4 marine utility tabs: Waypoint, Weather, Calendar, Settings
  */
 export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
+  const { colors, isLight, isDark } = useAppTheme();
   const insets = useSafeAreaInsets();
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
@@ -81,23 +83,10 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
       pointerEvents="box-none"
     >
       <View style={styles.barContainer} pointerEvents="box-none">
-        {/* 1. Curved Deep Navy Background Bar */}
+        {/* 1. Curved Background Bar (Theme Adaptive) */}
         <Svg width={BAR_WIDTH} height={TOTAL_HEIGHT} style={styles.svgBackground} pointerEvents="none">
-          <Path d={pathData} fill={MapColors?.navy || '#00162B'} />
+          <Path d={pathData} fill={colors.navBarFill} stroke={colors.navBarBorder} strokeWidth={1.5} />
         </Svg>
-
-        {/* 2. Center White Crescent Arch Rim */}
-        {/* <View style={styles.crescentWrapper} pointerEvents="none">
-          <Svg width={76} height={38} viewBox="0 0 76 38">
-            <Path
-              d="M 5 36 C 5 16, 20 2, 38 2 C 56 2, 71 16, 71 36"
-              fill="none"
-              stroke="#FFFFFF"
-              strokeWidth={3.5}
-              strokeLinecap="round"
-            />
-          </Svg>
-        </View> */}
 
         {/* 3. Elevated Floating Center Live Compass Button */}
         <Animated.View
@@ -112,10 +101,22 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
             accessibilityLabel="Marine Compass"
           >
             <LinearGradient
-              colors={activeTab === 'compass' ? ['#0284C7', '#0369A1'] : ['#082238', '#031424']}
+              colors={
+                activeTab === 'compass'
+                  ? colors.accentGradient
+                  : isLight
+                  ? ['#F8FAFC', '#E2E8F0']
+                  : isDark
+                  ? ['#1E293B', '#0F172A']
+                  : ['#082238', '#031424']
+              }
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
-              style={[styles.gradientCircle, activeTab === 'compass' && styles.gradientCircleActive]}
+              style={[
+                styles.gradientCircle,
+                { borderColor: colors.navBarBorder },
+                activeTab === 'compass' && styles.gradientCircleActive,
+              ]}
             >
               {/* Real-time turning mini compass */}
               <WorkingMiniCompass />
@@ -134,7 +135,7 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
             accessibilityLabel="Waypoints"
           >
             <WaypointTabIcon isActive={activeTab === 'waypoint'} />
-            {activeTab === 'waypoint' && <Text style={styles.activeLabel}>Waypoint</Text>}
+            {activeTab === 'waypoint' && <Text style={[styles.activeLabel, { color: colors.accent }]}>Waypoint</Text>}
           </TouchableOpacity>
 
           {/* Tab 2: Weather */}
@@ -146,7 +147,7 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
             accessibilityLabel="Weather"
           >
             <WeatherTabIcon isActive={activeTab === 'weather'} />
-            {activeTab === 'weather' && <Text style={styles.activeLabel}>Weather</Text>}
+            {activeTab === 'weather' && <Text style={[styles.activeLabel, { color: colors.accent }]}>Weather</Text>}
           </TouchableOpacity>
 
           {/* Center Spacer for Elevated Compass Button */}
@@ -161,7 +162,7 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
             accessibilityLabel="Calendar"
           >
             <CalendarTabIcon isActive={activeTab === 'calendar'} />
-            {activeTab === 'calendar' && <Text style={styles.activeLabel}>Calendar</Text>}
+            {activeTab === 'calendar' && <Text style={[styles.activeLabel, { color: colors.accent }]}>Calendar</Text>}
           </TouchableOpacity>
 
           {/* Tab 5: Settings */}
@@ -173,7 +174,7 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
             accessibilityLabel="Settings"
           >
             <SettingsTabIcon isActive={activeTab === 'settings'} />
-            {activeTab === 'settings' && <Text style={styles.activeLabel}>Settings</Text>}
+            {activeTab === 'settings' && <Text style={[styles.activeLabel, { color: colors.accent }]}>Settings</Text>}
           </TouchableOpacity>
         </View>
       </View>

@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SlidingSheetContainer } from '@/components/ui/sliding-sheet-container';
 import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
+import { useAppTheme } from '@/context/theme-context';
 import { formatLatitude, formatLongitude } from '@/hooks/use-user-location';
 import { toDms } from '@/utils/geo';
 
@@ -48,6 +49,7 @@ export function SpotBottomSheet({
   onClose = () => { },
 }: SpotBottomSheetProps) {
   const insets = useSafeAreaInsets();
+  const { colors, isLight } = useAppTheme();
 
   const lat = spot?.latitude ?? 0;
   const lng = spot?.longitude ?? 0;
@@ -76,8 +78,8 @@ export function SpotBottomSheet({
       );
     }
     return (
-      <View style={styles.badgeCyan}>
-        <Text style={styles.badgeCyanText}>FISHING SPOT</Text>
+      <View style={[styles.badgeCyan, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
+        <Text style={[styles.badgeCyanText, { color: colors.accent }]}>FISHING SPOT</Text>
       </View>
     );
   };
@@ -100,109 +102,118 @@ export function SpotBottomSheet({
         bounces={true}
       >
         {/* 1. Primary Big "GO TO" Action Button (Top Prominence!) */}
-        <Pressable style={styles.goBtn} onPress={onGoTo}>
-          <Ionicons name="navigate" size={22} color="#FFFFFF" />
-          <Text style={styles.goText}>GO TO SPOT</Text>
+        <Pressable
+          style={[styles.goBtn, { backgroundColor: colors.accent }]}
+          onPress={onGoTo}
+        >
+          <Ionicons name="navigate" size={22} color={isLight ? '#FFFFFF' : '#020B14'} />
+          <Text style={[styles.goText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>GO TO SPOT</Text>
         </Pressable>
 
         {/* 2. Nautical Stats Grid (Distance, Bearing, ETA, Depth) */}
-        <View style={styles.statsGrid}>
+        <View style={[styles.statsGrid, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <Stat
             icon={
               <MaterialCommunityIcons
                 name="arrow-top-right-bottom-left"
                 size={18}
-                color={MapColors.accent}
+                color={colors.accent}
               />
             }
             label="Distance"
             value={distanceLabel}
           />
           <Stat
-            icon={<Ionicons name="compass-outline" size={18} color={MapColors.accent} />}
+            icon={<Ionicons name="compass-outline" size={18} color={colors.accent} />}
             label="Bearing"
             value={bearingLabel}
           />
           <Stat
-            icon={<Ionicons name="time-outline" size={18} color={MapColors.accent} />}
+            icon={<Ionicons name="time-outline" size={18} color={colors.accent} />}
             label="ETA (12kt)"
             value={etaLabel}
           />
           <Stat
-            icon={<MaterialCommunityIcons name="waves" size={18} color={MapColors.accent} />}
+            icon={<MaterialCommunityIcons name="waves" size={18} color={colors.accent} />}
             label="Depth"
             value={depthM}
           />
         </View>
 
         {/* 3. Marine Weather & Sea Condition Strip */}
-        <View style={styles.seaStrip}>
+        <View style={[styles.seaStrip, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
           <View style={styles.seaItem}>
             <MaterialCommunityIcons name="weather-windy" size={16} color="#38BDF8" />
-            <Text style={styles.seaText}>Wind 12 kts NW</Text>
+            <Text style={[styles.seaText, { color: colors.text }]}>Wind 12 kts NW</Text>
           </View>
-          <View style={styles.seaDivider} />
+          <View style={[styles.seaDivider, { backgroundColor: colors.divider }]} />
           <View style={styles.seaItem}>
             <MaterialCommunityIcons name="waves" size={16} color="#60A5FA" />
-            <Text style={styles.seaText}>Swell 0.8 m</Text>
+            <Text style={[styles.seaText, { color: colors.text }]}>Swell 0.8 m</Text>
           </View>
-          <View style={styles.seaDivider} />
+          <View style={[styles.seaDivider, { backgroundColor: colors.divider }]} />
           <View style={styles.seaItem}>
             <MaterialCommunityIcons name="thermometer" size={16} color="#FBBF24" />
-            <Text style={styles.seaText}>Sea 28°C</Text>
+            <Text style={[styles.seaText, { color: colors.text }]}>Sea 28°C</Text>
           </View>
         </View>
 
         {/* 4. Quick Action Tools Row */}
         <View style={styles.quickActionsRow}>
-          <Pressable style={styles.quickActionBtn} onPress={onToggleFavorite}>
+          <Pressable
+            style={[styles.quickActionBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+            onPress={onToggleFavorite}
+          >
             <Ionicons
               name={isFavorite ? 'star' : 'star-outline'}
               size={18}
-              color={isFavorite ? MapColors.yellow : MapColors.text}
+              color={isFavorite ? MapColors.yellow : colors.text}
             />
-            <Text style={styles.quickActionText}>
+            <Text style={[styles.quickActionText, { color: colors.text }]}>
               {isFavorite ? 'Saved' : 'Favorite'}
             </Text>
           </Pressable>
 
-          <Pressable style={styles.quickActionBtn} onPress={handleShare}>
-            <Ionicons name="share-social-outline" size={18} color={MapColors.text} />
-            <Text style={styles.quickActionText}>Share Spot</Text>
+          <Pressable
+            style={[styles.quickActionBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+            onPress={handleShare}
+          >
+            <Ionicons name="share-social-outline" size={18} color={colors.text} />
+            <Text style={[styles.quickActionText, { color: colors.text }]}>Share Spot</Text>
           </Pressable>
         </View>
 
         {/* 5. Full Coordinates & Waypoint Details Card */}
-        <View style={styles.geoCard}>
-          <Text style={styles.geoCardTitle}>GPS COORDINATES & DETAILS</Text>
+        <View style={[styles.geoCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Text style={[styles.geoCardTitle, { color: colors.textSecondary }]}>GPS COORDINATES & DETAILS</Text>
           <View style={styles.geoRow}>
-            <Text style={styles.geoLabel}>DMS Format</Text>
-            <Text style={styles.geoVal}>
+            <Text style={[styles.geoLabel, { color: colors.textSecondary }]}>DMS Format</Text>
+            <Text style={[styles.geoVal, { color: colors.text }]}>
               {formatLatitude(lat)} • {formatLongitude(lng)}
             </Text>
           </View>
-          <View style={styles.geoDivider} />
+          <View style={[styles.geoDivider, { backgroundColor: colors.divider }]} />
           <View style={styles.geoRow}>
-            <Text style={styles.geoLabel}>Decimal Degree</Text>
-            <Text style={styles.geoVal}>
+            <Text style={[styles.geoLabel, { color: colors.textSecondary }]}>Decimal Degree</Text>
+            <Text style={[styles.geoVal, { color: colors.text }]}>
               {lat.toFixed(5)}°, {lng.toFixed(5)}°
             </Text>
           </View>
           {spot?.category ? (
             <>
-              <View style={styles.geoDivider} />
+              <View style={[styles.geoDivider, { backgroundColor: colors.divider }]} />
               <View style={styles.geoRow}>
-                <Text style={styles.geoLabel}>Category</Text>
-                <Text style={styles.geoVal}>{spot.category.toUpperCase()}</Text>
+                <Text style={[styles.geoLabel, { color: colors.textSecondary }]}>Category</Text>
+                <Text style={[styles.geoVal, { color: colors.text }]}>{spot.category.toUpperCase()}</Text>
               </View>
             </>
           ) : null}
           {spot?.notes ? (
             <>
-              <View style={styles.geoDivider} />
+              <View style={[styles.geoDivider, { backgroundColor: colors.divider }]} />
               <View style={styles.geoRow}>
-                <Text style={styles.geoLabel}>Spot Notes</Text>
-                <Text style={styles.geoVal}>{spot.notes}</Text>
+                <Text style={[styles.geoLabel, { color: colors.textSecondary }]}>Spot Notes</Text>
+                <Text style={[styles.geoVal, { color: colors.text }]}>{spot.notes}</Text>
               </View>
             </>
           ) : null}
@@ -221,11 +232,12 @@ function Stat({
   label: string;
   value: string;
 }) {
+  const { colors } = useAppTheme();
   return (
     <View style={styles.stat}>
       <View style={styles.statIcon}>{icon}</View>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statValue}>{value}</Text>
+      <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{label}</Text>
+      <Text style={[styles.statValue, { color: colors.text }]}>{value}</Text>
     </View>
   );
 }

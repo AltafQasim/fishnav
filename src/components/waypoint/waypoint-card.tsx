@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
+import { useAppTheme } from '@/context/theme-context';
 import { formatLatitude, formatLongitude, UserLocation } from '@/hooks/use-user-location';
 import { bearingDegrees, distanceNm, formatBearing, formatNm } from '@/utils/geo';
 
@@ -38,6 +39,7 @@ export function WaypointCard({
   onViewOnMap,
   onStartNavigation,
 }: WaypointCardProps) {
+  const { colors, isLight } = useAppTheme();
   const dist = userLocation
     ? distanceNm(userLocation.latitude, userLocation.longitude, spot.latitude, spot.longitude)
     : null;
@@ -48,29 +50,43 @@ export function WaypointCard({
 
   return (
     <Pressable
-      style={styles.card}
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.cardBorder,
+        },
+      ]}
       onPress={() => onSelect(spot)}
-      android_ripple={{ color: 'rgba(255,255,255,0.06)' }}
+      android_ripple={{ color: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.06)' }}
     >
       {/* Accent Color Strip */}
-      <View style={[styles.colorStrip, { backgroundColor: spot.color || MapColors.accent }]} />
+      <View style={[styles.colorStrip, { backgroundColor: spot.color || colors.accent }]} />
 
       <View style={styles.cardContent}>
         {/* Top Header Row */}
         <View style={styles.headerRow}>
           <View style={styles.titleInfo}>
             <View style={styles.nameRow}>
-              <Text style={styles.spotName} numberOfLines={1}>
+              <Text style={[styles.spotName, { color: colors.text }]} numberOfLines={1}>
                 {spot.name}
               </Text>
               {spot.category ? (
-                <View style={styles.categoryBadge}>
-                  <Text style={styles.categoryText}>{spot.category}</Text>
+                <View
+                  style={[
+                    styles.categoryBadge,
+                    {
+                      backgroundColor: colors.chipBg,
+                      borderColor: colors.chipBorder,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.categoryText, { color: colors.accent }]}>{spot.category}</Text>
                 </View>
               ) : null}
             </View>
 
-            <Text style={styles.coordsText}>
+            <Text style={[styles.coordsText, { color: colors.textSecondary }]}>
               {formatLatitude(spot.latitude)} • {formatLongitude(spot.longitude)}
             </Text>
           </View>
@@ -86,29 +102,29 @@ export function WaypointCard({
             <Ionicons
               name={spot.favorite ? 'star' : 'star-outline'}
               size={20}
-              color={spot.favorite ? MapColors.yellow : MapColors.textSecondary}
+              color={spot.favorite ? MapColors.yellow : colors.textMuted}
             />
           </Pressable>
         </View>
 
         {/* Marine Telemetry Row (Depth, Distance, Bearing) */}
         <View style={styles.metaRow}>
-          <View style={styles.badge}>
-            <MaterialCommunityIcons name="waves" size={13} color={MapColors.accent} />
-            <Text style={styles.badgeText}>{spot.depthM} m depth</Text>
+          <View style={[styles.badge, { backgroundColor: colors.chipBg }]}>
+            <MaterialCommunityIcons name="waves" size={13} color={colors.accent} />
+            <Text style={[styles.badgeText, { color: colors.text }]}>{spot.depthM} m depth</Text>
           </View>
 
           {dist != null && (
-            <View style={styles.badge}>
+            <View style={[styles.badge, { backgroundColor: colors.chipBg }]}>
               <MaterialCommunityIcons name="map-marker-distance" size={13} color={MapColors.green} />
-              <Text style={styles.badgeText}>{formatNm(dist)}</Text>
+              <Text style={[styles.badgeText, { color: colors.text }]}>{formatNm(dist)}</Text>
             </View>
           )}
 
           {bearing != null && (
-            <View style={styles.badge}>
+            <View style={[styles.badge, { backgroundColor: colors.chipBg }]}>
               <MaterialCommunityIcons name="compass-outline" size={13} color="#F59E0B" />
-              <Text style={styles.badgeText}>
+              <Text style={[styles.badgeText, { color: colors.text }]}>
                 {formatBearing(bearing)} {getCardinalDirection(bearing)}
               </Text>
             </View>
@@ -116,9 +132,15 @@ export function WaypointCard({
         </View>
 
         {/* Action Buttons Row */}
-        <View style={styles.actionsRow}>
+        <View style={[styles.actionsRow, { borderTopColor: colors.divider }]}>
           <Pressable
-            style={styles.mapActionBtn}
+            style={[
+              styles.mapActionBtn,
+              {
+                backgroundColor: colors.chipBg,
+                borderColor: colors.accent,
+              },
+            ]}
             onPress={() => {
               if (onStartNavigation) {
                 onStartNavigation(spot);
@@ -131,19 +153,19 @@ export function WaypointCard({
             accessibilityRole="button"
             accessibilityLabel={`Start navigation to ${spot.name}`}
           >
-            <Ionicons name="navigate" size={14} color="#00F0FF" />
-            <Text style={styles.mapActionText}>Start Navigation</Text>
+            <Ionicons name="navigate" size={14} color={colors.accent} />
+            <Text style={[styles.mapActionText, { color: colors.accent }]}>Start Navigation</Text>
           </Pressable>
 
           <View style={styles.crudBtns}>
             <Pressable
-              style={styles.iconBtn}
+              style={[styles.iconBtn, { backgroundColor: colors.chipBg }]}
               onPress={() => onEdit(spot)}
               hitSlop={8}
               accessibilityRole="button"
               accessibilityLabel="Edit waypoint"
             >
-              <Ionicons name="pencil" size={16} color={MapColors.textSecondary} />
+              <Ionicons name="pencil" size={16} color={colors.textSecondary} />
             </Pressable>
 
             <Pressable

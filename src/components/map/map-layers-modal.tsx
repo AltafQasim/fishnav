@@ -24,35 +24,35 @@ const MAP_STYLES: {
   icon: 'map' | 'earth' | 'compass' | 'moon';
   color: string;
 }[] = [
-  {
-    id: 'standard',
-    name: 'Standard Chart',
-    desc: 'Crisp vector coastal and street geography',
-    icon: 'map',
-    color: '#0284C7',
-  },
-  {
-    id: 'satellite',
-    name: 'Satellite View',
-    desc: 'High-res ArcGIS oceanic & reef satellite imagery',
-    icon: 'earth',
-    color: '#10B981',
-  },
-  {
-    id: 'marine',
-    name: 'Marine Nautical',
-    desc: 'Voyager oceanic contrast with shallow depth bands',
-    icon: 'compass',
-    color: '#3B82F6',
-  },
-  {
-    id: 'night',
-    name: 'Night Navigation',
-    desc: 'Darkened palette to preserve ship night vision',
-    icon: 'moon',
-    color: '#8B5CF6',
-  },
-];
+    {
+      id: 'standard',
+      name: 'Standard Chart',
+      desc: 'Crisp vector coastal and street geography',
+      icon: 'map',
+      color: '#0284C7',
+    },
+    {
+      id: 'satellite',
+      name: 'Satellite View',
+      desc: 'High-res ArcGIS oceanic & reef satellite imagery',
+      icon: 'earth',
+      color: '#10B981',
+    },
+    {
+      id: 'marine',
+      name: 'Marine Nautical',
+      desc: 'Voyager oceanic contrast with shallow depth bands',
+      icon: 'compass',
+      color: '#3B82F6',
+    },
+    {
+      id: 'night',
+      name: 'Night Navigation',
+      desc: 'Darkened palette to preserve ship night vision',
+      icon: 'moon',
+      color: '#8B5CF6',
+    },
+  ];
 
 export function MapLayersModal({
   visible,

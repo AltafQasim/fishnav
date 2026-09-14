@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { useTripTracking } from '@/context/trip-context';
+import { useAppTheme } from '@/context/theme-context';
 import { formatNm } from '@/utils/geo';
 
 export function SaveTripModal() {
@@ -62,6 +63,8 @@ export function SaveTripModal() {
     return `${mins}m ${secs}s`;
   };
 
+  const { colors, isLight } = useAppTheme();
+
   return (
     <Modal visible={showSaveModal} transparent animationType="fade" onRequestClose={handleResume}>
       <KeyboardAvoidingView
@@ -70,69 +73,84 @@ export function SaveTripModal() {
       >
         <Pressable style={styles.backdrop} onPress={handleResume} />
 
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           {/* Top Title & Icon */}
           <View style={styles.header}>
-            <View style={styles.iconCircle}>
-              <MaterialCommunityIcons name="sail-boat" size={26} color="#00F0FF" />
+            <View style={[styles.iconCircle, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
+              <MaterialCommunityIcons name="sail-boat" size={26} color={colors.accent} />
             </View>
             <View style={styles.headerTitles}>
-              <Text style={styles.title}>Voyage Completed!</Text>
-              <Text style={styles.subtitle}>Save this track to your Trips Logbook</Text>
+              <Text style={[styles.title, { color: colors.text }]}>Voyage Completed!</Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Save this track to your Trips Logbook</Text>
             </View>
             <Pressable onPress={handleResume} hitSlop={10} style={styles.closeBtn}>
-              <Ionicons name="close" size={22} color="#94A3B8" />
+              <Ionicons name="close" size={22} color={colors.textMuted} />
             </Pressable>
           </View>
 
           {/* Voyage Metrics Grid */}
-          <View style={styles.metricsGrid}>
+          <View style={[styles.metricsGrid, { backgroundColor: colors.chipBg, borderColor: colors.divider }]}>
             <View style={styles.metricItem}>
-              <Text style={styles.metricValue}>{formatNm(pendingTripSummary.distanceNm)}</Text>
-              <Text style={styles.metricLabel}>DISTANCE</Text>
+              <Text style={[styles.metricValue, { color: colors.text }]}>{formatNm(pendingTripSummary.distanceNm)}</Text>
+              <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>DISTANCE</Text>
             </View>
 
-            <View style={styles.gridDivider} />
+            <View style={[styles.gridDivider, { backgroundColor: colors.divider }]} />
 
             <View style={styles.metricItem}>
-              <Text style={styles.metricValue}>
+              <Text style={[styles.metricValue, { color: colors.text }]}>
                 {formatDuration(pendingTripSummary.durationSeconds)}
               </Text>
-              <Text style={styles.metricLabel}>DURATION</Text>
+              <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>DURATION</Text>
             </View>
 
-            <View style={styles.gridDivider} />
+            <View style={[styles.gridDivider, { backgroundColor: colors.divider }]} />
 
             <View style={styles.metricItem}>
-              <Text style={styles.metricValue}>
+              <Text style={[styles.metricValue, { color: colors.text }]}>
                 {pendingTripSummary.avgSpeedKnots}{' '}
-                <Text style={styles.metricUnit}>kts</Text>
+                <Text style={[styles.metricUnit, { color: colors.textSecondary }]}>kts</Text>
               </Text>
-              <Text style={styles.metricLabel}>AVG SPEED</Text>
+              <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>AVG SPEED</Text>
             </View>
           </View>
 
           {/* Form Fields */}
           <View style={styles.formGroup}>
-            <Text style={styles.inputLabel}>Trip Name</Text>
+            <Text style={[styles.inputLabel, { color: colors.text }]}>Trip Name</Text>
             <TextInput
-              style={styles.textInput}
+              style={[
+                styles.textInput,
+                {
+                  backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.4)',
+                  borderColor: colors.divider,
+                  color: colors.text,
+                },
+              ]}
               value={tripName}
               onChangeText={setTripName}
               placeholder="e.g. Veraval Kingfish Run"
-              placeholderTextColor="#64748B"
+              placeholderTextColor={colors.textMuted}
               autoFocus
             />
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={styles.inputLabel}>Trip Notes & Catch Details (Optional)</Text>
+            <Text style={[styles.inputLabel, { color: colors.text }]}>Trip Notes & Catch Details (Optional)</Text>
             <TextInput
-              style={[styles.textInput, styles.notesInput]}
+              style={[
+                styles.textInput,
+                styles.notesInput,
+                {
+                  backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.4)',
+                  borderColor: colors.divider,
+                  color: colors.text,
+                },
+              ]}
               value={notes}
               onChangeText={setNotes}
               placeholder="e.g. 6 Ghol fish caught at 60m depth, good water clarity"
-              placeholderTextColor="#64748B"
+              placeholderTextColor={colors.textMuted}
               multiline
               numberOfLines={2}
             />
@@ -141,12 +159,12 @@ export function SaveTripModal() {
           {/* Action Buttons */}
           <View style={styles.actionsRow}>
             <Pressable
-              style={[styles.btn, styles.saveBtn]}
+              style={[styles.btn, styles.saveBtn, { backgroundColor: colors.accent }]}
               onPress={handleSave}
               disabled={isSaving}
             >
-              <Ionicons name="save-outline" size={18} color="#FFFFFF" />
-              <Text style={styles.saveBtnText}>
+              <Ionicons name="save-outline" size={18} color={isLight ? '#FFFFFF' : '#020B14'} />
+              <Text style={[styles.saveBtnText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>
                 {isSaving ? 'SAVING...' : 'SAVE TO LOGBOOK'}
               </Text>
             </Pressable>

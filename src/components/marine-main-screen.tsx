@@ -32,6 +32,7 @@ import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
 import { useTripTracking } from '@/context/trip-context';
 import { useWaypoints } from '@/context/waypoints-context';
+import { useAppTheme } from '@/context/theme-context';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { bearingDegrees, distanceNm, etaFromNm, formatBearing, formatNm } from '@/utils/geo';
 
@@ -42,6 +43,7 @@ type MarineMainScreenProps = {
 export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<NativeMapHandle>(null);
+  const { colors } = useAppTheme();
 
   const {
     waypoints,
@@ -64,7 +66,15 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     seamarks: true,
     dangerZone: true,
   });
-  const [activeMapStyle, setActiveMapStyle] = useState<MapStyleId>('standard');
+  const [activeMapStyle, setActiveMapStyle] = useState<MapStyleId>(colors.mapStyle || 'standard');
+
+  // Sync map tiles with App Theme changes
+  React.useEffect(() => {
+    if (colors.mapStyle) {
+      setActiveMapStyle(colors.mapStyle);
+    }
+  }, [colors.mapStyle]);
+
   const [showGpsHud, setShowGpsHud] = useState(false);
 
   // Search & Navigation Modals state
@@ -205,7 +215,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
   const meta = getSheetMetadata();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* 1. Full Screen Interactive Marine Map (Default Layer!) */}
       <View style={styles.mapWrap}>
         <NativeMapView
@@ -306,8 +316,8 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
         subtitle={meta.subtitle}
         badge={
           meta.badgeText ? (
-            <View style={styles.sheetBadge}>
-              <Text style={styles.sheetBadgeText}>{meta.badgeText}</Text>
+            <View style={[styles.sheetBadge, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
+              <Text style={[styles.sheetBadgeText, { color: colors.accent }]}>{meta.badgeText}</Text>
             </View>
           ) : undefined
         }

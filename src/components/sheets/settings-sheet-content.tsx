@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -15,12 +15,14 @@ import {
 
 import { GoogleLogoSvg } from '@/components/ui/google-logo-svg';
 import { MapColors } from '@/constants/map-theme';
+import { useAppTheme } from '@/context/theme-context';
 import { useAuth } from '@/context/auth-context';
 import { useTripTracking } from '@/context/trip-context';
 import { useWaypoints } from '@/context/waypoints-context';
 
 export function SettingsSheetContent() {
   const router = useRouter();
+  const { theme, setTheme, colors, isLight, isDark, isHighContrast } = useAppTheme();
   const { captain, logout, updateCaptain } = useAuth();
   const { waypoints, resetWaypoints } = useWaypoints();
   const { savedTrips } = useTripTracking();
@@ -108,30 +110,38 @@ export function SettingsSheetContent() {
       showsVerticalScrollIndicator={false}
     >
       {/* ⚓ Active Captain & Vessel Profile Badge */}
-      <View style={styles.captainCard}>
-        <View style={styles.captainAvatarWrap}>
+      <View
+        style={[
+          styles.captainCard,
+          {
+            backgroundColor: isLight ? '#FFFFFF' : isDark ? '#1E293B' : 'rgba(2, 132, 199, 0.12)',
+            borderColor: isLight ? '#CBD5E1' : isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(56, 189, 248, 0.35)',
+          },
+        ]}
+      >
+        <View style={[styles.captainAvatarWrap, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
           {captain?.avatarUrl ? (
             <Image source={{ uri: captain.avatarUrl }} style={styles.captainAvatarImg} />
           ) : (
-            <MaterialCommunityIcons name="shield-account" size={26} color="#00F0FF" />
+            <MaterialCommunityIcons name="shield-account" size={26} color={colors.accent} />
           )}
         </View>
         <View style={styles.captainTextWrap}>
-          <Text style={styles.captainName}>
+          <Text style={[styles.captainName, { color: colors.text }]}>
             {captain?.name || 'Capt. Vikram Rathore'}
           </Text>
-          <Text style={styles.captainVessel}>
+          <Text style={[styles.captainVessel, { color: isLight ? colors.textSecondary : colors.accent }]}>
             {captain?.vesselName || 'Sea Hunter II'} • {captain?.callSign || 'IND-GJ-8821'}
           </Text>
           <View style={styles.authBadgeRow}>
             {captain?.authProvider === 'google' ? (
               <GoogleLogoSvg size={13} />
             ) : captain?.authProvider === 'phone' ? (
-              <Ionicons name="call" size={12} color="#00F0FF" />
+              <Ionicons name="call" size={12} color={colors.accent} />
             ) : (
               <Ionicons name="flash" size={12} color="#FBBF24" />
             )}
-            <Text style={styles.authBadgeText}>
+            <Text style={[styles.authBadgeText, { color: colors.accent }]}>
               {captain?.emailOrPhone || '+91 98765 43210'}
             </Text>
           </View>
@@ -156,83 +166,267 @@ export function SettingsSheetContent() {
 
       {/* 🚀 Trips & Recorded Routes Logbook Shortcut */}
       <Pressable
-        style={styles.tripsShortcutCard}
+        style={[
+          styles.tripsShortcutCard,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.cardBorder,
+          },
+        ]}
         onPress={() => router.push('/trips')}
       >
-        <View style={styles.tripsIconWrap}>
-          <MaterialCommunityIcons name="map-marker-path" size={24} color="#00F0FF" />
+        <View style={[styles.tripsIconWrap, { backgroundColor: colors.chipBg }]}>
+          <MaterialCommunityIcons name="map-marker-path" size={24} color={colors.accent} />
         </View>
         <View style={styles.tripsTextWrap}>
-          <Text style={styles.tripsTitle}>Trips & Routes Logbook</Text>
-          <Text style={styles.tripsSubtitle}>
+          <Text style={[styles.tripsTitle, { color: colors.text }]}>Trips & Routes Logbook</Text>
+          <Text style={[styles.tripsSubtitle, { color: colors.textSecondary }]}>
             {savedTrips.length} recorded fishing voyages • View tracks on map
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color="#64748B" />
+        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
       </Pressable>
+
+      {/* 🎨 APP THEME: HIGH CONTRAST / DARK / LIGHT */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionHeader, { color: colors.accent }]}>
+            APP THEME (HIGH CONTRAST / DARK / LIGHT)
+          </Text>
+          <View style={[styles.badgeTheme, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
+            <Text style={[styles.badgeThemeText, { color: colors.accent }]}>
+              {theme === 'high-contrast'
+                ? 'HIGH CONTRAST'
+                : theme === 'dark'
+                ? 'DARK MODE'
+                : 'LIGHT MODE'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Text style={[styles.themeSubtitle, { color: colors.textSecondary }]}>
+            Puri application ki theme badlein: Dark, Light ya High Contrast:
+          </Text>
+
+          <View style={styles.themesList}>
+            {(
+              [
+                {
+                  id: 'high-contrast' as const,
+                  name: 'High Contrast',
+                  tag: 'CURRENT MARINE',
+                  desc: 'Signature oceanic neon: deep abyss with glowing cyan & maximum water legibility',
+                  icon: 'contrast' as const,
+                  accentColor: '#00F0FF',
+                  bgColor: 'rgba(0, 240, 255, 0.15)',
+                  badge: 'CURRENT',
+                },
+                {
+                  id: 'dark' as const,
+                  name: 'Dark Theme',
+                  tag: 'ELEGANT SLATE',
+                  desc: 'Low-glare dark slate palette engineered for night navigation comfort',
+                  icon: 'moon' as const,
+                  accentColor: '#38BDF8',
+                  bgColor: 'rgba(56, 189, 248, 0.15)',
+                  badge: 'NIGHT',
+                },
+                {
+                  id: 'light' as const,
+                  name: 'Light Theme',
+                  tag: 'DAYLIGHT NAUTICAL',
+                  desc: 'Clean, high-luminance white & daylight charts for bright outdoor sunlight',
+                  icon: 'sunny' as const,
+                  accentColor: '#0284C7',
+                  bgColor: 'rgba(2, 132, 199, 0.15)',
+                  badge: 'DAYLIGHT',
+                },
+              ]
+            ).map((item) => {
+              const isSelected = theme === item.id;
+              return (
+                <Pressable
+                  key={item.id}
+                  style={[
+                    styles.themeItem,
+                    {
+                      backgroundColor: isSelected
+                        ? colors.chipBg
+                        : isLight
+                        ? '#F8FAFC'
+                        : '#041728',
+                      borderColor: isSelected ? item.accentColor : colors.divider,
+                    },
+                    isSelected && styles.themeItemSelected,
+                  ]}
+                  onPress={() => setTheme(item.id)}
+                >
+                  <View
+                    style={[
+                      styles.themeIconCircle,
+                      {
+                        backgroundColor: item.bgColor,
+                        borderColor: isSelected ? item.accentColor : 'transparent',
+                      },
+                    ]}
+                  >
+                    <Ionicons name={item.icon} size={22} color={item.accentColor} />
+                  </View>
+
+                  <View style={styles.themeInfoWrap}>
+                    <View style={styles.themeTitleRow}>
+                      <Text
+                        style={[
+                          styles.themeTitle,
+                          { color: isSelected ? colors.text : colors.textSecondary },
+                          isSelected && { fontWeight: '800', color: colors.text },
+                        ]}
+                      >
+                        {item.name}
+                      </Text>
+                      <View
+                        style={[
+                          styles.themeTag,
+                          {
+                            borderColor: isSelected
+                              ? item.accentColor
+                              : colors.divider,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.themeTagText,
+                            { color: isSelected ? item.accentColor : colors.textMuted },
+                          ]}
+                        >
+                          {item.badge}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.themeDesc, { color: colors.textMuted }]}>{item.desc}</Text>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.themeRadio,
+                      { borderColor: isSelected ? item.accentColor : colors.textMuted },
+                      isSelected && { backgroundColor: item.bgColor },
+                    ]}
+                  >
+                    {isSelected && <View style={[styles.themeRadioDot, { backgroundColor: item.accentColor }]} />}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      </View>
 
       {/* 1. Vessel Profile */}
       <View style={styles.section}>
-        <Text style={styles.sectionHeader}>VESSEL & BOAT PROFILE</Text>
-        <View style={styles.card}>
+        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>VESSEL & BOAT PROFILE</Text>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Boat Name</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>Boat Name</Text>
             <TextInput
-              style={styles.textInput}
+              style={[
+                styles.textInput,
+                {
+                  backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.3)',
+                  borderColor: colors.divider,
+                  color: colors.text,
+                },
+              ]}
               value={boatName}
               onChangeText={setBoatName}
               placeholder="e.g. Sea Hunter"
-              placeholderTextColor={MapColors.textMuted}
+              placeholderTextColor={colors.textMuted}
             />
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Draft Limit (Meters)</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>Draft Limit (Meters)</Text>
             <TextInput
-              style={[styles.textInput, styles.shortInput]}
+              style={[
+                styles.textInput,
+                styles.shortInput,
+                {
+                  backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.3)',
+                  borderColor: colors.divider,
+                  color: colors.text,
+                },
+              ]}
               value={boatDraft}
               onChangeText={setBoatDraft}
               keyboardType="numeric"
             />
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Cruise Speed (Knots)</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>Cruise Speed (Knots)</Text>
             <TextInput
-              style={[styles.textInput, styles.shortInput]}
+              style={[
+                styles.textInput,
+                styles.shortInput,
+                {
+                  backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.3)',
+                  borderColor: colors.divider,
+                  color: colors.text,
+                },
+              ]}
               value={cruiseSpeed}
               onChangeText={setCruiseSpeed}
               keyboardType="numeric"
             />
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
-          <Pressable style={styles.saveVesselBtn} onPress={handleSaveVessel}>
-            <Ionicons name="checkmark-circle" size={16} color="#020B14" />
-            <Text style={styles.saveVesselBtnText}>Save Vessel Specs</Text>
+          <Pressable style={[styles.saveVesselBtn, { backgroundColor: colors.accent }]} onPress={handleSaveVessel}>
+            <Ionicons name="checkmark-circle" size={16} color={isLight ? '#FFFFFF' : '#020B14'} />
+            <Text style={[styles.saveVesselBtnText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>
+              Save Vessel Specs
+            </Text>
           </Pressable>
         </View>
       </View>
 
       {/* 2. Units */}
       <View style={styles.section}>
-        <Text style={styles.sectionHeader}>UNITS & MEASUREMENTS</Text>
-        <View style={styles.card}>
+        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>UNITS & MEASUREMENTS</Text>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Distance Unit</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>Distance Unit</Text>
             <View style={styles.toggleRow}>
               {(['NM', 'KM', 'MI'] as const).map((u) => (
                 <Pressable
                   key={u}
-                  style={[styles.unitBtn, distanceUnit === u && styles.unitBtnActive]}
+                  style={[
+                    styles.unitBtn,
+                    {
+                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(255, 255, 255, 0.06)',
+                      borderColor: colors.divider,
+                    },
+                    distanceUnit === u && {
+                      backgroundColor: colors.chipBg,
+                      borderColor: colors.accent,
+                    },
+                  ]}
                   onPress={() => setDistanceUnit(u)}
                 >
-                  <Text style={[styles.unitBtnText, distanceUnit === u && styles.unitBtnTextActive]}>
+                  <Text
+                    style={[
+                      styles.unitBtnText,
+                      { color: colors.textSecondary },
+                      distanceUnit === u && { color: colors.accent, fontWeight: '700' },
+                    ]}
+                  >
                     {u}
                   </Text>
                 </Pressable>
@@ -240,18 +434,34 @@ export function SettingsSheetContent() {
             </View>
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Speed Unit</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>Speed Unit</Text>
             <View style={styles.toggleRow}>
               {(['KTS', 'KMH'] as const).map((u) => (
                 <Pressable
                   key={u}
-                  style={[styles.unitBtn, speedUnit === u && styles.unitBtnActive]}
+                  style={[
+                    styles.unitBtn,
+                    {
+                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(255, 255, 255, 0.06)',
+                      borderColor: colors.divider,
+                    },
+                    speedUnit === u && {
+                      backgroundColor: colors.chipBg,
+                      borderColor: colors.accent,
+                    },
+                  ]}
                   onPress={() => setSpeedUnit(u)}
                 >
-                  <Text style={[styles.unitBtnText, speedUnit === u && styles.unitBtnTextActive]}>
+                  <Text
+                    style={[
+                      styles.unitBtnText,
+                      { color: colors.textSecondary },
+                      speedUnit === u && { color: colors.accent, fontWeight: '700' },
+                    ]}
+                  >
                     {u}
                   </Text>
                 </Pressable>
@@ -259,18 +469,34 @@ export function SettingsSheetContent() {
             </View>
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Depth Unit</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>Depth Unit</Text>
             <View style={styles.toggleRow}>
               {(['M', 'FT'] as const).map((u) => (
                 <Pressable
                   key={u}
-                  style={[styles.unitBtn, depthUnit === u && styles.unitBtnActive]}
+                  style={[
+                    styles.unitBtn,
+                    {
+                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(255, 255, 255, 0.06)',
+                      borderColor: colors.divider,
+                    },
+                    depthUnit === u && {
+                      backgroundColor: colors.chipBg,
+                      borderColor: colors.accent,
+                    },
+                  ]}
                   onPress={() => setDepthUnit(u)}
                 >
-                  <Text style={[styles.unitBtnText, depthUnit === u && styles.unitBtnTextActive]}>
+                  <Text
+                    style={[
+                      styles.unitBtnText,
+                      { color: colors.textSecondary },
+                      depthUnit === u && { color: colors.accent, fontWeight: '700' },
+                    ]}
+                  >
                     {u === 'M' ? 'Meters' : 'Feet'}
                   </Text>
                 </Pressable>
@@ -282,62 +508,62 @@ export function SettingsSheetContent() {
 
       {/* 3. Safety Alarms */}
       <View style={styles.section}>
-        <Text style={styles.sectionHeader}>NAVIGATION ALARMS & SENSORS</Text>
-        <View style={styles.card}>
+        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>NAVIGATION ALARMS & SENSORS</Text>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.fieldRow}>
             <View style={styles.switchInfo}>
-              <Text style={styles.fieldLabel}>High-Precision GPS</Text>
-              <Text style={styles.fieldSub}>1-second interval NMEA tracking</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>High-Precision GPS</Text>
+              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>1-second interval NMEA tracking</Text>
             </View>
             <Switch
               value={gpsPrecision}
               onValueChange={setGpsPrecision}
-              trackColor={{ false: '#334155', true: '#0284C7' }}
+              trackColor={{ false: isLight ? '#CBD5E1' : '#334155', true: colors.accent }}
               thumbColor="#FFFFFF"
             />
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
             <View style={styles.switchInfo}>
-              <Text style={styles.fieldLabel}>Shallow Water Warning</Text>
-              <Text style={styles.fieldSub}>Alarm when depth is &lt; {boatDraft}m</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>Shallow Water Warning</Text>
+              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>Alarm when depth is &lt; {boatDraft}m</Text>
             </View>
             <Switch
               value={shallowAlarm}
               onValueChange={setShallowAlarm}
-              trackColor={{ false: '#334155', true: '#0284C7' }}
+              trackColor={{ false: isLight ? '#CBD5E1' : '#334155', true: colors.accent }}
               thumbColor="#FFFFFF"
             />
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
             <View style={styles.switchInfo}>
-              <Text style={styles.fieldLabel}>Arabian Sea Danger Alerts</Text>
-              <Text style={styles.fieldSub}>Hazard warnings around coastal rocks</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>Arabian Sea Danger Alerts</Text>
+              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>Hazard warnings around coastal rocks</Text>
             </View>
             <Switch
               value={dangerZoneAlarm}
               onValueChange={setDangerZoneAlarm}
-              trackColor={{ false: '#334155', true: '#0284C7' }}
+              trackColor={{ false: isLight ? '#CBD5E1' : '#334155', true: colors.accent }}
               thumbColor="#FFFFFF"
             />
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
             <View style={styles.switchInfo}>
-              <Text style={styles.fieldLabel}>Keep Screen Awake</Text>
-              <Text style={styles.fieldSub}>Never sleep during active navigation</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>Keep Screen Awake</Text>
+              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>Never sleep during active navigation</Text>
             </View>
             <Switch
               value={keepAwake}
               onValueChange={setKeepAwake}
-              trackColor={{ false: '#334155', true: '#0284C7' }}
+              trackColor={{ false: isLight ? '#CBD5E1' : '#334155', true: colors.accent }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -346,26 +572,26 @@ export function SettingsSheetContent() {
 
       {/* 4. Map Overlays */}
       <View style={styles.section}>
-        <Text style={styles.sectionHeader}>MAP DISPLAY & CHARTS</Text>
-        <View style={styles.card}>
+        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>MAP DISPLAY & CHARTS</Text>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Bathymetric Depth Contours</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>Bathymetric Depth Contours</Text>
             <Switch
               value={showContours}
               onValueChange={setShowContours}
-              trackColor={{ false: '#334155', true: '#0284C7' }}
+              trackColor={{ false: isLight ? '#CBD5E1' : '#334155', true: colors.accent }}
               thumbColor="#FFFFFF"
             />
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
-            <Text style={styles.fieldLabel}>Nautical Seamarks & Buoys</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>Nautical Seamarks & Buoys</Text>
             <Switch
               value={showSeamarks}
               onValueChange={setShowSeamarks}
-              trackColor={{ false: '#334155', true: '#0284C7' }}
+              trackColor={{ false: isLight ? '#CBD5E1' : '#334155', true: colors.accent }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -374,30 +600,36 @@ export function SettingsSheetContent() {
 
       {/* 5. Data & Backup */}
       <View style={styles.section}>
-        <Text style={styles.sectionHeader}>DATA & GPX BACKUP</Text>
-        <View style={styles.card}>
+        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>DATA & GPX BACKUP</Text>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.fieldRow}>
             <View>
-              <Text style={styles.fieldLabel}>Saved Waypoints</Text>
-              <Text style={styles.fieldSub}>{waypoints.length} spots in storage</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>Saved Waypoints</Text>
+              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>{waypoints.length} spots in storage</Text>
             </View>
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.actionsRow}>
-            <Pressable style={styles.actionBtn} onPress={handleExportGpx}>
-              <Ionicons name="download-outline" size={16} color="#38BDF8" />
-              <Text style={styles.actionBtnText}>Export GPX</Text>
+            <Pressable
+              style={[styles.actionBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+              onPress={handleExportGpx}
+            >
+              <Ionicons name="download-outline" size={16} color={colors.accent} />
+              <Text style={[styles.actionBtnText, { color: colors.accent }]}>Export GPX</Text>
             </Pressable>
 
-            <Pressable style={styles.actionBtn} onPress={handleImportGpx}>
-              <Ionicons name="cloud-upload-outline" size={16} color="#38BDF8" />
-              <Text style={styles.actionBtnText}>Import GPX</Text>
+            <Pressable
+              style={[styles.actionBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+              onPress={handleImportGpx}
+            >
+              <Ionicons name="cloud-upload-outline" size={16} color={colors.accent} />
+              <Text style={[styles.actionBtnText, { color: colors.accent }]}>Import GPX</Text>
             </Pressable>
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <Pressable style={styles.resetBtn} onPress={handleResetPrompt}>
             <Ionicons name="refresh-outline" size={16} color="#EF4444" />
@@ -408,23 +640,27 @@ export function SettingsSheetContent() {
 
       {/* 6. Emergency VHF */}
       <View style={styles.section}>
-        <Text style={styles.sectionHeader}>MARINE EMERGENCY CHANNELS</Text>
-        <View style={[styles.card, { borderColor: 'rgba(239, 68, 68, 0.25)' }]}>
+        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>MARINE EMERGENCY CHANNELS</Text>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: 'rgba(239, 68, 68, 0.25)' }]}>
           <View style={styles.emergencyRow}>
             <Ionicons name="radio" size={18} color="#EF4444" />
             <View style={{ flex: 1 }}>
-              <Text style={styles.emergencyTitle}>VHF CHANNEL 16</Text>
-              <Text style={styles.emergencySub}>International Maritime Distress & Safety</Text>
+              <Text style={[styles.emergencyTitle, { color: colors.text }]}>VHF CHANNEL 16</Text>
+              <Text style={[styles.emergencySub, { color: colors.textSecondary }]}>
+                International Maritime Distress & Safety
+              </Text>
             </View>
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.emergencyRow}>
             <Ionicons name="call" size={18} color="#22C55E" />
             <View style={{ flex: 1 }}>
-              <Text style={styles.emergencyTitle}>COAST GUARD: 1554</Text>
-              <Text style={styles.emergencySub}>24x7 Indian Coast Guard Maritime Search & Rescue</Text>
+              <Text style={[styles.emergencyTitle, { color: colors.text }]}>COAST GUARD: 1554</Text>
+              <Text style={[styles.emergencySub, { color: colors.textSecondary }]}>
+                24x7 Indian Coast Guard Maritime Search & Rescue
+              </Text>
             </View>
           </View>
         </View>
@@ -686,5 +922,93 @@ const styles = StyleSheet.create({
     color: '#020B14',
     fontSize: 12,
     fontWeight: '800',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  badgeTheme: {
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  badgeThemeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  themeSubtitle: {
+    fontSize: 12,
+    marginBottom: 12,
+    lineHeight: 16,
+  },
+  themesList: {
+    gap: 10,
+  },
+  themeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    gap: 12,
+  },
+  themeItemSelected: {
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  themeIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+  },
+  themeInfoWrap: {
+    flex: 1,
+  },
+  themeTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+  },
+  themeTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  themeTag: {
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+    borderWidth: 1,
+  },
+  themeTagText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  themeDesc: {
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  themeRadio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  themeRadioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
 });

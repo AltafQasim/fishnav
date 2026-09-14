@@ -4,8 +4,10 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { TideChart } from '@/components/weather/tide-chart';
 import { MapColors } from '@/constants/map-theme';
+import { useAppTheme } from '@/context/theme-context';
 
 export function WeatherSheetContent() {
+  const { colors, isLight } = useAppTheme();
   const hourlyData = [
     { hour: 'Now', temp: '29°', wind: '14 kts', wave: '1.2m', icon: 'weather-sunny' },
     { hour: '15:00', temp: '29°', wind: '15 kts', wave: '1.3m', icon: 'weather-partly-cloudy' },
@@ -34,60 +36,60 @@ export function WeatherSheetContent() {
       </View>
 
       {/* Ocean & Sea Conditions Grid */}
-      <Text style={styles.sectionTitle}>OCEAN & SEA CONDITIONS</Text>
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>OCEAN & SEA CONDITIONS</Text>
       <View style={styles.grid}>
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.cardHeader}>
             <MaterialCommunityIcons name="wave" size={16} color="#38BDF8" />
             <Text style={styles.cardLabel}>WAVE & SWELL</Text>
           </View>
-          <Text style={styles.cardValue}>1.2 <Text style={styles.cardUnit}>m</Text></Text>
-          <Text style={styles.cardSub}>Period: 7.2s • Swell: SSW</Text>
+          <Text style={[styles.cardValue, { color: colors.text }]}>1.2 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>m</Text></Text>
+          <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Period: 7.2s • Swell: SSW</Text>
         </View>
 
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.cardHeader}>
             <Feather name="wind" size={16} color="#F59E0B" />
             <Text style={styles.cardLabel}>WIND (SOG)</Text>
           </View>
-          <Text style={styles.cardValue}>14 <Text style={styles.cardUnit}>kts</Text></Text>
-          <Text style={styles.cardSub}>WSW 245° • Force 4</Text>
+          <Text style={[styles.cardValue, { color: colors.text }]}>14 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>kts</Text></Text>
+          <Text style={[styles.cardSub, { color: colors.textSecondary }]}>WSW 245° • Force 4</Text>
         </View>
 
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.cardHeader}>
             <MaterialCommunityIcons name="coolant-temperature" size={16} color="#06B6D4" />
             <Text style={styles.cardLabel}>WATER TEMP</Text>
           </View>
-          <Text style={styles.cardValue}>27.5 <Text style={styles.cardUnit}>°C</Text></Text>
-          <Text style={styles.cardSub}>Ideal for Pelagic Catch</Text>
+          <Text style={[styles.cardValue, { color: colors.text }]}>27.5 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>°C</Text></Text>
+          <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Ideal for Pelagic Catch</Text>
         </View>
 
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.cardHeader}>
             <MaterialCommunityIcons name="gauge" size={16} color="#A855F7" />
             <Text style={styles.cardLabel}>BAROMETER</Text>
           </View>
-          <Text style={styles.cardValue}>1012 <Text style={styles.cardUnit}>hPa</Text></Text>
-          <Text style={styles.cardSub}>Steady • Fair Marine</Text>
+          <Text style={[styles.cardValue, { color: colors.text }]}>1012 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>hPa</Text></Text>
+          <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Steady • Fair Marine</Text>
         </View>
 
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.cardHeader}>
             <Ionicons name="eye-outline" size={16} color="#10B981" />
             <Text style={styles.cardLabel}>VISIBILITY</Text>
           </View>
-          <Text style={styles.cardValue}>10 <Text style={styles.cardUnit}>NM</Text></Text>
-          <Text style={styles.cardSub}>Clear Horizon • No Fog</Text>
+          <Text style={[styles.cardValue, { color: colors.text }]}>10 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>NM</Text></Text>
+          <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Clear Horizon • No Fog</Text>
         </View>
 
-        <View style={styles.card}>
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.cardHeader}>
             <MaterialCommunityIcons name="compass-rose" size={16} color="#EC4899" />
             <Text style={styles.cardLabel}>TIDAL CURRENT</Text>
           </View>
-          <Text style={styles.cardValue}>0.8 <Text style={styles.cardUnit}>kts</Text></Text>
-          <Text style={styles.cardSub}>Bearing: 110° ESE</Text>
+          <Text style={[styles.cardValue, { color: colors.text }]}>0.8 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>kts</Text></Text>
+          <Text style={[styles.cardSub, { color: colors.textSecondary }]}>Bearing: 110° ESE</Text>
         </View>
       </View>
 
@@ -95,15 +97,24 @@ export function WeatherSheetContent() {
       <TideChart />
 
       {/* Hourly Marine Forecast */}
-      <Text style={styles.sectionTitle}>HOURLY MARINE FORECAST</Text>
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>HOURLY MARINE FORECAST</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hourlyScroll}>
         {hourlyData.map((item, idx) => (
-          <View key={idx} style={styles.hourlyCard}>
-            <Text style={styles.hourlyHour}>{item.hour}</Text>
-            <MaterialCommunityIcons name={item.icon as any} size={22} color="#38BDF8" style={{ marginVertical: 6 }} />
-            <Text style={styles.hourlyTemp}>{item.temp}</Text>
-            <Text style={styles.hourlyMetricText}>{item.wind}</Text>
-            <Text style={[styles.hourlyMetricText, { color: '#38BDF8' }]}>{item.wave}</Text>
+          <View
+            key={idx}
+            style={[
+              styles.hourlyCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.cardBorder,
+              },
+            ]}
+          >
+            <Text style={[styles.hourlyHour, { color: colors.textSecondary }]}>{item.hour}</Text>
+            <MaterialCommunityIcons name={item.icon as any} size={22} color={colors.accent} style={{ marginVertical: 6 }} />
+            <Text style={[styles.hourlyTemp, { color: colors.text }]}>{item.temp}</Text>
+            <Text style={[styles.hourlyMetricText, { color: colors.textSecondary }]}>{item.wind}</Text>
+            <Text style={[styles.hourlyMetricText, { color: colors.accent }]}>{item.wave}</Text>
           </View>
         ))}
       </ScrollView>
