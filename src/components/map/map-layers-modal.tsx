@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MapStyleId } from '@/components/map/map-style-selector';
 import { MapOverlaysState } from '@/components/map/native-map-view';
 import { MapColors } from '@/constants/map-theme';
+import { useAppTheme } from '@/context/theme-context';
 
 type MapLayersModalProps = {
   visible: boolean;
@@ -65,6 +66,7 @@ export function MapLayersModal({
   onToggleGpsHud,
 }: MapLayersModalProps) {
   const insets = useSafeAreaInsets();
+  const { colors, isLight } = useAppTheme();
 
   return (
     <Modal
@@ -74,47 +76,83 @@ export function MapLayersModal({
       onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropTouch} onPress={onClose} />
-        <View style={[styles.card, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.cardBorder,
+              paddingBottom: Math.max(insets.bottom, 20) + 12,
+            },
+          ]}
+        >
           {/* Header */}
-          <View style={styles.handle} />
+          <View
+            style={[
+              styles.handle,
+              { backgroundColor: isLight ? '#CBD5E1' : 'rgba(255, 255, 255, 0.3)' },
+            ]}
+          />
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>
-              <View style={styles.iconCircle}>
-                <Ionicons name="layers" size={20} color="#00F0FF" />
+              <View style={[styles.iconCircle, { backgroundColor: colors.iconBg }]}>
+                <Ionicons name="layers" size={20} color={colors.accent} />
               </View>
               <View>
-                <Text style={styles.title}>Map Layers & Nautical Details</Text>
-                <Text style={styles.subtitle}>Base chart styles & marine overlays</Text>
+                <Text style={[styles.title, { color: colors.text }]}>Map Layers & Nautical Details</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+                  Base chart styles & marine overlays
+                </Text>
               </View>
             </View>
-            <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color="#94A3B8" />
+            <Pressable
+              onPress={onClose}
+              hitSlop={12}
+              style={[styles.closeBtn, { backgroundColor: colors.chipBg }]}
+            >
+              <Ionicons name="close" size={20} color={colors.textSecondary} />
             </Pressable>
           </View>
 
           {/* Section: Base Map Styles */}
-          <Text style={styles.sectionLabel}>MAP TYPE</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>MAP TYPE</Text>
           <View style={styles.stylesGrid}>
             {MAP_STYLES.map((item) => {
               const selected = item.id === activeStyle;
               return (
                 <Pressable
                   key={item.id}
-                  style={[styles.styleCard, selected && styles.styleCardSelected]}
+                  style={[
+                    styles.styleCard,
+                    {
+                      backgroundColor: selected
+                        ? colors.chipBg
+                        : isLight
+                          ? '#F8FAFC'
+                          : 'rgba(10, 31, 53, 0.75)',
+                      borderColor: selected ? colors.accent : colors.divider,
+                    },
+                    selected && { borderWidth: 1.5 },
+                  ]}
                   onPress={() => onSelectStyle(item.id)}>
                   <View style={[styles.styleIconWrap, { backgroundColor: item.color + '22' }]}>
                     <Ionicons name={item.icon} size={22} color={item.color} />
                   </View>
                   <View style={styles.styleContent}>
                     <View style={styles.styleNameRow}>
-                      <Text style={[styles.styleName, selected && styles.styleNameSelected]}>
+                      <Text
+                        style={[
+                          styles.styleName,
+                          { color: selected ? colors.accent : colors.text },
+                          selected && { fontWeight: '700' },
+                        ]}>
                         {item.name}
                       </Text>
                       {selected ? (
-                        <Ionicons name="checkmark-circle" size={16} color={MapColors.accent} />
+                        <Ionicons name="checkmark-circle" size={16} color={colors.accent} />
                       ) : null}
                     </View>
-                    <Text style={styles.styleDesc} numberOfLines={1}>
+                    <Text style={[styles.styleDesc, { color: colors.textSecondary }]} numberOfLines={1}>
                       {item.desc}
                     </Text>
                   </View>
@@ -124,30 +162,55 @@ export function MapLayersModal({
           </View>
 
           {/* Section: Nautical Overlays */}
-          <Text style={[styles.sectionLabel, { marginTop: 18 }]}>MARINE OVERLAYS</Text>
-          <View style={styles.togglesList}>
+          <Text style={[styles.sectionLabel, { marginTop: 18, color: colors.textMuted }]}>
+            MARINE OVERLAYS
+          </Text>
+          <View
+            style={[
+              styles.togglesList,
+              {
+                backgroundColor: isLight ? '#F8FAFC' : 'rgba(255, 255, 255, 0.04)',
+                borderColor: colors.divider,
+              },
+            ]}
+          >
             <ToggleRow
               icon={<MaterialCommunityIcons name="lighthouse" size={20} color="#38BDF8" />}
               title="OpenSeaMap Seamarks"
               subtitle="Buoys, beacons, navigation lights, harbor signals"
               value={overlays.seamarks}
               onValueChange={() => onToggleOverlay('seamarks')}
+              textColor={colors.text}
+              subColor={colors.textSecondary}
+              trackColorActive={colors.accent}
+              trackColorInactive={isLight ? '#E2E8F0' : 'rgba(255,255,255,0.15)'}
+              iconBg={colors.chipBg}
             />
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.divider }]} />
             <ToggleRow
               icon={<Ionicons name="warning-outline" size={20} color={MapColors.red} />}
               title="Maritime Danger Zones"
               subtitle="Underwater obstructions, sandbars & restricted reefs"
               value={overlays.dangerZone}
               onValueChange={() => onToggleOverlay('dangerZone')}
+              textColor={colors.text}
+              subColor={colors.textSecondary}
+              trackColorActive={colors.accent}
+              trackColorInactive={isLight ? '#E2E8F0' : 'rgba(255,255,255,0.15)'}
+              iconBg={colors.chipBg}
             />
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.divider }]} />
             <ToggleRow
               icon={<Ionicons name="speedometer-outline" size={20} color={MapColors.green} />}
               title="Marine GPS Instrument Card"
               subtitle="Live Coordinates, accuracy & GPS telemetry"
               value={showGpsHud}
               onValueChange={onToggleGpsHud}
+              textColor={colors.text}
+              subColor={colors.textSecondary}
+              trackColorActive={colors.accent}
+              trackColorInactive={isLight ? '#E2E8F0' : 'rgba(255,255,255,0.15)'}
+              iconBg={colors.chipBg}
             />
           </View>
         </View>
@@ -162,24 +225,34 @@ function ToggleRow({
   subtitle,
   value,
   onValueChange,
+  textColor,
+  subColor,
+  trackColorActive,
+  trackColorInactive,
+  iconBg,
 }: {
   icon: React.ReactNode;
   title: string;
   subtitle: string;
   value: boolean;
   onValueChange: () => void;
+  textColor: string;
+  subColor: string;
+  trackColorActive: string;
+  trackColorInactive: string;
+  iconBg: string;
 }) {
   return (
     <View style={styles.toggleRow}>
-      <View style={styles.toggleIcon}>{icon}</View>
+      <View style={[styles.toggleIcon, { backgroundColor: iconBg }]}>{icon}</View>
       <View style={styles.toggleText}>
-        <Text style={styles.toggleTitle}>{title}</Text>
-        <Text style={styles.toggleSubtitle}>{subtitle}</Text>
+        <Text style={[styles.toggleTitle, { color: textColor }]}>{title}</Text>
+        <Text style={[styles.toggleSubtitle, { color: subColor }]}>{subtitle}</Text>
       </View>
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: 'rgba(255,255,255,0.15)', true: '#00F0FF' }}
+        trackColor={{ false: trackColorInactive, true: trackColorActive }}
         thumbColor="#FFFFFF"
       />
     </View>
@@ -193,7 +266,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   backdropTouch: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   card: {
     backgroundColor: '#041728',

@@ -23,6 +23,7 @@ export type NavigationCompassRoseProps = {
   relativeSteerAngle?: number | null; // Relative steer angle (-180 to +180)
   showDegreeNumbers?: boolean; // Show numbers every 30 deg (for larger sizes)
   showRoseStar?: boolean;
+  themeMode?: 'light' | 'dark';
 };
 
 /**
@@ -40,8 +41,10 @@ export function NavigationCompassRose({
   relativeSteerAngle,
   showDegreeNumbers = false,
   showRoseStar = false,
+  themeMode = 'dark',
 }: NavigationCompassRoseProps) {
   const radius = size / 2;
+  const isLight = themeMode === 'light';
 
   // Relative steering angle (-180° to +180°)
   // If targetBearing is provided, calculate relative offset to vessel bow
@@ -103,34 +106,33 @@ export function NavigationCompassRose({
 
     Animated.spring(arrowAnim, {
       toValue: continuousSteerRef.current,
-      friction: 8,
-      tension: 45,
+      friction: 9,
+      tension: 40,
       useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [steerAngle, arrowAnim]);
 
+  const tickCount = 72; // 5 deg ticks
+  const tickStep = 360 / tickCount;
+  const outerBorderWidth = Math.max(3, size * 0.024);
+
   // Is vessel on course? (within ±6°)
   const isOnCourse = steerAngle != null && Math.abs(steerAngle) <= 6;
-  const arrowColor = isOnCourse ? '#10B981' : '#00F0FF';
-  const arrowGlow = isOnCourse ? 'rgba(16, 185, 129, 0.4)' : 'rgba(0, 240, 255, 0.4)';
-
-  // Dimensions scaled by compass size
-  const outerBorderWidth = Math.max(1.5, Math.round(size * 0.015));
-  const tickCount = size >= 140 ? 72 : 36; // 5 deg or 10 deg steps
-  const tickStep = 360 / tickCount;
+  const arrowColor = isOnCourse ? '#10B981' : isLight ? '#0284C7' : '#00F0FF';
+  const arrowGlow = isOnCourse ? 'rgba(16, 185, 129, 0.4)' : isLight ? 'rgba(2, 132, 199, 0.3)' : 'rgba(0, 240, 255, 0.4)';
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
-      {/* 1. Base Dark Instrument Bezel */}
+      {/* 1. Bezel Instrument Outer Ring */}
       <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={StyleSheet.absoluteFill}>
         <Defs>
           <LinearGradient id="bezelGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor="#0B233C" />
-            <Stop offset="100%" stopColor="#031526" />
+            <Stop offset="0%" stopColor={isLight ? '#FFFFFF' : '#0B233C'} />
+            <Stop offset="100%" stopColor={isLight ? '#F1F5F9' : '#031526'} />
           </LinearGradient>
           <LinearGradient id="ringGlow" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0%" stopColor="rgba(0, 240, 255, 0.55)" />
-            <Stop offset="100%" stopColor="rgba(2, 132, 199, 0.2)" />
+            <Stop offset="0%" stopColor={isLight ? 'rgba(2, 132, 199, 0.45)' : 'rgba(0, 240, 255, 0.55)'} />
+            <Stop offset="100%" stopColor={isLight ? 'rgba(2, 132, 199, 0.15)' : 'rgba(2, 132, 199, 0.2)'} />
           </LinearGradient>
         </Defs>
 
@@ -149,7 +151,7 @@ export function NavigationCompassRose({
           cy={radius}
           r={radius * 0.82}
           fill="none"
-          stroke="rgba(255,255,255,0.08)"
+          stroke={isLight ? 'rgba(15, 23, 42, 0.08)' : 'rgba(255,255,255,0.08)'}
           strokeWidth={1}
         />
       </Svg>
@@ -197,6 +199,20 @@ export function NavigationCompassRose({
             const x2 = radius + rInner * Math.sin(rad);
             const y2 = radius - rInner * Math.cos(rad);
 
+            const tickStroke = isLight
+              ? isCardinal
+                ? '#0284C7'
+                : isMajor
+                ? '#0F172A'
+                : isMedium
+                ? 'rgba(15, 23, 42, 0.5)'
+                : 'rgba(15, 23, 42, 0.25)'
+              : isCardinal
+              ? '#00F0FF'
+              : isMajor
+              ? '#FFFFFF'
+              : 'rgba(255,255,255,0.32)';
+
             return (
               <Line
                 key={`tick-${deg}`}
@@ -204,7 +220,7 @@ export function NavigationCompassRose({
                 y1={y1}
                 x2={x2}
                 y2={y2}
-                stroke={isCardinal ? '#00F0FF' : isMajor ? '#FFFFFF' : 'rgba(255,255,255,0.32)'}
+                stroke={tickStroke}
                 strokeWidth={isCardinal ? 2 : isMajor ? 1.5 : 1}
               />
             );
@@ -222,7 +238,7 @@ export function NavigationCompassRose({
                   key={`num-${deg}`}
                   x={x}
                   y={y}
-                  fill="rgba(148, 163, 184, 0.85)"
+                  fill={isLight ? '#64748B' : 'rgba(148, 163, 184, 0.85)'}
                   fontSize={Math.max(9, size * 0.042)}
                   fontWeight="700"
                   textAnchor="middle"
@@ -248,7 +264,7 @@ export function NavigationCompassRose({
           <SvgText
             x={radius * 1.7}
             y={radius + Math.max(4, size * 0.04)}
-            fill="#FFFFFF"
+            fill={isLight ? '#0F172A' : '#FFFFFF'}
             fontSize={Math.max(11, size * 0.1)}
             fontWeight="800"
             textAnchor="middle"
@@ -259,7 +275,7 @@ export function NavigationCompassRose({
           <SvgText
             x={radius}
             y={radius * 1.8}
-            fill="#FFFFFF"
+            fill={isLight ? '#0F172A' : '#FFFFFF'}
             fontSize={Math.max(11, size * 0.1)}
             fontWeight="800"
             textAnchor="middle"
@@ -270,7 +286,7 @@ export function NavigationCompassRose({
           <SvgText
             x={radius * 0.3}
             y={radius + Math.max(4, size * 0.04)}
-            fill="#FFFFFF"
+            fill={isLight ? '#0F172A' : '#FFFFFF'}
             fontSize={Math.max(11, size * 0.1)}
             fontWeight="800"
             textAnchor="middle"
@@ -291,8 +307,8 @@ export function NavigationCompassRose({
                 ${radius - radius * 0.42},${radius}
                 ${radius - radius * 0.12},${radius - radius * 0.08}
               `}
-              fill="rgba(56, 189, 248, 0.12)"
-              stroke="rgba(56, 189, 248, 0.6)"
+              fill={isLight ? 'rgba(2, 132, 199, 0.08)' : 'rgba(56, 189, 248, 0.12)'}
+              stroke={isLight ? 'rgba(2, 132, 199, 0.4)' : 'rgba(56, 189, 248, 0.6)'}
               strokeWidth={1.2}
             />
           )}
@@ -369,8 +385,29 @@ export function NavigationCompassRose({
       )}
 
       {/* 4. Center Pivot Cap (Fixed overlay) */}
-      <View style={[styles.centerPivot, { width: size * 0.16, height: size * 0.16, borderRadius: size * 0.08 }]}>
-        <View style={[styles.centerDot, { width: size * 0.08, height: size * 0.08, borderRadius: size * 0.04 }]} />
+      <View
+        style={[
+          styles.centerPivot,
+          {
+            width: size * 0.16,
+            height: size * 0.16,
+            borderRadius: size * 0.08,
+            backgroundColor: isLight ? '#FFFFFF' : '#0F2742',
+            borderColor: isLight ? '#0284C7' : '#38BDF8',
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.centerDot,
+            {
+              width: size * 0.08,
+              height: size * 0.08,
+              borderRadius: size * 0.04,
+              backgroundColor: isLight ? '#0284C7' : '#FFFFFF',
+            },
+          ]}
+        />
       </View>
 
       {/* 5. Top Fixed Bow Lubber Line (12 O'clock reference marker) */}

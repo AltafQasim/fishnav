@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapColors } from '@/constants/map-theme';
 import { useAuth } from '@/context/auth-context';
+import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
 import { useWaypoints } from '@/context/waypoints-context';
 
@@ -39,6 +40,8 @@ export function MoreOptionsModal({
   const { captain } = useAuth();
   const { waypoints } = useWaypoints();
   const { savedTrips } = useTripTracking();
+  const { colors, activeTheme } = useAppTheme();
+  const isLight = activeTheme === 'light';
 
   const handleSosCall = () => {
     Alert.alert(
@@ -69,25 +72,43 @@ export function MoreOptionsModal({
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropTouch} onPress={onClose} />
 
-        <View style={[styles.card, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
-          <View style={styles.dragHandle} />
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              paddingBottom: Math.max(insets.bottom, 20) + 12,
+            },
+          ]}>
+          <View style={[styles.dragHandle, { backgroundColor: isLight ? '#CBD5E1' : 'rgba(255, 255, 255, 0.3)' }]} />
 
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <View style={styles.headerLeft}>
-              <View style={styles.iconCircle}>
-                <MaterialCommunityIcons name="apps" size={22} color="#00F0FF" />
+              <View
+                style={[
+                  styles.iconCircle,
+                  {
+                    backgroundColor: isLight ? '#E0F2FE' : 'rgba(0, 240, 255, 0.12)',
+                    borderColor: isLight ? '#BAE6FD' : 'rgba(0, 240, 255, 0.25)',
+                  },
+                ]}>
+                <MaterialCommunityIcons name="apps" size={22} color={colors.accent} />
               </View>
               <View>
-                <Text style={styles.title}>Marine Command Hub</Text>
-                <Text style={styles.subtitle}>
+                <Text style={[styles.title, { color: colors.text }]}>Marine Command Hub</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                   {captain?.vesselName || 'Sea Hunter II'} • Quick Access & Tools
                 </Text>
               </View>
             </View>
 
-            <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color="#94A3B8" />
+            <Pressable
+              onPress={onClose}
+              hitSlop={12}
+              style={[styles.closeBtn, { backgroundColor: isLight ? '#E2E8F0' : 'rgba(255, 255, 255, 0.08)' }]}>
+              <Ionicons name="close" size={20} color={colors.textSecondary} />
             </Pressable>
           </View>
 
@@ -97,28 +118,41 @@ export function MoreOptionsModal({
             showsVerticalScrollIndicator={false}
           >
             {/* Quick Metrics Bar */}
-            <View style={styles.metricsBar}>
+            <View
+              style={[
+                styles.metricsBar,
+                {
+                  backgroundColor: isLight ? '#F1F5F9' : 'rgba(10, 31, 53, 0.7)',
+                  borderColor: colors.border,
+                },
+              ]}>
               <View style={styles.metricItem}>
-                <Text style={styles.metricVal}>{waypoints.length}</Text>
-                <Text style={styles.metricLabel}>WAYPOINTS</Text>
+                <Text style={[styles.metricVal, { color: colors.accent }]}>{waypoints.length}</Text>
+                <Text style={[styles.metricLabel, { color: colors.textMuted }]}>WAYPOINTS</Text>
               </View>
-              <View style={styles.metricDivider} />
+              <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
               <View style={styles.metricItem}>
-                <Text style={styles.metricVal}>{savedTrips.length}</Text>
-                <Text style={styles.metricLabel}>VOYAGES</Text>
+                <Text style={[styles.metricVal, { color: colors.accent }]}>{savedTrips.length}</Text>
+                <Text style={[styles.metricLabel, { color: colors.textMuted }]}>VOYAGES</Text>
               </View>
-              <View style={styles.metricDivider} />
+              <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
               <View style={styles.metricItem}>
-                <Text style={styles.metricVal}>100%</Text>
-                <Text style={styles.metricLabel}>OFFLINE</Text>
+                <Text style={[styles.metricVal, { color: colors.accent }]}>100%</Text>
+                <Text style={[styles.metricLabel, { color: colors.textMuted }]}>OFFLINE</Text>
               </View>
             </View>
 
             {/* Section: Primary Marine Tools */}
-            <Text style={styles.sectionHeader}>PRIMARY NAVIGATION TOOLS</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>PRIMARY NAVIGATION TOOLS</Text>
             <View style={styles.grid}>
               <Pressable
-                style={styles.gridCard}
+                style={[
+                  styles.gridCard,
+                  {
+                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.7)',
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() => {
                   onClose();
                   router.push('/trips');
@@ -127,12 +161,18 @@ export function MoreOptionsModal({
                 <View style={[styles.gridIcon, { backgroundColor: 'rgba(0, 240, 255, 0.15)' }]}>
                   <MaterialCommunityIcons name="map-marker-path" size={22} color="#00F0FF" />
                 </View>
-                <Text style={styles.gridTitle}>Trips Logbook</Text>
-                <Text style={styles.gridSub}>Recorded voyage tracks</Text>
+                <Text style={[styles.gridTitle, { color: colors.text }]}>Trips Logbook</Text>
+                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Recorded voyage tracks</Text>
               </Pressable>
 
               <Pressable
-                style={styles.gridCard}
+                style={[
+                  styles.gridCard,
+                  {
+                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.7)',
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() => {
                   onClose();
                   onOpenTab('weather');
@@ -141,12 +181,18 @@ export function MoreOptionsModal({
                 <View style={[styles.gridIcon, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
                   <Ionicons name="partly-sunny" size={22} color="#38BDF8" />
                 </View>
-                <Text style={styles.gridTitle}>Weather & Tides</Text>
-                <Text style={styles.gridSub}>Wind, swell & tides</Text>
+                <Text style={[styles.gridTitle, { color: colors.text }]}>Weather & Tides</Text>
+                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Wind, swell & tides</Text>
               </Pressable>
 
               <Pressable
-                style={styles.gridCard}
+                style={[
+                  styles.gridCard,
+                  {
+                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.7)',
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() => {
                   onClose();
                   onOpenTab('compass');
@@ -155,12 +201,18 @@ export function MoreOptionsModal({
                 <View style={[styles.gridIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
                   <MaterialCommunityIcons name="compass" size={22} color="#10B981" />
                 </View>
-                <Text style={styles.gridTitle}>Marine Compass</Text>
-                <Text style={styles.gridSub}>Gyro lubber line</Text>
+                <Text style={[styles.gridTitle, { color: colors.text }]}>Marine Compass</Text>
+                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Gyro lubber line</Text>
               </Pressable>
 
               <Pressable
-                style={styles.gridCard}
+                style={[
+                  styles.gridCard,
+                  {
+                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.7)',
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() => {
                   onClose();
                   onOpenTab('calendar');
@@ -169,12 +221,18 @@ export function MoreOptionsModal({
                 <View style={[styles.gridIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
                   <Ionicons name="moon" size={22} color="#F59E0B" />
                 </View>
-                <Text style={styles.gridTitle}>Solunar Calendar</Text>
-                <Text style={styles.gridSub}>Fish feeding activity</Text>
+                <Text style={[styles.gridTitle, { color: colors.text }]}>Solunar Calendar</Text>
+                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Fish feeding activity</Text>
               </Pressable>
 
               <Pressable
-                style={styles.gridCard}
+                style={[
+                  styles.gridCard,
+                  {
+                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.7)',
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() => {
                   onClose();
                   onOpenTab('waypoint');
@@ -183,75 +241,112 @@ export function MoreOptionsModal({
                 <View style={[styles.gridIcon, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
                   <Ionicons name="location" size={22} color="#A78BFA" />
                 </View>
-                <Text style={styles.gridTitle}>Fishing Spots</Text>
-                <Text style={styles.gridSub}>Ghol, Tuna & reefs</Text>
+                <Text style={[styles.gridTitle, { color: colors.text }]}>Fishing Spots</Text>
+                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Ghol, Tuna & reefs</Text>
               </Pressable>
 
               <Pressable
-                style={styles.gridCard}
+                style={[
+                  styles.gridCard,
+                  {
+                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.7)',
+                    borderColor: colors.border,
+                  },
+                ]}
                 onPress={() => {
                   onClose();
                   onOpenTab('settings');
                 }}
               >
                 <View style={[styles.gridIcon, { backgroundColor: 'rgba(148, 163, 184, 0.15)' }]}>
-                  <Ionicons name="settings-sharp" size={22} color="#CBD5E1" />
+                  <Ionicons name="settings-sharp" size={22} color={isLight ? '#64748B' : '#CBD5E1'} />
                 </View>
-                <Text style={styles.gridTitle}>Vessel Profile</Text>
-                <Text style={styles.gridSub}>Alarms & telemetry</Text>
+                <Text style={[styles.gridTitle, { color: colors.text }]}>Vessel Profile</Text>
+                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Alarms & telemetry</Text>
               </Pressable>
             </View>
 
             {/* Section: Chart Actions */}
-            <Text style={styles.sectionHeader}>CHART ACTIONS</Text>
-            <View style={styles.actionsList}>
+            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>CHART ACTIONS</Text>
+            <View
+              style={[
+                styles.actionsList,
+                {
+                  backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.7)',
+                  borderColor: colors.border,
+                },
+              ]}>
               {onOpenCoordsModal && (
                 <Pressable
-                  style={styles.actionRow}
+                  style={[styles.actionRow, { borderBottomColor: colors.border }]}
                   onPress={() => {
                     onClose();
                     onOpenCoordsModal();
                   }}
                 >
-                  <View style={styles.actionIconWrap}>
-                    <Ionicons name="navigate-circle" size={20} color="#00F0FF" />
+                  <View
+                    style={[
+                      styles.actionIconWrap,
+                      { backgroundColor: isLight ? '#E0F2FE' : 'rgba(255, 255, 255, 0.06)' },
+                    ]}>
+                    <Ionicons name="navigate-circle" size={20} color={colors.accent} />
                   </View>
                   <View style={styles.actionTextWrap}>
-                    <Text style={styles.actionTitle}>Go to GPS Coordinates</Text>
-                    <Text style={styles.actionSub}>Enter decimal or nautical coordinates</Text>
+                    <Text style={[styles.actionTitle, { color: colors.text }]}>Go to GPS Coordinates</Text>
+                    <Text style={[styles.actionSub, { color: colors.textSecondary }]}>Enter decimal or nautical coordinates</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#64748B" />
+                  <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
                 </Pressable>
               )}
 
               {onOpenLayersModal && (
                 <Pressable
-                  style={styles.actionRow}
+                  style={[styles.actionRow, { borderBottomColor: colors.border }]}
                   onPress={() => {
                     onClose();
                     onOpenLayersModal();
                   }}
                 >
-                  <View style={styles.actionIconWrap}>
+                  <View
+                    style={[
+                      styles.actionIconWrap,
+                      { backgroundColor: isLight ? '#E0F2FE' : 'rgba(255, 255, 255, 0.06)' },
+                    ]}>
                     <Ionicons name="layers" size={20} color="#38BDF8" />
                   </View>
                   <View style={styles.actionTextWrap}>
-                    <Text style={styles.actionTitle}>Map Layers & Nautical Details</Text>
-                    <Text style={styles.actionSub}>Satellite, bathymetric contours, seamarks</Text>
+                    <Text style={[styles.actionTitle, { color: colors.text }]}>Map Layers & Nautical Details</Text>
+                    <Text style={[styles.actionSub, { color: colors.textSecondary }]}>Satellite, bathymetric contours, seamarks</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#64748B" />
+                  <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
                 </Pressable>
               )}
             </View>
 
             {/* Section: Maritime Emergency SOS */}
-            <Pressable style={styles.sosCard} onPress={handleSosCall}>
-              <View style={styles.sosIconWrap}>
+            <Pressable
+              style={[
+                styles.sosCard,
+                {
+                  backgroundColor: isLight ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.12)',
+                  borderColor: isLight ? 'rgba(239, 68, 68, 0.25)' : 'rgba(239, 68, 68, 0.35)',
+                },
+              ]}
+              onPress={handleSosCall}>
+              <View
+                style={[
+                  styles.sosIconWrap,
+                  {
+                    backgroundColor: isLight ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.2)',
+                  },
+                ]}>
                 <Ionicons name="warning" size={22} color="#EF4444" />
               </View>
               <View style={styles.sosTextWrap}>
                 <Text style={styles.sosTitle}>EMERGENCY COAST GUARD SOS</Text>
-                <Text style={styles.sosSub}>Toll-free 24x7 Marine Rescue: 1554</Text>
+                <Text style={[styles.sosSub, { color: isLight ? '#DC2626' : '#FCA5A5' }]}>
+                  Toll-free 24x7 Marine Rescue: 1554
+                </Text>
               </View>
               <Ionicons name="call" size={18} color="#EF4444" />
             </Pressable>

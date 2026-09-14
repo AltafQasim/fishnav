@@ -2,7 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { MapColors } from '@/constants/map-theme';
+import { useAppTheme } from '@/context/theme-context';
 import { UserLocation } from '@/hooks/use-user-location';
 
 type NavigationHudProps = {
@@ -29,6 +29,8 @@ export function NavigationHud({
   onRecenter,
 }: NavigationHudProps) {
   const insets = useSafeAreaInsets();
+  const { colors, activeTheme } = useAppTheme();
+  const isLight = activeTheme === 'light';
 
   // Speed over ground (SOG) in knots (Location speed is m/s; 1 m/s = 1.94384 knots)
   const speedKnots =
@@ -44,8 +46,16 @@ export function NavigationHud({
   return (
     <View style={styles.wrap} pointerEvents="box-none">
       {/* Top Turn-by-Turn Guidance Banner */}
-      <View style={[styles.topBanner, { top: insets.top + 8 }]}>
-        <View style={styles.steerBadge}>
+      <View
+        style={[
+          styles.topBanner,
+          {
+            top: insets.top + 8,
+            backgroundColor: isLight ? '#059669' : '#0F2742',
+            borderColor: isLight ? '#10B981' : colors.accent,
+          },
+        ]}>
+        <View style={[styles.steerBadge, { backgroundColor: isLight ? '#047857' : colors.accent }]}>
           <MaterialCommunityIcons name="navigation-variant" size={26} color="#FFFFFF" />
           <Text style={styles.steerBearing}>{bearingLabel}</Text>
         </View>
@@ -54,26 +64,44 @@ export function NavigationHud({
           <Text style={styles.guidanceTitle} numberOfLines={1}>
             Steer to {targetName}
           </Text>
-          <Text style={styles.guidanceSub}>
+          <Text style={[styles.guidanceSub, { color: isLight ? '#D1FAE5' : '#93C5FD' }]}>
             {distanceLabel} remaining • ETA {etaLabel} {depthM ? `• ${depthM}m depth` : ''}
           </Text>
         </View>
 
-        <Pressable onPress={onRecenter} hitSlop={10} style={styles.recenterBtn}>
-          <Ionicons name="locate" size={20} color={MapColors.accent} />
+        <Pressable
+          onPress={onRecenter}
+          hitSlop={10}
+          style={[styles.recenterBtn, { backgroundColor: isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.1)' }]}>
+          <Ionicons name="locate" size={20} color="#FFFFFF" />
         </Pressable>
       </View>
 
       {/* Bottom Marine Cockpit HUD */}
-      <View style={[styles.bottomCard, { paddingBottom: Math.max(insets.bottom, 14) + 6 }]}>
-        <View style={styles.instrumentsRow}>
-          <InstrumentBlock label="SOG" value={`${speedKnots} kts`} sub="Speed" />
-          <View style={styles.instDivider} />
-          <InstrumentBlock label="BRG" value={bearingLabel} sub="Target" />
-          <View style={styles.instDivider} />
-          <InstrumentBlock label="DTW" value={distanceLabel} sub="Distance" />
-          <View style={styles.instDivider} />
-          <InstrumentBlock label="ETA" value={etaLabel} sub="Arrival" />
+      <View
+        style={[
+          styles.bottomCard,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            paddingBottom: Math.max(insets.bottom, 14) + 6,
+          },
+        ]}>
+        <View
+          style={[
+            styles.instrumentsRow,
+            {
+              backgroundColor: isLight ? '#F1F5F9' : colors.surfaceSubtle,
+              borderColor: colors.border,
+            },
+          ]}>
+          <InstrumentBlock label="SOG" value={`${speedKnots} kts`} sub="Speed" valColor={colors.accent} textColor={colors.textSecondary} mutedColor={colors.textMuted} />
+          <View style={[styles.instDivider, { backgroundColor: colors.border }]} />
+          <InstrumentBlock label="BRG" value={bearingLabel} sub="Target" valColor={colors.text} textColor={colors.textSecondary} mutedColor={colors.textMuted} />
+          <View style={[styles.instDivider, { backgroundColor: colors.border }]} />
+          <InstrumentBlock label="DTW" value={distanceLabel} sub="Distance" valColor={colors.text} textColor={colors.textSecondary} mutedColor={colors.textMuted} />
+          <View style={[styles.instDivider, { backgroundColor: colors.border }]} />
+          <InstrumentBlock label="ETA" value={etaLabel} sub="Arrival" valColor={colors.text} textColor={colors.textSecondary} mutedColor={colors.textMuted} />
         </View>
 
         <View style={styles.actionsRow}>
@@ -91,18 +119,24 @@ function InstrumentBlock({
   label,
   value,
   sub,
+  valColor = '#FFFFFF',
+  textColor = '#94A3B8',
+  mutedColor = '#64748B',
 }: {
   label: string;
   value: string;
   sub: string;
+  valColor?: string;
+  textColor?: string;
+  mutedColor?: string;
 }) {
   return (
     <View style={styles.instItem}>
-      <Text style={styles.instLabel}>{label}</Text>
-      <Text style={styles.instValue} numberOfLines={1}>
+      <Text style={[styles.instLabel, { color: mutedColor }]}>{label}</Text>
+      <Text style={[styles.instValue, { color: valColor }]} numberOfLines={1}>
         {value}
       </Text>
-      <Text style={styles.instSub}>{sub}</Text>
+      <Text style={[styles.instSub, { color: textColor }]}>{sub}</Text>
     </View>
   );
 }

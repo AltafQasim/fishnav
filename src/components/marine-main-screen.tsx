@@ -66,14 +66,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     seamarks: true,
     dangerZone: true,
   });
-  const [activeMapStyle, setActiveMapStyle] = useState<MapStyleId>(colors.mapStyle || 'standard');
-
-  // Sync map tiles with App Theme changes
-  React.useEffect(() => {
-    if (colors.mapStyle) {
-      setActiveMapStyle(colors.mapStyle);
-    }
-  }, [colors.mapStyle]);
+  const [activeMapStyle, setActiveMapStyle] = useState<MapStyleId>('standard');
 
   const [showGpsHud, setShowGpsHud] = useState(false);
 

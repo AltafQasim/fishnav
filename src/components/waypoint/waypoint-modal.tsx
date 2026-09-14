@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
+import { useAppTheme } from '@/context/theme-context';
 import { UserLocation } from '@/hooks/use-user-location';
 
 type WaypointModalProps = {
@@ -54,6 +55,7 @@ export function WaypointModal({
   onSave,
 }: WaypointModalProps) {
   const insets = useSafeAreaInsets();
+  const { colors, isLight } = useAppTheme();
 
   const [name, setName] = useState('');
   const [latStr, setLatStr] = useState('');
@@ -152,31 +154,51 @@ export function WaypointModal({
       >
         <Pressable style={styles.backdropTouch} onPress={onClose} />
 
-        <View style={[styles.modalCard, { paddingBottom: Math.max(insets.bottom, 20) + 8 }]}>
+        <View
+          style={[
+            styles.modalCard,
+            {
+              backgroundColor: colors.surface,
+              borderTopColor: colors.cardBorder,
+              paddingBottom: Math.max(insets.bottom, 20) + 8,
+            },
+          ]}
+        >
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, { borderBottomColor: colors.divider }]}>
             <View>
-              <Text style={styles.headerTitle}>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>
                 {spotToEdit ? 'Edit Waypoint' : 'Add New Waypoint'}
               </Text>
-              <Text style={styles.headerSub}>
+              <Text style={[styles.headerSub, { color: colors.textSecondary }]}>
                 {spotToEdit ? 'Update GPS coords & marine details' : 'Save coastal hotspot to marine logs'}
               </Text>
             </View>
 
-            <Pressable onPress={onClose} hitSlop={10} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color={MapColors.textSecondary} />
+            <Pressable
+              onPress={onClose}
+              hitSlop={10}
+              style={[styles.closeBtn, { backgroundColor: colors.chipBg }]}
+            >
+              <Ionicons name="close" size={20} color={colors.textSecondary} />
             </Pressable>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} style={styles.formScroll}>
             {/* Waypoint Name */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>WAYPOINT NAME</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>WAYPOINT NAME</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
+                    borderColor: colors.cardBorder,
+                    color: colors.text,
+                  },
+                ]}
                 placeholder="e.g. Ghol Spot Alpha, Deep Reef"
-                placeholderTextColor={MapColors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 value={name}
                 onChangeText={setName}
               />
@@ -185,24 +207,34 @@ export function WaypointModal({
             {/* GPS Coordinates Header & Autofill */}
             <View style={styles.fieldGroup}>
               <View style={styles.coordLabelRow}>
-                <Text style={styles.label}>GPS COORDINATES</Text>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>GPS COORDINATES</Text>
                 <Pressable
-                  style={styles.useGpsBtn}
+                  style={[
+                    styles.useGpsBtn,
+                    { backgroundColor: colors.chipBg },
+                  ]}
                   onPress={handleUseCurrentGps}
                   accessibilityRole="button"
                 >
-                  <Ionicons name="locate" size={13} color="#38BDF8" />
-                  <Text style={styles.useGpsText}>Use Current GPS</Text>
+                  <Ionicons name="locate" size={13} color={colors.accent} />
+                  <Text style={[styles.useGpsText, { color: colors.accent }]}>Use Current GPS</Text>
                 </Pressable>
               </View>
 
               <View style={styles.coordsRow}>
                 <View style={styles.coordCol}>
-                  <Text style={styles.coordSub}>Latitude (°N/S)</Text>
+                  <Text style={[styles.coordSub, { color: colors.textMuted }]}>Latitude (°N/S)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
+                        borderColor: colors.cardBorder,
+                        color: colors.text,
+                      },
+                    ]}
                     placeholder="20.3500"
-                    placeholderTextColor={MapColors.textMuted}
+                    placeholderTextColor={colors.textMuted}
                     keyboardType="numeric"
                     value={latStr}
                     onChangeText={setLatStr}
@@ -210,11 +242,18 @@ export function WaypointModal({
                 </View>
 
                 <View style={styles.coordCol}>
-                  <Text style={styles.coordSub}>Longitude (°E/W)</Text>
+                  <Text style={[styles.coordSub, { color: colors.textMuted }]}>Longitude (°E/W)</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
+                        borderColor: colors.cardBorder,
+                        color: colors.text,
+                      },
+                    ]}
                     placeholder="70.8200"
-                    placeholderTextColor={MapColors.textMuted}
+                    placeholderTextColor={colors.textMuted}
                     keyboardType="numeric"
                     value={lngStr}
                     onChangeText={setLngStr}
@@ -226,11 +265,18 @@ export function WaypointModal({
             {/* Depth & Category */}
             <View style={styles.coordsRow}>
               <View style={styles.coordCol}>
-                <Text style={styles.label}>DEPTH (METERS)</Text>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>DEPTH (METERS)</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
+                      borderColor: colors.cardBorder,
+                      color: colors.text,
+                    },
+                  ]}
                   placeholder="e.g. 65"
-                  placeholderTextColor={MapColors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   keyboardType="numeric"
                   value={depthStr}
                   onChangeText={setDepthStr}
@@ -238,7 +284,7 @@ export function WaypointModal({
               </View>
 
               <View style={styles.coordCol}>
-                <Text style={styles.label}>COLOR TAG</Text>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>COLOR TAG</Text>
                 <View style={styles.colorPalette}>
                   {COLOR_OPTIONS.map((c) => (
                     <Pressable
@@ -257,17 +303,33 @@ export function WaypointModal({
 
             {/* Category Pills */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>CATEGORY / SPECIES</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>CATEGORY / SPECIES</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagScroll}>
                 {CATEGORIES.map((cat) => {
                   const isSelected = category === cat;
                   return (
                     <Pressable
                       key={cat}
-                      style={[styles.tagPill, isSelected && styles.tagPillActive]}
+                      style={[
+                        styles.tagPill,
+                        {
+                          backgroundColor: isSelected
+                            ? colors.chipBg
+                            : isLight
+                            ? '#F1F5F9'
+                            : 'rgba(255, 255, 255, 0.06)',
+                          borderColor: isSelected ? colors.accent : colors.divider,
+                        },
+                      ]}
                       onPress={() => setCategory(cat)}
                     >
-                      <Text style={[styles.tagText, isSelected && styles.tagTextActive]}>
+                      <Text
+                        style={[
+                          styles.tagText,
+                          { color: isSelected ? colors.accent : colors.textSecondary },
+                          isSelected && { fontWeight: '700' },
+                        ]}
+                      >
                         {cat}
                       </Text>
                     </Pressable>
@@ -278,11 +340,19 @@ export function WaypointModal({
 
             {/* Notes */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>NOTES & CATCH LOGS (OPTIONAL)</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>NOTES & CATCH LOGS (OPTIONAL)</Text>
               <TextInput
-                style={[styles.input, styles.notesInput]}
+                style={[
+                  styles.input,
+                  styles.notesInput,
+                  {
+                    backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
+                    borderColor: colors.cardBorder,
+                    color: colors.text,
+                  },
+                ]}
                 placeholder="e.g. Best during high tide, rock bottom"
-                placeholderTextColor={MapColors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={2}
                 value={notes}
@@ -293,12 +363,23 @@ export function WaypointModal({
 
           {/* Save Button */}
           <View style={styles.footerRow}>
-            <Pressable style={styles.cancelBtn} onPress={onClose} disabled={isSaving}>
-              <Text style={styles.cancelText}>Cancel</Text>
+            <Pressable
+              style={[
+                styles.cancelBtn,
+                { backgroundColor: isLight ? '#E2E8F0' : 'rgba(255, 255, 255, 0.08)' },
+              ]}
+              onPress={onClose}
+              disabled={isSaving}
+            >
+              <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
             </Pressable>
 
             <Pressable
-              style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
+              style={[
+                styles.saveBtn,
+                { backgroundColor: colors.accent },
+                isSaving && styles.saveBtnDisabled,
+              ]}
               onPress={handleSave}
               disabled={isSaving}
             >

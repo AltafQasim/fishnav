@@ -1,5 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -18,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GoogleLogoSvg } from '@/components/ui/google-logo-svg';
 import { useAuth } from '@/context/auth-context';
+import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
 import { useWaypoints } from '@/context/waypoints-context';
 
@@ -86,9 +88,16 @@ const HARBOR_OPTIONS = [
 
 export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalProps) {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { colors, isLight } = useAppTheme();
   const { captain, logout, updateCaptain } = useAuth();
   const { waypoints } = useWaypoints();
   const { savedTrips } = useTripTracking();
+
+  const handleOpenTrips = () => {
+    onClose();
+    router.push('/trips');
+  };
 
   // Sub-modals state
   const [showPhotoPicker, setShowPhotoPicker] = useState(false);
@@ -220,17 +229,35 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropTouch} onPress={onClose} />
 
-        <View style={[styles.card, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
-          <View style={styles.dragHandle} />
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.cardBorder,
+              paddingBottom: Math.max(insets.bottom, 20) + 12,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.dragHandle,
+              { backgroundColor: isLight ? '#CBD5E1' : 'rgba(255, 255, 255, 0.3)' },
+            ]}
+          />
 
           {/* Top Bar with Close Button */}
-          <View style={styles.topBar}>
+          <View style={[styles.topBar, { borderBottomColor: colors.divider }]}>
             <View style={styles.topBarLeft}>
-              <MaterialCommunityIcons name="badge-account-horizontal" size={22} color="#00F0FF" />
-              <Text style={styles.headerTitle}>Captain & Vessel Dossier</Text>
+              <MaterialCommunityIcons name="badge-account-horizontal" size={22} color={colors.accent} />
+              <Text style={[styles.headerTitle, { color: colors.text }]}>Captain & Vessel Dossier</Text>
             </View>
-            <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-              <Ionicons name="close" size={20} color="#94A3B8" />
+            <Pressable
+              onPress={onClose}
+              hitSlop={12}
+              style={[styles.closeBtn, { backgroundColor: colors.chipBg }]}
+            >
+              <Ionicons name="close" size={20} color={colors.textSecondary} />
             </Pressable>
           </View>
 
@@ -240,10 +267,24 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
             showsVerticalScrollIndicator={false}
           >
             {/* 1. CAPTAIN HERO HEADER WITH PHOTO & CAMERA BADGE */}
-            <View style={styles.heroCard}>
+            <View
+              style={[
+                styles.heroCard,
+                {
+                  backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
+                  borderColor: colors.cardBorder,
+                },
+              ]}
+            >
               <View style={styles.avatarContainer}>
                 <Pressable
-                  style={styles.avatarWrap}
+                  style={[
+                    styles.avatarWrap,
+                    {
+                      borderColor: colors.accent,
+                      backgroundColor: colors.chipBg,
+                    },
+                  ]}
                   onPress={() => setShowPhotoPicker(true)}
                   accessibilityRole="button"
                   accessibilityLabel="Change profile photo"
@@ -251,13 +292,13 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                   {captain?.avatarUrl ? (
                     <Image source={{ uri: captain.avatarUrl }} style={styles.avatarImg} />
                   ) : (
-                    <MaterialCommunityIcons name="ship-wheel" size={38} color="#00F0FF" />
+                    <MaterialCommunityIcons name="ship-wheel" size={38} color={colors.accent} />
                   )}
                 </Pressable>
 
                 {/* Floating Camera Edit Badge */}
                 <Pressable
-                  style={styles.cameraBadge}
+                  style={[styles.cameraBadge, { backgroundColor: colors.accent, borderColor: colors.surface }]}
                   onPress={() => setShowPhotoPicker(true)}
                   hitSlop={8}
                 >
@@ -265,14 +306,14 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                 </Pressable>
               </View>
 
-              <Text style={styles.captainName}>
+              <Text style={[styles.captainName, { color: colors.text }]}>
                 {captain?.name || 'Capt. Vikram Rathore'}
               </Text>
               <View style={styles.rankBadge}>
                 <Ionicons name="shield-checkmark" size={12} color="#10B981" />
                 <Text style={styles.rankText}>LICENSED MASTER MARINER</Text>
               </View>
-              <Text style={styles.captainContact}>
+              <Text style={[styles.captainContact, { color: colors.textSecondary }]}>
                 {captain?.emailOrPhone || '+91 98765 43210'}
               </Text>
 
@@ -280,96 +321,183 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                 style={styles.changePhotoLink}
                 onPress={() => setShowPhotoPicker(true)}
               >
-                <Ionicons name="image-outline" size={13} color="#00F0FF" />
-                <Text style={styles.changePhotoText}>Change Profile Photo</Text>
+                <Ionicons name="image-outline" size={13} color={colors.accent} />
+                <Text style={[styles.changePhotoText, { color: colors.accent }]}>Change Profile Photo</Text>
               </Pressable>
             </View>
 
             {/* Stats Overview */}
             <View style={styles.statsRow}>
-              <View style={styles.statBox}>
-                <Ionicons name="location" size={18} color="#00F0FF" />
-                <Text style={styles.statVal}>{waypoints.length}</Text>
-                <Text style={styles.statLbl}>HOTSPOTS</Text>
+              <View
+                style={[
+                  styles.statBox,
+                  {
+                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <Ionicons name="location" size={18} color={colors.accent} />
+                <Text style={[styles.statVal, { color: colors.text }]}>{waypoints.length}</Text>
+                <Text style={[styles.statLbl, { color: colors.textMuted }]}>HOTSPOTS</Text>
               </View>
-              <View style={styles.statBox}>
+              <Pressable
+                style={[
+                  styles.statBox,
+                  {
+                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+                onPress={handleOpenTrips}
+              >
                 <MaterialCommunityIcons name="map-marker-path" size={18} color="#38BDF8" />
-                <Text style={styles.statVal}>{savedTrips.length}</Text>
-                <Text style={styles.statLbl}>VOYAGES</Text>
-              </View>
-              <View style={styles.statBox}>
+                <Text style={[styles.statVal, { color: colors.text }]}>{savedTrips.length}</Text>
+                <Text style={[styles.statLbl, { color: colors.textMuted }]}>VOYAGES ›</Text>
+              </Pressable>
+              <View
+                style={[
+                  styles.statBox,
+                  {
+                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
                 <Ionicons name="navigate" size={18} color="#10B981" />
-                <Text style={styles.statVal}>3D FIX</Text>
-                <Text style={styles.statLbl}>GPS LOCK</Text>
+                <Text style={[styles.statVal, { color: colors.text }]}>3D FIX</Text>
+                <Text style={[styles.statLbl, { color: colors.textMuted }]}>GPS LOCK</Text>
               </View>
             </View>
 
-            {/* 2. REGISTERED BOAT & VESSEL TELEMETRY (WITH EDIT BUTTON!) */}
+            {/* 🚀 TRIPS & ROUTES LOGBOOK SHORTCUT */}
+            <Pressable
+              style={[
+                styles.tripsShortcutCard,
+                {
+                  backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
+                  borderColor: colors.cardBorder,
+                },
+              ]}
+              onPress={handleOpenTrips}
+            >
+              <View
+                style={[
+                  styles.tripsIconWrap,
+                  {
+                    backgroundColor: isLight ? '#E0F2FE' : 'rgba(0, 240, 255, 0.12)',
+                    borderColor: isLight ? '#BAE6FD' : 'rgba(0, 240, 255, 0.25)',
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons name="map-marker-path" size={22} color={colors.accent} />
+              </View>
+              <View style={styles.tripsTextWrap}>
+                <View style={styles.tripsTitleRow}>
+                  <Text style={[styles.tripsTitle, { color: colors.text }]}>Trips & Routes Logbook</Text>
+                  <View
+                    style={[
+                      styles.tripsBadge,
+                      {
+                        backgroundColor: colors.chipBg,
+                        borderColor: colors.chipBorder,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.tripsBadgeText, { color: colors.accent }]}>
+                      {savedTrips.length} VOYAGES
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[styles.tripsSubtitle, { color: colors.textSecondary }]}>
+                  View GPS voyage tracks, distance & backtrack routes
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </Pressable>
+
+            {/* 2. REGISTERED BOAT & VESSEL TELEMETRY */}
             <View style={styles.sectionHeaderBetween}>
               <View style={styles.sectionHeaderLeft}>
-                <MaterialCommunityIcons name="sail-boat" size={16} color="#38BDF8" />
-                <Text style={styles.sectionTitle}>VESSEL & BOAT SPECIFICATIONS</Text>
+                <MaterialCommunityIcons name="sail-boat" size={16} color={colors.accent} />
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>VESSEL & BOAT SPECIFICATIONS</Text>
               </View>
 
               <Pressable
-                style={styles.editSpecsBtn}
+                style={[styles.editSpecsBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
                 onPress={() => setShowVesselEditor(true)}
               >
-                <Ionicons name="create-outline" size={14} color="#00F0FF" />
-                <Text style={styles.editSpecsText}>Update Specs</Text>
+                <Ionicons name="create-outline" size={14} color={colors.accent} />
+                <Text style={[styles.editSpecsText, { color: colors.accent }]}>Update Specs</Text>
               </Pressable>
             </View>
 
-            <View style={styles.infoCard}>
+            <View
+              style={[
+                styles.infoCard,
+                {
+                  backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
+                  borderColor: colors.cardBorder,
+                },
+              ]}
+            >
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Vessel Name</Text>
-                <Text style={[styles.infoValue, styles.cyanText]}>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Vessel Name</Text>
+                <Text style={[styles.infoValue, { color: colors.accent }]}>
                   {captain?.vesselName || 'Sea Hunter II'}
                 </Text>
               </View>
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Call Sign / Reg No</Text>
-                <Text style={[styles.infoValue, styles.cyanText]}>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Call Sign / Reg No</Text>
+                <Text style={[styles.infoValue, { color: colors.accent }]}>
                   {captain?.callSign || 'IND-GJ-8821'}
                 </Text>
               </View>
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Vessel Class</Text>
-                <Text style={styles.infoValue}>{captain?.vesselType || 'Deep Sea Trawler (42ft)'}</Text>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Vessel Class</Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>{captain?.vesselType || 'Deep Sea Trawler (42ft)'}</Text>
               </View>
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Home Harbor</Text>
-                <Text style={styles.infoValue}>{captain?.homeHarbor || 'Veraval Fishing Port'}</Text>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Home Harbor</Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>{captain?.homeHarbor || 'Veraval Fishing Port'}</Text>
               </View>
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Length & Draft</Text>
-                <Text style={styles.infoValue}>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Length & Draft</Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>
                   {captain?.boatLengthM || '24.5'}m • Draft {captain?.boatDraftM || '1.8'}m
                 </Text>
               </View>
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Cruising Speed</Text>
-                <Text style={styles.infoValue}>{captain?.cruiseSpeedKnots || '12'} knots</Text>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Cruising Speed</Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>{captain?.cruiseSpeedKnots || '12'} knots</Text>
               </View>
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Maritime License</Text>
-                <Text style={styles.infoValue}>{captain?.licenseNumber || 'IND-MF-2026-991'}</Text>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Maritime License</Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>{captain?.licenseNumber || 'IND-MF-2026-991'}</Text>
               </View>
             </View>
 
             {/* 3. LOGIN & SECURITY CREDENTIALS SECTION */}
             <View style={styles.sectionHeaderRow}>
-              <Ionicons name="key-outline" size={15} color="#00F0FF" />
-              <Text style={styles.sectionTitle}>LOGIN & AUTHENTICATION DETAILS</Text>
+              <Ionicons name="key-outline" size={15} color={colors.accent} />
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>LOGIN & AUTHENTICATION DETAILS</Text>
             </View>
 
-            <View style={styles.infoCard}>
+            <View
+              style={[
+                styles.infoCard,
+                {
+                  backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
+                  borderColor: colors.cardBorder,
+                },
+              ]}
+            >
               {/* Auth Provider Banner */}
               <View style={styles.authProviderRow}>
                 <View style={styles.authBadgeLeft}>
@@ -378,8 +506,8 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                       <GoogleLogoSvg size={18} />
                     </View>
                   ) : isPhone ? (
-                    <View style={[styles.providerIconBox, { backgroundColor: 'rgba(56, 189, 248, 0.2)' }]}>
-                      <Ionicons name="call" size={16} color="#00F0FF" />
+                    <View style={[styles.providerIconBox, { backgroundColor: colors.chipBg }]}>
+                      <Ionicons name="call" size={16} color={colors.accent} />
                     </View>
                   ) : (
                     <View style={[styles.providerIconBox, { backgroundColor: 'rgba(251, 191, 36, 0.2)' }]}>
@@ -387,14 +515,14 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                     </View>
                   )}
                   <View>
-                    <Text style={styles.authProviderName}>
+                    <Text style={[styles.authProviderName, { color: colors.text }]}>
                       {isGoogle
                         ? 'Google Sign-In'
                         : isPhone
                         ? 'Mobile Number OTP'
                         : 'Fleet Master Demo Access'}
                     </Text>
-                    <Text style={styles.authProviderSub}>
+                    <Text style={[styles.authProviderSub, { color: colors.textMuted }]}>
                       {captain?.authMethodLabel || 'Authenticated Session'}
                     </Text>
                   </View>
@@ -406,28 +534,28 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                 </View>
               </View>
 
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Account Identifier</Text>
-                <Text style={[styles.infoValue, styles.cyanText]}>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Account Identifier</Text>
+                <Text style={[styles.infoValue, { color: colors.accent }]}>
                   {captain?.emailOrPhone || '+91 98765 43210'}
                 </Text>
               </View>
 
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Session Started</Text>
-                <Text style={styles.infoValue}>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Session Started</Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>
                   {captain?.loginAt || 'Today, Active'}
                 </Text>
               </View>
 
-              <View style={styles.divider} />
+              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Account Security</Text>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Account Security</Text>
                 <View style={styles.securityBadge}>
                   <Ionicons name="shield-checkmark-outline" size={13} color="#10B981" />
                   <Text style={styles.securityText}>256-Bit Marine Key</Text>
@@ -436,18 +564,37 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
             </View>
 
             {/* Offline Data Status */}
-            <View style={styles.offlineBox}>
+            <View
+              style={[
+                styles.offlineBox,
+                {
+                  backgroundColor: isLight ? '#F0FDF4' : 'rgba(16, 185, 129, 0.08)',
+                  borderColor: isLight ? '#BBF7D0' : 'rgba(16, 185, 129, 0.25)',
+                },
+              ]}
+            >
               <Ionicons name="cloud-offline" size={18} color="#10B981" />
               <View style={styles.offlineTextWrap}>
-                <Text style={styles.offlineTitle}>Offline Mode Active</Text>
-                <Text style={styles.offlineSub}>
+                <Text style={[styles.offlineTitle, { color: isLight ? '#166534' : '#10B981' }]}>
+                  Offline Mode Active
+                </Text>
+                <Text style={[styles.offlineSub, { color: isLight ? '#15803D' : '#6EE7B7' }]}>
                   All waypoints, routes and bathymetric layers are cached locally on this device.
                 </Text>
               </View>
             </View>
 
             {/* Sign Out Button */}
-            <Pressable style={styles.logoutBtn} onPress={handleLogout}>
+            <Pressable
+              style={[
+                styles.logoutBtn,
+                {
+                  backgroundColor: isLight ? '#FEE2E2' : 'rgba(239, 68, 68, 0.12)',
+                  borderColor: isLight ? '#FCA5A5' : 'rgba(239, 68, 68, 0.35)',
+                },
+              ]}
+              onPress={handleLogout}
+            >
               <Ionicons name="log-out-outline" size={18} color="#EF4444" />
               <Text style={styles.logoutText}>SIGN OUT / SWITCH ACCOUNT</Text>
             </Pressable>
@@ -468,41 +615,79 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
             onPress={() => setShowPhotoPicker(false)}
           />
 
-          <View style={[styles.subModalCard, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
-            <View style={styles.dragHandle} />
+          <View
+            style={[
+              styles.subModalCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.cardBorder,
+                paddingBottom: Math.max(insets.bottom, 20) + 12,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.dragHandle,
+                { backgroundColor: isLight ? '#CBD5E1' : 'rgba(255, 255, 255, 0.3)' },
+              ]}
+            />
 
-            <View style={styles.subModalHeader}>
+            <View style={[styles.subModalHeader, { borderBottomColor: colors.divider }]}>
               <View style={styles.topBarLeft}>
-                <Ionicons name="camera" size={20} color="#00F0FF" />
-                <Text style={styles.subModalTitle}>Choose Profile Photo</Text>
+                <Ionicons name="camera" size={20} color={colors.accent} />
+                <Text style={[styles.subModalTitle, { color: colors.text }]}>Choose Profile Photo</Text>
               </View>
-              <Pressable onPress={() => setShowPhotoPicker(false)} hitSlop={10}>
-                <Ionicons name="close" size={22} color="#94A3B8" />
+              <Pressable
+                onPress={() => setShowPhotoPicker(false)}
+                hitSlop={10}
+                style={[styles.closeBtn, { backgroundColor: colors.chipBg }]}
+              >
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
               </Pressable>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
               {/* Option 1: Pick from Device / Gallery */}
-              <Pressable style={styles.uploadBtn} onPress={handlePickDeviceImage}>
-                <View style={styles.uploadIconWrap}>
-                  <Ionicons name="cloud-upload" size={22} color="#00F0FF" />
+              <Pressable
+                style={[
+                  styles.uploadBtn,
+                  {
+                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+                onPress={handlePickDeviceImage}
+              >
+                <View style={[styles.uploadIconWrap, { backgroundColor: colors.chipBg }]}>
+                  <Ionicons name="cloud-upload" size={22} color={colors.accent} />
                 </View>
                 <View style={styles.uploadTextWrap}>
-                  <Text style={styles.uploadTitle}>Choose from Device / Gallery</Text>
-                  <Text style={styles.uploadSub}>Select a personal photo from your phone or PC</Text>
+                  <Text style={[styles.uploadTitle, { color: colors.text }]}>Choose from Device / Gallery</Text>
+                  <Text style={[styles.uploadSub, { color: colors.textSecondary }]}>
+                    Select a personal photo from your phone or PC
+                  </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color="#64748B" />
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
               </Pressable>
 
               {/* Option 2: Curated Maritime Captain Presets */}
-              <Text style={styles.presetSectionTitle}>OR SELECT MARITIME CAPTAIN AVATAR</Text>
+              <Text style={[styles.presetSectionTitle, { color: colors.textMuted }]}>
+                OR SELECT MARITIME CAPTAIN AVATAR
+              </Text>
               <View style={styles.presetsGrid}>
                 {CAPTAIN_PHOTO_PRESETS.map((item) => {
                   const isSelected = captain?.avatarUrl === item.url;
                   return (
                     <Pressable
                       key={item.id}
-                      style={[styles.presetCard, isSelected && styles.presetCardSelected]}
+                      style={[
+                        styles.presetCard,
+                        {
+                          backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
+                          borderColor: isSelected ? colors.accent : colors.divider,
+                        },
+                        isSelected && { backgroundColor: colors.chipBg, borderWidth: 1.5 },
+                      ]}
                       onPress={() => {
                         updateCaptain({ avatarUrl: item.url });
                         setShowPhotoPicker(false);
@@ -510,11 +695,21 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                     >
                       <Image source={{ uri: item.url }} style={styles.presetImg} />
                       <View style={styles.presetInfo}>
-                        <Text style={styles.presetName} numberOfLines={1}>{item.title}</Text>
-                        <Text style={styles.presetDesc} numberOfLines={1}>{item.desc}</Text>
+                        <Text
+                          style={[
+                            styles.presetName,
+                            { color: isSelected ? colors.accent : colors.text },
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {item.title}
+                        </Text>
+                        <Text style={[styles.presetDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+                          {item.desc}
+                        </Text>
                       </View>
                       {isSelected && (
-                        <Ionicons name="checkmark-circle" size={18} color="#00F0FF" />
+                        <Ionicons name="checkmark-circle" size={18} color={colors.accent} />
                       )}
                     </Pressable>
                   );
@@ -522,17 +717,27 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
               </View>
 
               {/* Option 3: Custom URL Input */}
-              <Text style={styles.presetSectionTitle}>OR ENTER IMAGE URL</Text>
+              <Text style={[styles.presetSectionTitle, { color: colors.textMuted }]}>OR ENTER IMAGE URL</Text>
               <View style={styles.urlInputRow}>
                 <TextInput
-                  style={styles.urlTextInput}
+                  style={[
+                    styles.urlTextInput,
+                    {
+                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
+                      borderColor: colors.cardBorder,
+                      color: colors.text,
+                    },
+                  ]}
                   placeholder="https://example.com/captain.jpg"
-                  placeholderTextColor="#64748B"
+                  placeholderTextColor={colors.textMuted}
                   value={customPhotoInput}
                   onChangeText={setCustomPhotoInput}
                   autoCapitalize="none"
                 />
-                <Pressable style={styles.urlApplyBtn} onPress={handleApplyCustomUrl}>
+                <Pressable
+                  style={[styles.urlApplyBtn, { backgroundColor: colors.accent }]}
+                  onPress={handleApplyCustomUrl}
+                >
                   <Text style={styles.urlApplyText}>Apply</Text>
                 </Pressable>
               </View>
@@ -562,29 +767,56 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
             onPress={() => setShowVesselEditor(false)}
           />
 
-          <View style={[styles.subModalCard, { maxHeight: '92%', paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
-            <View style={styles.dragHandle} />
+          <View
+            style={[
+              styles.subModalCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.cardBorder,
+                maxHeight: '92%',
+                paddingBottom: Math.max(insets.bottom, 20) + 12,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.dragHandle,
+                { backgroundColor: isLight ? '#CBD5E1' : 'rgba(255, 255, 255, 0.3)' },
+              ]}
+            />
 
-            <View style={styles.subModalHeader}>
+            <View style={[styles.subModalHeader, { borderBottomColor: colors.divider }]}>
               <View style={styles.topBarLeft}>
-                <MaterialCommunityIcons name="sail-boat" size={22} color="#00F0FF" />
-                <Text style={styles.subModalTitle}>Update Boat & Vessel Specs</Text>
+                <MaterialCommunityIcons name="sail-boat" size={22} color={colors.accent} />
+                <Text style={[styles.subModalTitle, { color: colors.text }]}>Update Boat & Vessel Specs</Text>
               </View>
-              <Pressable onPress={() => setShowVesselEditor(false)} hitSlop={10}>
-                <Ionicons name="close" size={22} color="#94A3B8" />
+              <Pressable
+                onPress={() => setShowVesselEditor(false)}
+                hitSlop={10}
+                style={[styles.closeBtn, { backgroundColor: colors.chipBg }]}
+              >
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
               </Pressable>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.editorContent}>
               {/* 1. Vessel Name */}
               <View style={styles.editField}>
-                <Text style={styles.editLabel}>BOAT / VESSEL NAME</Text>
-                <View style={styles.editInputWrap}>
-                  <MaterialCommunityIcons name="boat" size={18} color="#00F0FF" style={styles.editIcon} />
+                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>BOAT / VESSEL NAME</Text>
+                <View
+                  style={[
+                    styles.editInputWrap,
+                    {
+                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
+                      borderColor: colors.cardBorder,
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons name="boat" size={18} color={colors.accent} style={styles.editIcon} />
                   <TextInput
-                    style={styles.editTextInput}
+                    style={[styles.editTextInput, { color: colors.text }]}
                     placeholder="e.g. Sea Hunter II"
-                    placeholderTextColor="#64748B"
+                    placeholderTextColor={colors.textMuted}
                     value={editVesselName}
                     onChangeText={setEditVesselName}
                   />
@@ -593,13 +825,23 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
 
               {/* 2. Call Sign / Registration */}
               <View style={styles.editField}>
-                <Text style={styles.editLabel}>OFFICIAL REGISTRATION / CALL SIGN</Text>
-                <View style={styles.editInputWrap}>
+                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>
+                  OFFICIAL REGISTRATION / CALL SIGN
+                </Text>
+                <View
+                  style={[
+                    styles.editInputWrap,
+                    {
+                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
+                      borderColor: colors.cardBorder,
+                    },
+                  ]}
+                >
                   <MaterialCommunityIcons name="radio-handheld" size={18} color="#38BDF8" style={styles.editIcon} />
                   <TextInput
-                    style={styles.editTextInput}
+                    style={[styles.editTextInput, { color: colors.text }]}
                     placeholder="e.g. IND-GJ-8821"
-                    placeholderTextColor="#64748B"
+                    placeholderTextColor={colors.textMuted}
                     value={editCallSign}
                     onChangeText={setEditCallSign}
                   />
@@ -608,13 +850,21 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
 
               {/* 3. Captain Name */}
               <View style={styles.editField}>
-                <Text style={styles.editLabel}>CAPTAIN / MASTER NAME</Text>
-                <View style={styles.editInputWrap}>
+                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>CAPTAIN / MASTER NAME</Text>
+                <View
+                  style={[
+                    styles.editInputWrap,
+                    {
+                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
+                      borderColor: colors.cardBorder,
+                    },
+                  ]}
+                >
                   <Ionicons name="person" size={18} color="#38BDF8" style={styles.editIcon} />
                   <TextInput
-                    style={styles.editTextInput}
+                    style={[styles.editTextInput, { color: colors.text }]}
                     placeholder="e.g. Capt. Vikram Rathore"
-                    placeholderTextColor="#64748B"
+                    placeholderTextColor={colors.textMuted}
                     value={editCaptainName}
                     onChangeText={setEditCaptainName}
                   />
@@ -623,13 +873,21 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
 
               {/* 4. Vessel Type Selector */}
               <View style={styles.editField}>
-                <Text style={styles.editLabel}>VESSEL CLASS / TYPE</Text>
-                <View style={styles.editInputWrap}>
+                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>VESSEL CLASS / TYPE</Text>
+                <View
+                  style={[
+                    styles.editInputWrap,
+                    {
+                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
+                      borderColor: colors.cardBorder,
+                    },
+                  ]}
+                >
                   <Ionicons name="construct-outline" size={18} color="#38BDF8" style={styles.editIcon} />
                   <TextInput
-                    style={styles.editTextInput}
+                    style={[styles.editTextInput, { color: colors.text }]}
                     placeholder="e.g. Deep Sea Trawler (42ft)"
-                    placeholderTextColor="#64748B"
+                    placeholderTextColor={colors.textMuted}
                     value={editVesselType}
                     onChangeText={setEditVesselType}
                   />
@@ -638,10 +896,16 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                   {VESSEL_TYPE_OPTIONS.slice(0, 3).map((chip) => (
                     <Pressable
                       key={chip}
-                      style={styles.chip}
+                      style={[
+                        styles.chip,
+                        {
+                          backgroundColor: isLight ? '#F1F5F9' : 'rgba(255, 255, 255, 0.06)',
+                          borderColor: colors.divider,
+                        },
+                      ]}
                       onPress={() => setEditVesselType(chip)}
                     >
-                      <Text style={styles.chipText}>{chip.split(' ')[0]}</Text>
+                      <Text style={[styles.chipText, { color: colors.textSecondary }]}>{chip.split(' ')[0]}</Text>
                     </Pressable>
                   ))}
                 </View>
@@ -649,13 +913,23 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
 
               {/* 5. Home Harbor Selector */}
               <View style={styles.editField}>
-                <Text style={styles.editLabel}>HOME HARBOR / PORT OF REGISTRY</Text>
-                <View style={styles.editInputWrap}>
+                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>
+                  HOME HARBOR / PORT OF REGISTRY
+                </Text>
+                <View
+                  style={[
+                    styles.editInputWrap,
+                    {
+                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
+                      borderColor: colors.cardBorder,
+                    },
+                  ]}
+                >
                   <Ionicons name="anchor" size={18} color="#38BDF8" style={styles.editIcon} />
                   <TextInput
-                    style={styles.editTextInput}
+                    style={[styles.editTextInput, { color: colors.text }]}
                     placeholder="e.g. Veraval Fishing Port"
-                    placeholderTextColor="#64748B"
+                    placeholderTextColor={colors.textMuted}
                     value={editHomeHarbor}
                     onChangeText={setEditHomeHarbor}
                   />
@@ -664,10 +938,16 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                   {HARBOR_OPTIONS.slice(0, 4).map((chip) => (
                     <Pressable
                       key={chip}
-                      style={styles.chip}
+                      style={[
+                        styles.chip,
+                        {
+                          backgroundColor: isLight ? '#F1F5F9' : 'rgba(255, 255, 255, 0.06)',
+                          borderColor: colors.divider,
+                        },
+                      ]}
                       onPress={() => setEditHomeHarbor(chip)}
                     >
-                      <Text style={styles.chipText}>{chip.split(' ')[0]}</Text>
+                      <Text style={[styles.chipText, { color: colors.textSecondary }]}>{chip.split(' ')[0]}</Text>
                     </Pressable>
                   ))}
                 </View>
@@ -676,11 +956,18 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
               {/* 6. Technical Specs (Length, Draft, Speed) */}
               <View style={styles.tripletRow}>
                 <View style={styles.tripletCol}>
-                  <Text style={styles.editLabel}>LENGTH (M)</Text>
+                  <Text style={[styles.editLabel, { color: colors.textSecondary }]}>LENGTH (M)</Text>
                   <TextInput
-                    style={styles.tripletInput}
+                    style={[
+                      styles.tripletInput,
+                      {
+                        backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
+                        borderColor: colors.cardBorder,
+                        color: colors.text,
+                      },
+                    ]}
                     placeholder="24.5"
-                    placeholderTextColor="#64748B"
+                    placeholderTextColor={colors.textMuted}
                     value={editBoatLength}
                     onChangeText={setEditBoatLength}
                     keyboardType="decimal-pad"
@@ -688,11 +975,18 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                 </View>
 
                 <View style={styles.tripletCol}>
-                  <Text style={styles.editLabel}>DRAFT (M)</Text>
+                  <Text style={[styles.editLabel, { color: colors.textSecondary }]}>DRAFT (M)</Text>
                   <TextInput
-                    style={styles.tripletInput}
+                    style={[
+                      styles.tripletInput,
+                      {
+                        backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
+                        borderColor: colors.cardBorder,
+                        color: colors.text,
+                      },
+                    ]}
                     placeholder="1.8"
-                    placeholderTextColor="#64748B"
+                    placeholderTextColor={colors.textMuted}
                     value={editBoatDraft}
                     onChangeText={setEditBoatDraft}
                     keyboardType="decimal-pad"
@@ -700,11 +994,18 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                 </View>
 
                 <View style={styles.tripletCol}>
-                  <Text style={styles.editLabel}>SPEED (KTS)</Text>
+                  <Text style={[styles.editLabel, { color: colors.textSecondary }]}>SPEED (KTS)</Text>
                   <TextInput
-                    style={styles.tripletInput}
+                    style={[
+                      styles.tripletInput,
+                      {
+                        backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
+                        borderColor: colors.cardBorder,
+                        color: colors.text,
+                      },
+                    ]}
                     placeholder="12"
-                    placeholderTextColor="#64748B"
+                    placeholderTextColor={colors.textMuted}
                     value={editCruiseSpeed}
                     onChangeText={setEditCruiseSpeed}
                     keyboardType="numeric"
@@ -714,13 +1015,23 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
 
               {/* 7. Maritime License */}
               <View style={styles.editField}>
-                <Text style={styles.editLabel}>MARITIME LICENSE / PERMIT NO</Text>
-                <View style={styles.editInputWrap}>
+                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>
+                  MARITIME LICENSE / PERMIT NO
+                </Text>
+                <View
+                  style={[
+                    styles.editInputWrap,
+                    {
+                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
+                      borderColor: colors.cardBorder,
+                    },
+                  ]}
+                >
                   <Ionicons name="document-text-outline" size={18} color="#38BDF8" style={styles.editIcon} />
                   <TextInput
-                    style={styles.editTextInput}
+                    style={[styles.editTextInput, { color: colors.text }]}
                     placeholder="e.g. IND-MF-2026-991"
-                    placeholderTextColor="#64748B"
+                    placeholderTextColor={colors.textMuted}
                     value={editLicenseNumber}
                     onChangeText={setEditLicenseNumber}
                   />
@@ -730,12 +1041,12 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
               {/* Save Specifications Button */}
               <Pressable style={styles.saveBtn} onPress={handleSaveVesselSpecs}>
                 <LinearGradient
-                  colors={['#0284C7', '#00F0FF']}
+                  colors={colors.accentGradient || ['#0284C7', '#00F0FF']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.saveGradient}
                 >
-                  <Ionicons name="checkmark-circle" size={20} color="#020B14" />
+                  <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
                   <Text style={styles.saveText}>SAVE BOAT SPECIFICATIONS</Text>
                 </LinearGradient>
               </Pressable>
@@ -929,6 +1240,55 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 2,
     letterSpacing: 0.5,
+  },
+  tripsShortcutCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(10, 31, 53, 0.75)',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(56, 189, 248, 0.35)',
+    gap: 12,
+  },
+  tripsIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(0, 240, 255, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.25)',
+  },
+  tripsTextWrap: {
+    flex: 1,
+  },
+  tripsTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  tripsTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  tripsBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  tripsBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  tripsSubtitle: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 2,
   },
   sectionHeaderBetween: {
     flexDirection: 'row',

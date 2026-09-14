@@ -12,12 +12,14 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { FishingTrip } from '@/constants/trips';
+import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
 import { formatNm } from '@/utils/geo';
 
 export default function TripsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors, isLight } = useAppTheme();
   const {
     savedTrips,
     deleteTrip,
@@ -92,37 +94,64 @@ export default function TripsScreen() {
   };
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 16 }]}>
+    <View
+      style={[
+        styles.screen,
+        {
+          backgroundColor: colors.background,
+          paddingTop: insets.top + 8,
+          paddingBottom: insets.bottom + 16,
+        },
+      ]}>
       {/* Top Header */}
       <View style={styles.headerRow}>
-        <Pressable onPress={handleBack} hitSlop={12} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+        <Pressable
+          onPress={handleBack}
+          hitSlop={12}
+          style={[styles.backBtn, { backgroundColor: isLight ? '#E2E8F0' : 'rgba(255,255,255,0.1)' }]}>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
         </Pressable>
         <View style={styles.headerTitles}>
-          <Text style={styles.title}>Trips & Routes Log</Text>
-          <Text style={styles.subtitle}>GPS Tracks, Marine Logs & Backtrack Routes</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Trips & Routes Log</Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            GPS Tracks, Marine Logs & Backtrack Routes
+          </Text>
         </View>
-        <Pressable onPress={handleStartNewTrip} hitSlop={8} style={styles.newTripBtn}>
+        <Pressable
+          onPress={handleStartNewTrip}
+          hitSlop={8}
+          style={[styles.newTripBtn, { backgroundColor: colors.accent }]}>
           <Ionicons name="add" size={20} color="#FFFFFF" />
           <Text style={styles.newTripBtnText}>RECORD</Text>
         </Pressable>
       </View>
 
       {/* Cumulative Metrics Strip */}
-      <View style={styles.statsBanner}>
+      <View
+        style={[
+          styles.statsBanner,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.cardBorder,
+          },
+        ]}>
         <View style={styles.statsItem}>
-          <Text style={styles.statsVal}>{totalTrips}</Text>
-          <Text style={styles.statsLbl}>VOYAGES</Text>
+          <Text style={[styles.statsVal, { color: colors.accent }]}>{totalTrips}</Text>
+          <Text style={[styles.statsLbl, { color: colors.textMuted }]}>VOYAGES</Text>
         </View>
-        <View style={styles.statsDivider} />
+        <View style={[styles.statsDivider, { backgroundColor: colors.divider }]} />
         <View style={styles.statsItem}>
-          <Text style={styles.statsVal}>{totalNm.toFixed(1)} <Text style={styles.statsUnit}>NM</Text></Text>
-          <Text style={styles.statsLbl}>TOTAL DISTANCE</Text>
+          <Text style={[styles.statsVal, { color: colors.accent }]}>
+            {totalNm.toFixed(1)} <Text style={[styles.statsUnit, { color: isLight ? colors.textSecondary : '#93C5FD' }]}>NM</Text>
+          </Text>
+          <Text style={[styles.statsLbl, { color: colors.textMuted }]}>TOTAL DISTANCE</Text>
         </View>
-        <View style={styles.statsDivider} />
+        <View style={[styles.statsDivider, { backgroundColor: colors.divider }]} />
         <View style={styles.statsItem}>
-          <Text style={styles.statsVal}>{totalHours} <Text style={styles.statsUnit}>hrs</Text></Text>
-          <Text style={styles.statsLbl}>HOURS AT SEA</Text>
+          <Text style={[styles.statsVal, { color: colors.accent }]}>
+            {totalHours} <Text style={[styles.statsUnit, { color: isLight ? colors.textSecondary : '#93C5FD' }]}>hrs</Text>
+          </Text>
+          <Text style={[styles.statsLbl, { color: colors.textMuted }]}>HOURS AT SEA</Text>
         </View>
       </View>
 
@@ -134,12 +163,14 @@ export default function TripsScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
-            <MaterialCommunityIcons name="map-marker-path" size={54} color="#334155" />
-            <Text style={styles.emptyTitle}>No Recorded Trips Yet</Text>
-            <Text style={styles.emptySub}>
+            <MaterialCommunityIcons name="map-marker-path" size={54} color={isLight ? '#CBD5E1' : '#334155'} />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No Recorded Trips Yet</Text>
+            <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
               Start a track recording on the map to log your vessel path, distance, and speeds.
             </Text>
-            <Pressable style={styles.startEmptyBtn} onPress={handleStartNewTrip}>
+            <Pressable
+              style={[styles.startEmptyBtn, { backgroundColor: colors.accent }]}
+              onPress={handleStartNewTrip}>
               <Ionicons name="navigate" size={18} color="#FFFFFF" />
               <Text style={styles.startEmptyBtnText}>START FIRST TRIP</Text>
             </Pressable>
@@ -148,13 +179,22 @@ export default function TripsScreen() {
         renderItem={({ item }) => {
           const isVisible = item.visibleOnMap !== false;
           return (
-            <View style={styles.tripCard}>
+            <View
+              style={[
+                styles.tripCard,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.cardBorder,
+                },
+              ]}>
               {/* Card Header */}
               <View style={styles.cardHeader}>
-                <View style={[styles.trackColorPill, { backgroundColor: item.color || '#00F0FF' }]} />
+                <View style={[styles.trackColorPill, { backgroundColor: item.color || colors.accent }]} />
                 <View style={styles.cardTitles}>
-                  <Text style={styles.tripName} numberOfLines={1}>{item.name}</Text>
-                  <Text style={styles.tripDate}>
+                  <Text style={[styles.tripName, { color: colors.text }]} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <Text style={[styles.tripDate, { color: colors.textSecondary }]}>
                     {formatDate(item.startTime)} • {item.targetSpotName || 'Open Sea Track'}
                   </Text>
                 </View>
@@ -163,49 +203,70 @@ export default function TripsScreen() {
                 <Pressable
                   onPress={() => toggleTripVisibility(item.id)}
                   hitSlop={8}
-                  style={styles.eyeBtn}
-                >
+                  style={[
+                    styles.eyeBtn,
+                    { backgroundColor: isLight ? '#F1F5F9' : 'rgba(255,255,255,0.06)' },
+                  ]}>
                   <Ionicons
                     name={isVisible ? 'eye' : 'eye-off-outline'}
                     size={20}
-                    color={isVisible ? '#00F0FF' : '#64748B'}
+                    color={isVisible ? colors.accent : colors.textMuted}
                   />
                 </Pressable>
               </View>
 
               {/* Stats Row */}
-              <View style={styles.cardStatsRow}>
+              <View
+                style={[
+                  styles.cardStatsRow,
+                  {
+                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: colors.divider,
+                    borderWidth: isLight ? 1 : 0,
+                  },
+                ]}>
                 <View style={styles.cardStat}>
-                  <Text style={styles.cardStatVal}>{formatNm(item.distanceNm)}</Text>
-                  <Text style={styles.cardStatLbl}>DISTANCE</Text>
+                  <Text style={[styles.cardStatVal, { color: colors.text }]}>{formatNm(item.distanceNm)}</Text>
+                  <Text style={[styles.cardStatLbl, { color: colors.textMuted }]}>DISTANCE</Text>
                 </View>
 
-                <View style={styles.cardStatDivider} />
+                <View style={[styles.cardStatDivider, { backgroundColor: colors.divider }]} />
 
                 <View style={styles.cardStat}>
-                  <Text style={styles.cardStatVal}>{formatDuration(item.durationSeconds)}</Text>
-                  <Text style={styles.cardStatLbl}>DURATION</Text>
+                  <Text style={[styles.cardStatVal, { color: colors.text }]}>{formatDuration(item.durationSeconds)}</Text>
+                  <Text style={[styles.cardStatLbl, { color: colors.textMuted }]}>DURATION</Text>
                 </View>
 
-                <View style={styles.cardStatDivider} />
+                <View style={[styles.cardStatDivider, { backgroundColor: colors.divider }]} />
 
                 <View style={styles.cardStat}>
-                  <Text style={styles.cardStatVal}>{item.avgSpeedKnots} <Text style={styles.subKts}>kts</Text></Text>
-                  <Text style={styles.cardStatLbl}>AVG SPEED</Text>
+                  <Text style={[styles.cardStatVal, { color: colors.text }]}>
+                    {item.avgSpeedKnots} <Text style={[styles.subKts, { color: colors.accent }]}>kts</Text>
+                  </Text>
+                  <Text style={[styles.cardStatLbl, { color: colors.textMuted }]}>AVG SPEED</Text>
                 </View>
 
-                <View style={styles.cardStatDivider} />
+                <View style={[styles.cardStatDivider, { backgroundColor: colors.divider }]} />
 
                 <View style={styles.cardStat}>
-                  <Text style={styles.cardStatVal}>{item.maxSpeedKnots} <Text style={styles.subKts}>kts</Text></Text>
-                  <Text style={styles.cardStatLbl}>MAX SPEED</Text>
+                  <Text style={[styles.cardStatVal, { color: colors.text }]}>
+                    {item.maxSpeedKnots} <Text style={[styles.subKts, { color: colors.accent }]}>kts</Text>
+                  </Text>
+                  <Text style={[styles.cardStatLbl, { color: colors.textMuted }]}>MAX SPEED</Text>
                 </View>
               </View>
 
               {/* Notes if any */}
               {item.notes ? (
-                <View style={styles.notesBox}>
-                  <Text style={styles.notesText} numberOfLines={2}>
+                <View
+                  style={[
+                    styles.notesBox,
+                    {
+                      backgroundColor: isLight ? '#F8FAFC' : 'rgba(255,255,255,0.03)',
+                      borderLeftColor: colors.accent,
+                    },
+                  ]}>
+                  <Text style={[styles.notesText, { color: colors.textSecondary }]} numberOfLines={2}>
                     {`"${item.notes}"`}
                   </Text>
                 </View>
@@ -214,18 +275,22 @@ export default function TripsScreen() {
               {/* Actions Footer */}
               <View style={styles.cardActions}>
                 <Pressable
-                  style={styles.viewMapBtn}
-                  onPress={() => handleViewOnMap(item)}
-                >
+                  style={[styles.viewMapBtn, { backgroundColor: colors.accent }]}
+                  onPress={() => handleViewOnMap(item)}>
                   <Ionicons name="map-outline" size={16} color="#FFFFFF" />
                   <Text style={styles.viewMapText}>VIEW ON MAP</Text>
                 </Pressable>
 
                 <Pressable
-                  style={styles.deleteBtn}
+                  style={[
+                    styles.deleteBtn,
+                    {
+                      backgroundColor: isLight ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.1)',
+                      borderColor: isLight ? 'rgba(239, 68, 68, 0.25)' : 'rgba(239, 68, 68, 0.25)',
+                    },
+                  ]}
                   onPress={() => handleDeletePrompt(item)}
-                  hitSlop={8}
-                >
+                  hitSlop={8}>
                   <Ionicons name="trash-outline" size={18} color="#EF4444" />
                 </Pressable>
               </View>

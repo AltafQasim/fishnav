@@ -12,6 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GoogleLogoSvg } from '@/components/ui/google-logo-svg';
 import { MapColors } from '@/constants/map-theme';
@@ -22,8 +23,9 @@ import { useWaypoints } from '@/context/waypoints-context';
 
 export function SettingsSheetContent() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { theme, setTheme, colors, isLight, isDark, isHighContrast } = useAppTheme();
-  const { captain, logout, updateCaptain } = useAuth();
+  const { captain, updateCaptain } = useAuth();
   const { waypoints, resetWaypoints } = useWaypoints();
   const { savedTrips } = useTripTracking();
 
@@ -88,17 +90,10 @@ export function SettingsSheetContent() {
   const handleResetPrompt = () => {
     Alert.alert(
       'Reset All Waypoints',
-      'This will restore standard Gujarat & Arabian Sea marine hotspots. Custom markers will be erased.',
+      'Are you sure you want to reset your saved waypoints back to factory fishing spots? Any custom spots will be cleared.',
       [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Reset to Defaults',
-          style: 'destructive',
-          onPress: async () => {
-            await resetWaypoints();
-            Alert.alert('Restored', 'Fishing spots reset to defaults.');
-          },
-        },
+        { text: 'Reset', style: 'destructive', onPress: resetWaypoints },
       ],
     );
   };
@@ -106,7 +101,7 @@ export function SettingsSheetContent() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={[styles.content, { paddingBottom: 110 }]}
+      contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 20) + 16 }]}
       showsVerticalScrollIndicator={false}
     >
       {/* ⚓ Active Captain & Vessel Profile Badge */}
@@ -146,22 +141,6 @@ export function SettingsSheetContent() {
             </Text>
           </View>
         </View>
-        <Pressable
-          style={styles.logoutBtn}
-          onPress={() => {
-            Alert.alert(
-              'Switch Vessel / Logout',
-              'Are you sure you want to sign out and return to the login screen?',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Logout', style: 'destructive', onPress: logout },
-              ],
-            );
-          }}
-        >
-          <Ionicons name="log-out-outline" size={16} color="#EF4444" />
-          <Text style={styles.logoutBtnText}>Logout</Text>
-        </Pressable>
       </View>
 
       {/* 🚀 Trips & Recorded Routes Logbook Shortcut */}
@@ -195,18 +174,14 @@ export function SettingsSheetContent() {
           </Text>
           <View style={[styles.badgeTheme, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
             <Text style={[styles.badgeThemeText, { color: colors.accent }]}>
-              {theme === 'high-contrast'
-                ? 'HIGH CONTRAST'
-                : theme === 'dark'
-                ? 'DARK MODE'
-                : 'LIGHT MODE'}
+              {theme === 'high-contrast' ? 'HIGH CONTRAST' : 'LIGHT MODE'}
             </Text>
           </View>
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <Text style={[styles.themeSubtitle, { color: colors.textSecondary }]}>
-            Puri application ki theme badlein: Dark, Light ya High Contrast:
+            Application theme chunein: High Contrast ya Light Mode:
           </Text>
 
           <View style={styles.themesList}>
@@ -221,16 +196,6 @@ export function SettingsSheetContent() {
                   accentColor: '#00F0FF',
                   bgColor: 'rgba(0, 240, 255, 0.15)',
                   badge: 'CURRENT',
-                },
-                {
-                  id: 'dark' as const,
-                  name: 'Dark Theme',
-                  tag: 'ELEGANT SLATE',
-                  desc: 'Low-glare dark slate palette engineered for night navigation comfort',
-                  icon: 'moon' as const,
-                  accentColor: '#38BDF8',
-                  bgColor: 'rgba(56, 189, 248, 0.15)',
-                  badge: 'NIGHT',
                 },
                 {
                   id: 'light' as const,

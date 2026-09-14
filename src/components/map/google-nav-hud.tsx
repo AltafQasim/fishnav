@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NavigationCompassRose } from '@/components/compass/navigation-compass-rose';
+import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
 import { etaFromNm, formatNm } from '@/utils/geo';
 
@@ -41,6 +42,7 @@ export function GoogleNavHud({
   headingUp = false,
 }: GoogleNavHudProps) {
   const insets = useSafeAreaInsets();
+  const { colors, isLight } = useAppTheme();
   const [showFullCompass, setShowFullCompass] = useState(false);
 
   const {
@@ -90,6 +92,7 @@ export function GoogleNavHud({
           style={[
             styles.fullCompassModal,
             {
+              backgroundColor: isLight ? '#F8FAFC' : 'rgba(3, 15, 29, 0.96)',
               paddingTop: insets.top + 12,
               paddingBottom: Math.max(insets.bottom, 16) + 6,
             },
@@ -97,20 +100,26 @@ export function GoogleNavHud({
           pointerEvents="auto"
         >
           {/* Full Compass Header */}
-          <View style={styles.fullCompassHeader}>
+          <View style={[styles.fullCompassHeader, { borderBottomColor: colors.divider }]}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.fullCompassPreTitle}>MARINE STEERING COCKPIT</Text>
-              <Text style={styles.fullCompassTitle} numberOfLines={1}>
+              <Text style={[styles.fullCompassPreTitle, { color: colors.accent }]}>MARINE STEERING COCKPIT</Text>
+              <Text style={[styles.fullCompassTitle, { color: colors.text }]} numberOfLines={1}>
                 {targetSpot ? `🎯 ${targetSpot.name}` : 'Free Navigation'}
               </Text>
             </View>
             <Pressable
-              style={styles.closeFullCompassBtn}
+              style={[
+                styles.closeFullCompassBtn,
+                {
+                  backgroundColor: colors.chipBg,
+                  borderColor: colors.accent,
+                },
+              ]}
               onPress={() => setShowFullCompass(false)}
               hitSlop={8}
             >
-              <Ionicons name="map" size={16} color="#00F0FF" />
-              <Text style={styles.closeFullCompassText}>VIEW MAP</Text>
+              <Ionicons name="map" size={16} color={colors.accent} />
+              <Text style={[styles.closeFullCompassText, { color: colors.accent }]}>VIEW MAP</Text>
             </Pressable>
           </View>
 
@@ -123,13 +132,14 @@ export function GoogleNavHud({
               relativeSteerAngle={relativeSteerAngle}
               showDegreeNumbers={true}
               showRoseStar={true}
+              themeMode={isLight ? 'light' : 'dark'}
             />
 
             {/* Big Digital Heading & Steer Instruction */}
             <View style={styles.fullSteerBlock}>
-              <Text style={styles.fullHeadingReadout}>
+              <Text style={[styles.fullHeadingReadout, { color: colors.text }]}>
                 {String(userCompassHeading).padStart(3, '0')}°{' '}
-                <Text style={styles.fullHeadingCardinal}>
+                <Text style={[styles.fullHeadingCardinal, { color: colors.accent }]}>
                   {getCardinal(userCompassHeading)}
                 </Text>
               </Text>
@@ -137,9 +147,10 @@ export function GoogleNavHud({
                 style={[
                   styles.fullSteerBadge,
                   isOnCourse ? styles.fullSteerBadgeGreen : styles.fullSteerBadgeCyan,
+                  isLight && !isOnCourse && { backgroundColor: colors.chipBg, borderColor: colors.accent },
                 ]}
               >
-                <Text style={styles.fullSteerBadgeText}>
+                <Text style={[styles.fullSteerBadgeText, isLight && !isOnCourse && { color: colors.accent }]}>
                   {steeringInstruction.toUpperCase()}
                 </Text>
               </View>
@@ -148,27 +159,59 @@ export function GoogleNavHud({
 
           {/* 4-Grid Telemetry Cards */}
           <View style={styles.fullTelemGrid}>
-            <View style={styles.fullTelemCard}>
-              <Text style={styles.fullTelemLabel}>TARGET BEARING</Text>
-              <Text style={styles.fullTelemVal}>
+            <View
+              style={[
+                styles.fullTelemCard,
+                {
+                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                  borderColor: colors.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>TARGET BEARING</Text>
+              <Text style={[styles.fullTelemVal, { color: colors.text }]}>
                 {targetBearing != null
                   ? `${Math.round(targetBearing)}° ${getCardinal(targetBearing)}`
                   : '—'}
               </Text>
             </View>
-            <View style={styles.fullTelemCard}>
-              <Text style={styles.fullTelemLabel}>DISTANCE</Text>
-              <Text style={styles.fullTelemVal}>{formatNm(remainingDist)}</Text>
+            <View
+              style={[
+                styles.fullTelemCard,
+                {
+                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                  borderColor: colors.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>DISTANCE</Text>
+              <Text style={[styles.fullTelemVal, { color: colors.text }]}>{formatNm(remainingDist)}</Text>
             </View>
-            <View style={styles.fullTelemCard}>
-              <Text style={styles.fullTelemLabel}>BOAT SPEED</Text>
-              <Text style={styles.fullTelemVal}>
-                {currentSpeedKnots.toFixed(1)} <Text style={styles.unitSmall}>kts</Text>
+            <View
+              style={[
+                styles.fullTelemCard,
+                {
+                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                  borderColor: colors.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>BOAT SPEED</Text>
+              <Text style={[styles.fullTelemVal, { color: colors.text }]}>
+                {currentSpeedKnots.toFixed(1)} <Text style={[styles.unitSmall, { color: colors.accent }]}>kts</Text>
               </Text>
             </View>
-            <View style={styles.fullTelemCard}>
-              <Text style={styles.fullTelemLabel}>EST. ARRIVAL</Text>
-              <Text style={styles.fullTelemVal}>{etaText}</Text>
+            <View
+              style={[
+                styles.fullTelemCard,
+                {
+                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                  borderColor: colors.cardBorder,
+                },
+              ]}
+            >
+              <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>EST. ARRIVAL</Text>
+              <Text style={[styles.fullTelemVal, { color: colors.text }]}>{etaText}</Text>
             </View>
           </View>
 
@@ -186,9 +229,18 @@ export function GoogleNavHud({
                 </Text>
               </Pressable>
             ) : (
-              <Pressable style={styles.startRecordBtn} onPress={startTripRecording}>
-                <Ionicons name="radio-button-on" size={14} color="#00F0FF" />
-                <Text style={styles.startRecordText}>RECORD TRIP</Text>
+              <Pressable
+                style={[
+                  styles.startRecordBtn,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.9)',
+                    borderColor: colors.accent,
+                  },
+                ]}
+                onPress={startTripRecording}
+              >
+                <Ionicons name="radio-button-on" size={14} color={colors.accent} />
+                <Text style={[styles.startRecordText, { color: colors.accent }]}>RECORD TRIP</Text>
               </Pressable>
             )}
 
@@ -203,7 +255,15 @@ export function GoogleNavHud({
 
       {/* 🟢 2. TOP GOOGLE MAPS STYLE COMPASS STEERING BANNER (MAP MODE) */}
       <View style={[styles.topBannerWrap, { top: insets.top + 8 }]} pointerEvents="auto">
-        <View style={styles.topGreenCard}>
+        <View
+          style={[
+            styles.topGreenCard,
+            isLight && {
+              backgroundColor: '#059669',
+              borderColor: '#047857',
+            },
+          ]}
+        >
           {/* Real Circular Marine Compass Rose with Destination Arrow! */}
           <Pressable
             style={styles.compassDialWrap}
@@ -268,38 +328,50 @@ export function GoogleNavHud({
             </Pressable>
           ) : (
             <Pressable
-              style={styles.startRecordBtn}
+              style={[
+                styles.startRecordBtn,
+                {
+                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.9)',
+                  borderColor: colors.accent,
+                },
+              ]}
               onPress={startTripRecording}
               hitSlop={8}
             >
-              <Ionicons name="radio-button-on" size={13} color="#00F0FF" />
-              <Text style={styles.startRecordText}>RECORD TRIP</Text>
+              <Ionicons name="radio-button-on" size={13} color={colors.accent} />
+              <Text style={[styles.startRecordText, { color: colors.accent }]}>RECORD TRIP</Text>
             </Pressable>
           )}
 
           {/* Compass Heading vs Bearing Comparison Pill (Tap to open full compass) */}
           <Pressable
-            style={styles.compassCardPill}
+            style={[
+              styles.compassCardPill,
+              {
+                backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 23, 42, 0.92)',
+                borderColor: colors.cardBorder,
+              },
+            ]}
             onPress={() => setShowFullCompass(true)}
             hitSlop={8}
           >
-            <Ionicons name="compass" size={13} color="#00F0FF" />
-            <Text style={styles.compassCardText}>
+            <Ionicons name="compass" size={13} color={colors.accent} />
+            <Text style={[styles.compassCardText, { color: colors.textSecondary }]}>
               HDG{' '}
-              <Text style={styles.compassCardVal}>
+              <Text style={[styles.compassCardVal, { color: colors.text }]}>
                 {userCompassHeading}° {getCardinal(userCompassHeading)}
               </Text>
               {targetBearing != null && (
                 <>
-                  <Text style={styles.compassArrow}> ➔ </Text>
+                  <Text style={[styles.compassArrow, { color: colors.accent }]}> ➔ </Text>
                   BRG{' '}
-                  <Text style={styles.compassTargetVal}>
+                  <Text style={[styles.compassTargetVal, { color: colors.accent }]}>
                     {Math.round(targetBearing)}° {getCardinal(targetBearing)}
                   </Text>
                 </>
               )}
             </Text>
-            <Ionicons name="chevron-forward" size={12} color="#38BDF8" style={{ marginLeft: 2 }} />
+            <Ionicons name="chevron-forward" size={12} color={colors.accent} style={{ marginLeft: 2 }} />
           </Pressable>
         </View>
       </View>
@@ -309,31 +381,42 @@ export function GoogleNavHud({
         style={[styles.bottomCockpitWrap, { paddingBottom: Math.max(insets.bottom, 12) + 6 }]}
         pointerEvents="auto"
       >
-        <View style={styles.bottomCockpitCard}>
+        <View
+          style={[
+            styles.bottomCockpitCard,
+            {
+              backgroundColor: isLight ? '#FFFFFF' : colors.card,
+              borderColor: colors.cardBorder,
+            },
+          ]}
+        >
           {/* Left: Distance Remaining to Waypoint */}
           <View style={styles.statCol}>
             <Text style={styles.statMainGreen}>{formatNm(remainingDist)}</Text>
-            <Text style={styles.statSubLabel}>{targetSpot ? 'DISTANCE' : 'LOGGED'}</Text>
+            <Text style={[styles.statSubLabel, { color: colors.textMuted }]}>
+              {targetSpot ? 'DISTANCE' : 'LOGGED'}
+            </Text>
           </View>
 
-          <View style={styles.vertDivider} />
+          <View style={[styles.vertDivider, { backgroundColor: colors.divider }]} />
 
           {/* Middle: Speed Over Ground */}
           <View style={styles.statCol}>
-            <Text style={styles.statMainWhite}>
-              {currentSpeedKnots.toFixed(1)} <Text style={styles.unitText}>kts</Text>
+            <Text style={[styles.statMainWhite, { color: colors.text }]}>
+              {currentSpeedKnots.toFixed(1)}{' '}
+              <Text style={[styles.unitText, { color: colors.accent }]}>kts</Text>
             </Text>
-            <Text style={styles.statSubLabel}>BOAT SPEED</Text>
+            <Text style={[styles.statSubLabel, { color: colors.textMuted }]}>BOAT SPEED</Text>
           </View>
 
-          <View style={styles.vertDivider} />
+          <View style={[styles.vertDivider, { backgroundColor: colors.divider }]} />
 
           {/* Middle 2: ETA / Time */}
           <View style={styles.statCol}>
-            <Text style={styles.statMainWhite}>
+            <Text style={[styles.statMainWhite, { color: colors.text }]}>
               {targetSpot && distanceToTargetNm != null ? etaText : formatTime(elapsedSeconds)}
             </Text>
-            <Text style={styles.statSubLabel}>
+            <Text style={[styles.statSubLabel, { color: colors.textMuted }]}>
               {targetSpot && distanceToTargetNm != null ? 'EST. ARRIVAL' : 'VOYAGE TIME'}
             </Text>
           </View>
@@ -343,11 +426,17 @@ export function GoogleNavHud({
             {/* Pause / Resume Button (Only visible while recording) */}
             {isTracking && (
               <Pressable
-                style={styles.pauseCircleBtn}
+                style={[
+                  styles.pauseCircleBtn,
+                  {
+                    backgroundColor: isLight ? '#F1F5F9' : '#1E293B',
+                    borderColor: colors.divider,
+                  },
+                ]}
                 onPress={isPaused ? resumeTracking : pauseTracking}
                 hitSlop={6}
               >
-                <Ionicons name={isPaused ? 'play' : 'pause'} size={18} color="#FFFFFF" />
+                <Ionicons name={isPaused ? 'play' : 'pause'} size={18} color={colors.text} />
               </Pressable>
             )}
 

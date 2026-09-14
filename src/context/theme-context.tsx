@@ -1,10 +1,12 @@
-import React, { createContext, useContext, useState } from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import React, { createContext, useContext, useState } from 'react';
 
-export type AppThemeId = 'high-contrast' | 'dark' | 'light';
+export type AppThemeId = 'high-contrast' | 'light';
 
 export type AppThemeColors = {
+  surfaceSubtle: any;
+  border: any;
   id: AppThemeId;
   name: string;
   tag: string;
@@ -21,7 +23,7 @@ export type AppThemeColors = {
   textSecondary: string;
   textMuted: string;
   divider: string;
-  mapStyle: 'marine' | 'night' | 'standard';
+  mapStyle?: 'marine' | 'night' | 'standard';
   statusBar: 'light' | 'dark';
   navBarFill: string;
   navBarBorder: string;
@@ -66,36 +68,6 @@ export const APP_THEMES: Record<AppThemeId, AppThemeColors> = {
     chipBorder: 'rgba(0, 240, 255, 0.3)',
     iconBg: 'rgba(0, 240, 255, 0.15)',
   },
-  'dark': {
-    id: 'dark',
-    name: 'Dark Mode',
-    tag: 'ELEGANT SLATE',
-    desc: 'Subtle, glare-free dark slate theme engineered for comfortable low-light night navigation',
-    background: '#0B0F19',
-    surface: '#0F172A',
-    surfaceHeader: '#1E293B',
-    card: '#1E293B',
-    cardBorder: 'rgba(255, 255, 255, 0.1)',
-    accent: '#38BDF8',
-    accentSoft: 'rgba(56, 189, 248, 0.15)',
-    accentGradient: ['#38BDF8', '#0284C7'],
-    text: '#F8FAFC',
-    textSecondary: '#94A3B8',
-    textMuted: '#64748B',
-    divider: 'rgba(255, 255, 255, 0.08)',
-    mapStyle: 'night',
-    statusBar: 'light',
-    navBarFill: '#0F172A',
-    navBarBorder: 'rgba(255, 255, 255, 0.12)',
-    searchBarBg: 'rgba(15, 23, 42, 0.95)',
-    searchBarBorder: 'rgba(255, 255, 255, 0.14)',
-    sheetBg: '#0F172A',
-    sheetHeaderBg: '#1E293B',
-    sheetBorder: 'rgba(255, 255, 255, 0.1)',
-    chipBg: 'rgba(255, 255, 255, 0.06)',
-    chipBorder: 'rgba(255, 255, 255, 0.12)',
-    iconBg: 'rgba(56, 189, 248, 0.12)',
-  },
   'light': {
     id: 'light',
     name: 'Light Mode',
@@ -130,6 +102,7 @@ export const APP_THEMES: Record<AppThemeId, AppThemeColors> = {
 
 type ThemeContextType = {
   theme: AppThemeId;
+  activeTheme: AppThemeId;
   colors: AppThemeColors;
   setTheme: (theme: AppThemeId) => void;
   isHighContrast: boolean;
@@ -139,20 +112,21 @@ type ThemeContextType = {
 
 const ThemeContext = createContext<ThemeContextType>({
   theme: 'high-contrast',
+  activeTheme: 'high-contrast',
   colors: APP_THEMES['high-contrast'],
-  setTheme: () => {},
+  setTheme: () => { },
   isHighContrast: true,
   isDark: false,
   isLight: false,
 });
 
 export function AppThemeProvider({ children }: { children: React.ReactNode }) {
-  // Default is 'high-contrast' to preserve the current signature marine aesthetic
+  // Default is 'high-contrast' to preserve the signature marine aesthetic
   const [theme, setTheme] = useState<AppThemeId>('high-contrast');
 
   const colors = APP_THEMES[theme] || APP_THEMES['high-contrast'];
   const isHighContrast = theme === 'high-contrast';
-  const isDark = theme === 'dark';
+  const isDark = false;
   const isLight = theme === 'light';
 
   const navTheme = isLight ? DefaultTheme : DarkTheme;
@@ -161,6 +135,7 @@ export function AppThemeProvider({ children }: { children: React.ReactNode }) {
     <ThemeContext.Provider
       value={{
         theme,
+        activeTheme: theme,
         colors,
         setTheme,
         isHighContrast,
