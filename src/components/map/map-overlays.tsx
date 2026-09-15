@@ -91,6 +91,7 @@ type MapControlStackProps = {
   followUser?: boolean;
   measurementActive?: boolean;
   isTracking?: boolean;
+  hasTarget?: boolean;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onLocate: () => void;
@@ -98,6 +99,7 @@ type MapControlStackProps = {
   onToggleMeasure?: () => void;
   onAddSpot?: () => void;
   onToggleTrack?: () => void;
+  onGo?: () => void;
 };
 
 export function MapControlStack({
@@ -105,6 +107,7 @@ export function MapControlStack({
   followUser = true,
   measurementActive = false,
   isTracking = false,
+  hasTarget = false,
   onZoomIn,
   onZoomOut,
   onLocate,
@@ -112,6 +115,7 @@ export function MapControlStack({
   onToggleMeasure,
   onAddSpot,
   onToggleTrack,
+  onGo,
 }: MapControlStackProps) {
   const { colors, isLight } = useAppTheme();
   const groupBg = isLight ? 'rgba(255, 255, 255, 0.95)' : colors.card;
@@ -121,33 +125,28 @@ export function MapControlStack({
 
   return (
     <View style={styles.controlStack}>
-      {/* 🔴 Track Recording Action Button */}
-      {onToggleTrack && (
-        <View style={[styles.btnGroup, { backgroundColor: groupBg, borderColor: groupBorder }]}>
-          <Pressable
-            style={[styles.toolBtn, isTracking && styles.toolBtnRecording]}
-            onPress={onToggleTrack}>
-            <MaterialCommunityIcons
-              name={isTracking ? 'record-circle' : 'record-circle-outline'}
-              size={22}
-              color={isTracking ? '#EF4444' : colors.accent}
-            />
-          </Pressable>
-        </View>
-      )}
-
-      {/* Zoom In & Out */}
+      {/* 1. Zoom In & Out */}
       <View style={[styles.btnGroup, { backgroundColor: groupBg, borderColor: groupBorder }]}>
-        <Pressable style={styles.toolBtn} onPress={onZoomIn}>
+        <Pressable
+          style={styles.toolBtn}
+          onPress={onZoomIn}
+          accessibilityRole="button"
+          accessibilityLabel="Zoom in"
+        >
           <Ionicons name="add" size={22} color={iconColor} />
         </Pressable>
         <View style={[styles.divider, { backgroundColor: dividerBg }]} />
-        <Pressable style={styles.toolBtn} onPress={onZoomOut}>
+        <Pressable
+          style={styles.toolBtn}
+          onPress={onZoomOut}
+          accessibilityRole="button"
+          accessibilityLabel="Zoom out"
+        >
           <Ionicons name="remove" size={22} color={iconColor} />
         </Pressable>
       </View>
 
-      {/* Tools: Measure & Add Spot (only rendered if handlers passed) */}
+      {/* 2. Tools: Measure & Add Spot (only rendered if handlers passed) */}
       {(onToggleMeasure || onAddSpot) && (
         <View style={[styles.btnGroup, { backgroundColor: groupBg, borderColor: groupBorder }]}>
           {onToggleMeasure && (
@@ -170,28 +169,73 @@ export function MapControlStack({
         </View>
       )}
 
-      {/* Navigation & Location Center */}
+      {/* 3. Track Recording Action Button (if handler passed) */}
+      {onToggleTrack && (
+        <View style={[styles.btnGroup, { backgroundColor: groupBg, borderColor: groupBorder }]}>
+          <Pressable
+            style={[styles.toolBtn, isTracking && styles.toolBtnRecording]}
+            onPress={onToggleTrack}>
+            <MaterialCommunityIcons
+              name={isTracking ? 'record-circle' : 'record-circle-outline'}
+              size={22}
+              color={isTracking ? '#EF4444' : colors.accent}
+            />
+          </Pressable>
+        </View>
+      )}
+
+      {/* 4. Compass / Heading Mode & Current Location (Recenter) */}
       <View style={[styles.btnGroup, { backgroundColor: groupBg, borderColor: groupBorder }]}>
         <Pressable
-          style={[styles.toolBtn, followUser && { backgroundColor: colors.chipBg }]}
-          onPress={onLocate}>
+          style={[styles.toolBtn, headingUp && { backgroundColor: colors.chipBg }]}
+          onPress={onHeading}
+          accessibilityRole="button"
+          accessibilityLabel="Toggle Heading or North Up"
+        >
           <Ionicons
-            name="locate"
+            name="compass-outline"
             size={20}
-            color={followUser ? colors.accent : iconColor}
+            color={headingUp ? colors.accent : iconColor}
           />
         </Pressable>
         <View style={[styles.divider, { backgroundColor: dividerBg }]} />
         <Pressable
-          style={[styles.toolBtn, headingUp && { backgroundColor: colors.chipBg }]}
-          onPress={onHeading}>
+          style={[styles.toolBtn, followUser && { backgroundColor: colors.chipBg }]}
+          onPress={onLocate}
+          accessibilityRole="button"
+          accessibilityLabel="Center on current location"
+        >
           <Ionicons
-            name="navigate"
-            size={18}
-            color={headingUp ? colors.accent : iconColor}
+            name={followUser ? 'locate' : 'locate-outline'}
+            size={20}
+            color={followUser ? colors.accent : iconColor}
           />
         </Pressable>
       </View>
+
+      {/* 5. 🚀 Google Maps Style Navigation "GO" Action Button (at the bottom) */}
+      {onGo && (
+        <Pressable
+          style={({ pressed }) => [
+            styles.goButton,
+            hasTarget ? styles.goButtonTarget : styles.goButtonStandard,
+            pressed && styles.goButtonPressed,
+          ]}
+          onPress={onGo}
+          accessibilityRole="button"
+          accessibilityLabel={hasTarget ? 'Start Navigation' : 'Choose Destination and Navigate'}
+        >
+          <View style={styles.goIconWrap}>
+            <MaterialCommunityIcons
+              name="navigation"
+              size={22}
+              color="#FFFFFF"
+              style={styles.goNavIcon}
+            />
+          </View>
+          <Text style={styles.goLabel}>GO</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -399,5 +443,48 @@ const styles = StyleSheet.create({
   },
   btnDisabled: {
     opacity: 0.4,
+  },
+  goButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 8,
+    borderWidth: 2,
+  },
+  goButtonStandard: {
+    backgroundColor: '#0284C7',
+    borderColor: '#38BDF8',
+    shadowColor: '#0284C7',
+  },
+  goButtonTarget: {
+    backgroundColor: '#0284C7',
+    borderColor: '#00F0FF',
+    shadowColor: '#00F0FF',
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+  },
+  goButtonPressed: {
+    transform: [{ scale: 0.93 }],
+    opacity: 0.9,
+  },
+  goIconWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  goNavIcon: {
+    transform: [{ rotate: '45deg' }],
+    marginTop: -1,
+  },
+  goLabel: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+    marginTop: -2,
   },
 });

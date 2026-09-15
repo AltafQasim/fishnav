@@ -1,6 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#020B14',
   },
   gridLines: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     opacity: 0.12,
   },
   gridLineH1: {
@@ -522,6 +522,9 @@ const styles = StyleSheet.create({
   brandHeader: {
     alignItems: 'center',
     marginBottom: 24,
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
   },
   logoBadge: {
     width: 68,
@@ -571,6 +574,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.7,
     shadowRadius: 24,
     elevation: 20,
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
   },
   cardHeader: {
     flexDirection: 'row',

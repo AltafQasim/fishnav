@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,8 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GoogleLogoSvg } from '@/components/ui/google-logo-svg';
 import { MapColors } from '@/constants/map-theme';
-import { useAppTheme } from '@/context/theme-context';
 import { useAuth } from '@/context/auth-context';
+import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
 import { useWaypoints } from '@/context/waypoints-context';
 
@@ -25,7 +26,7 @@ export function SettingsSheetContent() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { theme, setTheme, colors, isLight, isDark, isHighContrast } = useAppTheme();
-  const { captain, updateCaptain } = useAuth();
+  const { captain, updateCaptain, logout } = useAuth();
   const { waypoints, resetWaypoints } = useWaypoints();
   const { savedTrips } = useTripTracking();
 
@@ -87,6 +88,31 @@ export function SettingsSheetContent() {
     );
   };
 
+  const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      const confirmed = typeof window !== 'undefined' ? window.confirm('Are you sure you want to sign out from FishNavPro?') : true;
+      if (confirmed) {
+        logout();
+      }
+      return;
+    }
+
+    Alert.alert(
+      'Sign Out Account',
+      'Are you sure you want to sign out from FishNavPro? You will be redirected to the login screen.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: () => {
+            logout();
+          },
+        },
+      ],
+    );
+  };
+
   const handleResetPrompt = () => {
     Alert.alert(
       'Reset All Waypoints',
@@ -101,7 +127,10 @@ export function SettingsSheetContent() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 20) + 16 }]}
+      contentContainerStyle={[
+        styles.content,
+        { paddingBottom: Math.max(insets.bottom, 20) + 60 },
+      ]}
       showsVerticalScrollIndicator={false}
     >
       {/* ⚓ Active Captain & Vessel Profile Badge */}
@@ -141,6 +170,16 @@ export function SettingsSheetContent() {
             </Text>
           </View>
         </View>
+
+        <Pressable
+          style={styles.logoutBtn}
+          onPress={handleLogout}
+          accessibilityRole="button"
+          accessibilityLabel="Sign out of account"
+        >
+          <Ionicons name="log-out-outline" size={16} color="#EF4444" />
+          <Text style={styles.logoutBtnText}>Logout</Text>
+        </Pressable>
       </View>
 
       {/* 🚀 Trips & Recorded Routes Logbook Shortcut */}
@@ -219,8 +258,8 @@ export function SettingsSheetContent() {
                       backgroundColor: isSelected
                         ? colors.chipBg
                         : isLight
-                        ? '#F8FAFC'
-                        : '#041728',
+                          ? '#F8FAFC'
+                          : '#041728',
                       borderColor: isSelected ? item.accentColor : colors.divider,
                     },
                     isSelected && styles.themeItemSelected,
@@ -629,6 +668,31 @@ export function SettingsSheetContent() {
             </View>
           </View>
         </View>
+      </View>
+
+      {/* 7. Full-width Sign Out Button */}
+      <View style={{ marginTop: 16, marginBottom: 24 }}>
+        <Pressable
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            backgroundColor: isLight ? '#FEE2E2' : 'rgba(239, 68, 68, 0.12)',
+            borderColor: isLight ? '#FCA5A5' : 'rgba(239, 68, 68, 0.35)',
+            borderWidth: 1.5,
+            borderRadius: 14,
+            paddingVertical: 14,
+          }}
+          onPress={handleLogout}
+          accessibilityRole="button"
+          accessibilityLabel="Sign out of account"
+        >
+          <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+          <Text style={{ color: '#EF4444', fontSize: 14, fontWeight: '800', letterSpacing: 0.3 }}>
+            SIGN OUT / SWITCH ACCOUNT
+          </Text>
+        </Pressable>
       </View>
     </ScrollView>
   );

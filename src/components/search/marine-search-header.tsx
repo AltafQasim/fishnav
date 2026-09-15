@@ -1,8 +1,9 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   Image,
   Keyboard,
   Linking,
@@ -12,6 +13,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -193,6 +195,7 @@ type MarineSearchHeaderProps = {
   onOpenCoordsModal?: () => void;
   onOpenLayersModal?: () => void;
   onFocus?: () => void;
+  hidden?: boolean;
 };
 
 export function MarineSearchHeader({
@@ -205,6 +208,7 @@ export function MarineSearchHeader({
   onOpenCoordsModal,
   onOpenLayersModal,
   onFocus,
+  hidden = false,
 }: MarineSearchHeaderProps) {
   const { colors, isLight } = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -215,6 +219,31 @@ export function MarineSearchHeader({
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
+
+  // Smooth slide-up animation when sheet/tab opens
+  const animY = useRef(new Animated.Value(0)).current;
+  const animOpacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (hidden) {
+      Keyboard.dismiss();
+      setIsFocused(false);
+    }
+
+    Animated.parallel([
+      Animated.spring(animY, {
+        toValue: hidden ? -120 : 0,
+        friction: 8,
+        tension: 50,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+      Animated.timing(animOpacity, {
+        toValue: hidden ? 0 : 1,
+        duration: hidden ? 200 : 250,
+        useNativeDriver: Platform.OS !== 'web',
+      }),
+    ]).start();
+  }, [hidden]);
 
   // Parse potential coordinates typed in search bar (e.g. "20.35, 70.82" or "20.35 70.82")
   const parsedCoords = useMemo(() => {
@@ -321,14 +350,31 @@ export function MarineSearchHeader({
     }
   };
 
+  const { width: windowWidth } = useWindowDimensions();
+  const isTablet = windowWidth >= 600;
+  const headerLeftOffset = isTablet
+    ? Math.max((windowWidth - 640) / 2, 20)
+    : Math.max(insets.left + 12, 12);
+  const headerRightOffset = isTablet
+    ? Math.max((windowWidth - 640) / 2, 20)
+    : Math.max(insets.right + 12, 12);
+
   return (
-    <View
+    <Animated.View
       style={[
         styles.headerContainer,
-        { top: Math.max(insets.top, Platform.OS === 'ios' ? 12 : 8) + 4 },
+        {
+          top: Math.max(insets.top, Platform.OS === 'ios' ? 12 : 8) + 4,
+          left: headerLeftOffset,
+          right: headerRightOffset,
+          maxWidth: isTablet ? 640 : undefined,
+          alignSelf: 'center',
+          transform: [{ translateY: animY }],
+          opacity: animOpacity,
+        },
         isFocused && { zIndex: 500, elevation: 40 },
       ]}
-      pointerEvents="box-none"
+      pointerEvents={hidden ? 'none' : 'box-none'}
     >
       {/* 🟢 Search Bar Pill Row (Left: More, Center: Search Input, Right: Captain Avatar) */}
       <View
@@ -614,15 +660,13 @@ export function MarineSearchHeader({
           </ScrollView>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   headerContainer: {
     position: 'absolute',
-    left: 12,
-    right: 12,
     zIndex: 120, // Sits above map controls (10), below active AppTabs (150)
   },
   searchBarRow: {

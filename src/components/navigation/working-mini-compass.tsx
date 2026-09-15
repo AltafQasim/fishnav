@@ -21,7 +21,11 @@ const MINI_COMPASS_SIZE = 66;
  * - Fixed top lubber line (indicates bow direction)
  * - Real-time digital heading readout badge (e.g. 042°)
  */
-export function WorkingMiniCompass() {
+type WorkingMiniCompassProps = {
+  size?: number;
+};
+
+export function WorkingMiniCompass({ size = 66 }: WorkingMiniCompassProps) {
   const { heading, magHeading, location } = useUserLocation();
 
   // Pick best heading source, defaulting to 0
@@ -62,7 +66,7 @@ export function WorkingMiniCompass() {
   const displayHeading = Math.round(((currentHeading % 360) + 360) % 360);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { width: size, height: size }]}>
       {/* 1. Top Fixed Lubber Line (Bow Direction Pointer) */}
       <View style={styles.lubberMarker} pointerEvents="none" />
 
@@ -71,6 +75,8 @@ export function WorkingMiniCompass() {
         style={[
           styles.dialWrapper,
           {
+            width: size,
+            height: size,
             transform: [
               {
                 rotate: rotationAnim.interpolate({
@@ -82,7 +88,7 @@ export function WorkingMiniCompass() {
           },
         ]}
       >
-        <Svg width={MINI_COMPASS_SIZE} height={MINI_COMPASS_SIZE} viewBox="0 0 48 48">
+        <Svg width={size} height={size} viewBox="0 0 48 48">
           {/* Dial Background Disc */}
           <Circle
             cx="24"

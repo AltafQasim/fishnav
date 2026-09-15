@@ -1,5 +1,6 @@
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CoordinateInputModal } from '@/components/map/coordinate-input-modal';
@@ -20,6 +21,7 @@ import {
   type ActiveTabType,
   AppTabs,
 } from '@/components/navigation/app-tabs';
+import { MarineDirectionsModal } from '@/components/navigation/marine-directions-modal';
 import { CaptainProfileModal } from '@/components/search/captain-profile-modal';
 import { MarineSearchHeader } from '@/components/search/marine-search-header';
 import { CalendarSheetContent } from '@/components/sheets/calendar-sheet-content';
@@ -42,6 +44,9 @@ type MarineMainScreenProps = {
 
 export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
   const insets = useSafeAreaInsets();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isLandscape = windowWidth > windowHeight;
+  const isTablet = windowWidth >= 600;
   const mapRef = useRef<NativeMapHandle>(null);
   const { colors } = useAppTheme();
 
@@ -74,6 +79,12 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showCoordsModal, setShowCoordsModal] = useState(false);
   const [showLayersModal, setShowLayersModal] = useState(false);
+
+  // 🚀 Google Maps Directions & Interactive Map-Picking State
+  const [showDirectionsModal, setShowDirectionsModal] = useState(false);
+  const [directionsDestination, setDirectionsDestination] = useState<FishingSpot | null>(null);
+  const [isMapPickingMode, setIsMapPickingMode] = useState(false);
+  const [droppedPin, setDroppedPin] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const {
     isTracking,
@@ -128,10 +139,74 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     setActiveTab(null);
   };
 
-  const handleMapClick = (_lat: number, _lng: number) => {
+  const handleGoPress = () => {
+    // Open Google Maps Directions & Route Planning Modal!
+    setDirectionsDestination(selectedSpot ?? null);
+    setShowDirectionsModal(true);
+  };
+
+  const handleMapClick = (lat: number, lng: number) => {
+    if (isMapPickingMode) {
+      setDroppedPin({ latitude: lat, longitude: lng });
+      mapRef.current?.setDroppedPin(lat, lng);
+      return;
+    }
     // Dismiss any open spot selection or bottom sheet; no pin is dropped
     setSelectedSpotId(null);
     setFollowUser(false);
+    mapRef.current?.clearDroppedPin();
+  };
+
+  // Stats for the pin dropped in Map-Picking mode
+  const pickingPinStats = React.useMemo(() => {
+    if (!droppedPin || !location) return null;
+    const nm = distanceNm(location.latitude, location.longitude, droppedPin.latitude, droppedPin.longitude);
+    const brg = bearingDegrees(location.latitude, location.longitude, droppedPin.latitude, droppedPin.longitude);
+    return {
+      distNmStr: formatNm(nm),
+      distKmStr: `${(nm * 1.852).toFixed(1)} km`,
+      bearingStr: formatBearing(brg),
+    };
+  }, [droppedPin, location]);
+
+  const handleConfirmPickedPinAndStart = () => {
+    if (!droppedPin) return;
+    const customSpot: FishingSpot = {
+      id: `dest-${Date.now()}`,
+      name: `Target (${droppedPin.latitude.toFixed(4)}, ${droppedPin.longitude.toFixed(4)})`,
+      latitude: droppedPin.latitude,
+      longitude: droppedPin.longitude,
+      depthM: 42,
+      color: '#00F0FF',
+      category: 'Chart Destination',
+    };
+    setIsMapPickingMode(false);
+    setDroppedPin(null);
+    mapRef.current?.clearDroppedPin();
+    handleStartNavigationToSpot(customSpot);
+  };
+
+  const handleConfirmPickedPinToDirections = () => {
+    if (!droppedPin) return;
+    const customSpot: FishingSpot = {
+      id: `dest-${Date.now()}`,
+      name: `Target (${droppedPin.latitude.toFixed(4)}, ${droppedPin.longitude.toFixed(4)})`,
+      latitude: droppedPin.latitude,
+      longitude: droppedPin.longitude,
+      depthM: 42,
+      color: '#00F0FF',
+      category: 'Chart Destination',
+    };
+    setIsMapPickingMode(false);
+    setDroppedPin(null);
+    mapRef.current?.clearDroppedPin();
+    setDirectionsDestination(customSpot);
+    setShowDirectionsModal(true);
+  };
+
+  const handleCancelMapPicking = () => {
+    setIsMapPickingMode(false);
+    setDroppedPin(null);
     mapRef.current?.clearDroppedPin();
   };
 
@@ -222,7 +297,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
           headingUp={headingUp}
           selectedSpotId={selectedSpotId}
           spots={waypoints}
-          droppedPin={null}
+          droppedPin={droppedPin}
           measurementActive={false}
           activeTrackPoints={activePoints}
           savedTracks={savedTrips}
@@ -231,11 +306,23 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
           onUserPanned={() => setFollowUser(false)}
         />
 
-        {/* Floating Right Map Controls (Zoom In/Out, Locate, Heading Mode) */}
-        <View style={styles.rightControls} pointerEvents="box-none">
+        {/* Floating Right Map Controls (Zoom In/Out, Locate, Heading Mode, GO) */}
+        <View
+          style={[
+            styles.rightControls,
+            {
+              right: Math.max(insets.right + 14, 14),
+              bottom: isLandscape
+                ? Math.max(insets.bottom + 16, 20)
+                : Math.max(insets.bottom + 12, 16) + 76,
+            },
+          ]}
+          pointerEvents="box-none"
+        >
           <MapControlStack
             headingUp={headingUp}
             followUser={followUser}
+            hasTarget={Boolean(selectedSpot || targetSpot)}
             onZoomIn={() => mapRef.current?.zoomIn()}
             onZoomOut={() => mapRef.current?.zoomOut()}
             onLocate={handleLocate}
@@ -244,6 +331,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
               setFollowUser(true);
               mapRef.current?.centerOnUser();
             }}
+            onGo={handleGoPress}
           />
         </View>
       </View>
@@ -251,6 +339,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
       {/* 🟢 Universal Top Search Bar (Google Maps Style: More | Search | Captain Profile) */}
       {!isNavigating && (
         <MarineSearchHeader
+          hidden={activeTab !== null || Boolean(selectedSpot) || isMapPickingMode}
           userLocation={location}
           onOpenMore={() => setShowLayersModal(true)}
           onOpenProfile={() => setShowProfileModal(true)}
@@ -261,6 +350,95 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
           onOpenLayersModal={() => setShowLayersModal(true)}
           onFocus={() => setActiveTab(null)}
         />
+      )}
+
+      {/* 📍 Map Picking Mode: Guidance Header */}
+      {isMapPickingMode && (
+        <View
+          style={[
+            styles.mapPickingHeader,
+            { top: Math.max(insets.top, Platform.OS === 'ios' ? 12 : 8) + 8 },
+          ]}
+          pointerEvents="box-none"
+        >
+          <View style={styles.mapPickingPill}>
+            <Ionicons name="location" size={18} color="#00F0FF" />
+            <Text style={styles.mapPickingText}>
+              {droppedPin
+                ? 'Destination pinned! Tap anywhere to adjust or confirm below'
+                : 'Tap anywhere on the marine chart to drop destination pin'}
+            </Text>
+            <Pressable
+              onPress={handleCancelMapPicking}
+              hitSlop={10}
+              style={styles.mapPickingCloseBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Cancel map selection"
+            >
+              <Ionicons name="close" size={16} color="#FFFFFF" />
+            </Pressable>
+          </View>
+        </View>
+      )}
+
+      {/* 🚀 Map Picking Mode: Bottom Confirmation & Route Start Card */}
+      {isMapPickingMode && droppedPin && (
+        <View
+          style={[
+            styles.mapPickingCard,
+            {
+              bottom: Math.max(insets.bottom, 12) + (isLandscape ? 20 : 80),
+              backgroundColor: colors.surfaceHeader,
+              borderColor: colors.accent,
+            },
+          ]}
+        >
+          <View style={styles.pickingCardTop}>
+            <View style={[styles.pickingCardIconWrap, { backgroundColor: `${colors.accent}22` }]}>
+              <Ionicons name="location" size={20} color={colors.accent} />
+            </View>
+            <View style={styles.pickingCardTextWrap}>
+              <Text style={[styles.pickingCardTitle, { color: colors.text }]}>Selected Target Point</Text>
+              <Text style={[styles.pickingCardCoords, { color: colors.textSecondary }]}>
+                {droppedPin.latitude.toFixed(4)}° N, {droppedPin.longitude.toFixed(4)}° E
+                {pickingPinStats ? ` • ${pickingPinStats.distNmStr} (${pickingPinStats.bearingStr})` : ''}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => {
+                setDroppedPin(null);
+                mapRef.current?.clearDroppedPin();
+              }}
+              hitSlop={8}
+              style={[styles.pickingCardResetBtn, { backgroundColor: colors.chipBg }]}
+              accessibilityRole="button"
+              accessibilityLabel="Reset pin"
+            >
+              <Ionicons name="refresh" size={16} color={colors.textSecondary} />
+            </Pressable>
+          </View>
+
+          <View style={styles.pickingCardActions}>
+            <Pressable
+              onPress={handleConfirmPickedPinToDirections}
+              style={[styles.pickingCardSecondaryBtn, { borderColor: colors.cardBorder, backgroundColor: colors.card }]}
+              accessibilityRole="button"
+              accessibilityLabel="Review Route"
+            >
+              <Text style={[styles.pickingCardSecondaryText, { color: colors.text }]}>Review Route</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handleConfirmPickedPinAndStart}
+              style={styles.pickingCardPrimaryBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Start Navigation"
+            >
+              <MaterialCommunityIcons name="navigation" size={18} color="#FFFFFF" style={{ transform: [{ rotate: '45deg' }] }} />
+              <Text style={styles.pickingCardPrimaryText}>START NAVIGATION</Text>
+            </Pressable>
+          </View>
+        </View>
       )}
 
       {/* 2. Spot Sliding Sheet (Scrollable & Drag-to-dismiss like tab cards!) */}
@@ -365,6 +543,24 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
         }
         onToggleGpsHud={() => setShowGpsHud((v) => !v)}
       />
+
+      {/* 🟢 Google Maps Style Marine Directions & Route Planning Modal */}
+      <MarineDirectionsModal
+        visible={showDirectionsModal}
+        onClose={() => setShowDirectionsModal(false)}
+        userLocation={location}
+        waypoints={waypoints}
+        initialDestination={directionsDestination || selectedSpot}
+        onStartNavigation={(dest) => {
+          handleStartNavigationToSpot(dest);
+        }}
+        onChooseOnMap={() => {
+          setIsMapPickingMode(true);
+        }}
+        onOpenCoordsModal={() => {
+          setShowCoordsModal(true);
+        }}
+      />
     </View>
   );
 }
@@ -391,8 +587,6 @@ const styles = StyleSheet.create({
   },
   rightControls: {
     position: 'absolute',
-    right: 14,
-    top: 170,
     zIndex: 10,
   },
   sheetBadge: {
@@ -407,5 +601,131 @@ const styles = StyleSheet.create({
     color: '#38BDF8',
     fontSize: 10,
     fontWeight: '800',
+  },
+  mapPickingHeader: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    zIndex: 130,
+    alignItems: 'center',
+  },
+  mapPickingPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(2, 11, 20, 0.94)',
+    borderRadius: 24,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1.5,
+    borderColor: '#00F0FF',
+    gap: 10,
+    shadowColor: '#00F0FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 12,
+    maxWidth: 600,
+  },
+  mapPickingText: {
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  mapPickingCloseBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapPickingCard: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    padding: 14,
+    zIndex: 130,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 16,
+    maxWidth: 600,
+    alignSelf: 'center',
+  },
+  pickingCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 10,
+  },
+  pickingCardIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickingCardTextWrap: {
+    flex: 1,
+  },
+  pickingCardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  pickingCardCoords: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  pickingCardResetBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickingCardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  pickingCardSecondaryBtn: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickingCardSecondaryText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  pickingCardPrimaryBtn: {
+    flex: 1.4,
+    backgroundColor: '#0284C7',
+    paddingVertical: 11,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#00F0FF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    shadowColor: '#00F0FF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  pickingCardPrimaryText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
 });

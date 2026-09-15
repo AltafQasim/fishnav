@@ -12,8 +12,10 @@ import {
   View,
 } from 'react-native';
 
-import { useAppTheme } from '@/context/theme-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { MapColors } from '@/constants/map-theme';
+import { useAppTheme } from '@/context/theme-context';
 
 type SlidingSheetContainerProps = {
   isOpen: boolean;
@@ -50,10 +52,14 @@ export function SlidingSheetContainer({
   maxHeightRatio = 0.85,
 }: SlidingSheetContainerProps) {
   const { colors, isLight } = useAppTheme();
-  const { height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isTablet = windowWidth >= 600;
+  const isLandscape = windowWidth > windowHeight;
 
-  // Maximum 85% of screen height (or custom maxHeightRatio)
-  const maxSheetHeight = Math.round(windowHeight * (maxHeightRatio ?? 0.85));
+  // Maximum 85% of screen height (or custom maxHeightRatio, 90% in landscape phone)
+  const defaultMaxRatio = isLandscape && !isTablet ? 0.90 : 0.85;
+  const maxSheetHeight = Math.round(windowHeight * (maxHeightRatio ?? defaultMaxRatio));
 
   // If an explicit fixed height or heightRatio was provided, use it, otherwise let content size up to 85%
   const effectiveFixed = customHeight ?? (heightRatio ? Math.round(windowHeight * heightRatio) : undefined);
@@ -152,8 +158,20 @@ export function SlidingSheetContainer({
             borderLeftColor: colors.cardBorder,
             borderRightColor: colors.cardBorder,
             maxHeight: maxSheetHeight,
+            paddingBottom: Math.max(insets.bottom, 12),
             ...(effectiveFixed ? { height: effectiveFixed } : {}),
             transform: [{ translateY }],
+            ...(isTablet
+              ? {
+                maxWidth: 640,
+                width: Math.min(windowWidth - 48, 640),
+                alignSelf: 'center',
+                borderRadius: 28,
+                borderWidth: 1.5,
+                borderColor: colors.sheetBorder,
+                marginBottom: Math.max(insets.bottom + 8, 14),
+              }
+              : {}),
           },
         ]}
       >
@@ -246,10 +264,9 @@ const styles = StyleSheet.create({
   },
   sheet: {
     position: 'absolute',
-    left: 0,
-    right: 0,
     bottom: 0,
     width: '100%',
+    alignSelf: 'center',
     backgroundColor: MapColors.navy,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,

@@ -199,6 +199,15 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
   };
 
   const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      const confirmed = typeof window !== 'undefined' ? window.confirm('Are you sure you want to sign out?') : true;
+      if (confirmed) {
+        onClose();
+        logout();
+      }
+      return;
+    }
+
     Alert.alert(
       'Sign Out Account',
       'Are you sure you want to sign out? You will need to log in with your mobile number or Google account to access the nautical chart.',
