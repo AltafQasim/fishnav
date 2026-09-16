@@ -3,19 +3,16 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   Alert,
-  Image,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
   TextInput,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { GoogleLogoSvg } from '@/components/ui/google-logo-svg';
 import { MapColors } from '@/constants/map-theme';
 import { useAuth } from '@/context/auth-context';
 import { useAppTheme } from '@/context/theme-context';
@@ -26,7 +23,7 @@ export function SettingsSheetContent() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { theme, setTheme, colors, isLight, isDark, isHighContrast } = useAppTheme();
-  const { captain, updateCaptain, logout } = useAuth();
+  const { captain, updateCaptain } = useAuth();
   const { waypoints, resetWaypoints } = useWaypoints();
   const { savedTrips } = useTripTracking();
 
@@ -88,31 +85,6 @@ export function SettingsSheetContent() {
     );
   };
 
-  const handleLogout = () => {
-    if (Platform.OS === 'web') {
-      const confirmed = typeof window !== 'undefined' ? window.confirm('Are you sure you want to sign out from FishNavPro?') : true;
-      if (confirmed) {
-        logout();
-      }
-      return;
-    }
-
-    Alert.alert(
-      'Sign Out Account',
-      'Are you sure you want to sign out from FishNavPro? You will be redirected to the login screen.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: () => {
-            logout();
-          },
-        },
-      ],
-    );
-  };
-
   const handleResetPrompt = () => {
     Alert.alert(
       'Reset All Waypoints',
@@ -129,59 +101,10 @@ export function SettingsSheetContent() {
       style={styles.container}
       contentContainerStyle={[
         styles.content,
-        { paddingBottom: Math.max(insets.bottom, 20) + 60 },
+        { paddingBottom: Math.max(insets.bottom, 20) + 110 },
       ]}
       showsVerticalScrollIndicator={false}
     >
-      {/* ⚓ Active Captain & Vessel Profile Badge */}
-      <View
-        style={[
-          styles.captainCard,
-          {
-            backgroundColor: isLight ? '#FFFFFF' : isDark ? '#1E293B' : 'rgba(2, 132, 199, 0.12)',
-            borderColor: isLight ? '#CBD5E1' : isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(56, 189, 248, 0.35)',
-          },
-        ]}
-      >
-        <View style={[styles.captainAvatarWrap, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
-          {captain?.avatarUrl ? (
-            <Image source={{ uri: captain.avatarUrl }} style={styles.captainAvatarImg} />
-          ) : (
-            <MaterialCommunityIcons name="shield-account" size={26} color={colors.accent} />
-          )}
-        </View>
-        <View style={styles.captainTextWrap}>
-          <Text style={[styles.captainName, { color: colors.text }]}>
-            {captain?.name || 'Capt. Vikram Rathore'}
-          </Text>
-          <Text style={[styles.captainVessel, { color: isLight ? colors.textSecondary : colors.accent }]}>
-            {captain?.vesselName || 'Sea Hunter II'} • {captain?.callSign || 'IND-GJ-8821'}
-          </Text>
-          <View style={styles.authBadgeRow}>
-            {captain?.authProvider === 'google' ? (
-              <GoogleLogoSvg size={13} />
-            ) : captain?.authProvider === 'phone' ? (
-              <Ionicons name="call" size={12} color={colors.accent} />
-            ) : (
-              <Ionicons name="flash" size={12} color="#FBBF24" />
-            )}
-            <Text style={[styles.authBadgeText, { color: colors.accent }]}>
-              {captain?.emailOrPhone || '+91 98765 43210'}
-            </Text>
-          </View>
-        </View>
-
-        <Pressable
-          style={styles.logoutBtn}
-          onPress={handleLogout}
-          accessibilityRole="button"
-          accessibilityLabel="Sign out of account"
-        >
-          <Ionicons name="log-out-outline" size={16} color="#EF4444" />
-          <Text style={styles.logoutBtnText}>Logout</Text>
-        </Pressable>
-      </View>
-
       {/* 🚀 Trips & Recorded Routes Logbook Shortcut */}
       <Pressable
         style={[
@@ -209,7 +132,7 @@ export function SettingsSheetContent() {
       <View style={styles.section}>
         <View style={styles.sectionHeaderRow}>
           <Text style={[styles.sectionHeader, { color: colors.accent }]}>
-            APP THEME (HIGH CONTRAST / DARK / LIGHT)
+            APP THEME
           </Text>
           <View style={[styles.badgeTheme, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
             <Text style={[styles.badgeThemeText, { color: colors.accent }]}>
@@ -219,9 +142,6 @@ export function SettingsSheetContent() {
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-          <Text style={[styles.themeSubtitle, { color: colors.textSecondary }]}>
-            Application theme chunein: High Contrast ya Light Mode:
-          </Text>
 
           <View style={styles.themesList}>
             {(
@@ -669,31 +589,6 @@ export function SettingsSheetContent() {
           </View>
         </View>
       </View>
-
-      {/* 7. Full-width Sign Out Button */}
-      <View style={{ marginTop: 16, marginBottom: 24 }}>
-        <Pressable
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            backgroundColor: isLight ? '#FEE2E2' : 'rgba(239, 68, 68, 0.12)',
-            borderColor: isLight ? '#FCA5A5' : 'rgba(239, 68, 68, 0.35)',
-            borderWidth: 1.5,
-            borderRadius: 14,
-            paddingVertical: 14,
-          }}
-          onPress={handleLogout}
-          accessibilityRole="button"
-          accessibilityLabel="Sign out of account"
-        >
-          <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-          <Text style={{ color: '#EF4444', fontSize: 14, fontWeight: '800', letterSpacing: 0.3 }}>
-            SIGN OUT / SWITCH ACCOUNT
-          </Text>
-        </Pressable>
-      </View>
     </ScrollView>
   );
 }
@@ -706,73 +601,6 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 16,
     paddingTop: 8,
-  },
-  captainCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(2, 132, 199, 0.12)',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 12,
-    borderWidth: 1.5,
-    borderColor: 'rgba(56, 189, 248, 0.35)',
-    gap: 12,
-  },
-  captainAvatarWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0, 240, 255, 0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0, 240, 255, 0.3)',
-    overflow: 'hidden',
-  },
-  captainAvatarImg: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 22,
-  },
-  captainTextWrap: {
-    flex: 1,
-  },
-  captainName: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  captainVessel: {
-    color: '#38BDF8',
-    fontSize: 11,
-    marginTop: 2,
-  },
-  authBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  authBadgeText: {
-    color: '#00F0FF',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
-  },
-  logoutBtnText: {
-    color: '#EF4444',
-    fontSize: 11,
-    fontWeight: '700',
   },
   tripsShortcutCard: {
     flexDirection: 'row',

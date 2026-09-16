@@ -1,22 +1,21 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Image,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { LogoutConfirmModal } from '@/components/auth/logout-confirm-modal';
 import { GoogleLogoSvg } from '@/components/ui/google-logo-svg';
 import { useAuth } from '@/context/auth-context';
 import { useAppTheme } from '@/context/theme-context';
@@ -102,6 +101,7 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
   // Sub-modals state
   const [showPhotoPicker, setShowPhotoPicker] = useState(false);
   const [showVesselEditor, setShowVesselEditor] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Vessel Edit Form State
   const [editCaptainName, setEditCaptainName] = useState(captain?.name || '');
@@ -199,30 +199,7 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
   };
 
   const handleLogout = () => {
-    if (Platform.OS === 'web') {
-      const confirmed = typeof window !== 'undefined' ? window.confirm('Are you sure you want to sign out?') : true;
-      if (confirmed) {
-        onClose();
-        logout();
-      }
-      return;
-    }
-
-    Alert.alert(
-      'Sign Out Account',
-      'Are you sure you want to sign out? You will need to log in with your mobile number or Google account to access the nautical chart.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Sign Out',
-          style: 'destructive',
-          onPress: () => {
-            onClose();
-            logout();
-          },
-        },
-      ],
-    );
+    setShowLogoutConfirm(true);
   };
 
   const isGoogle = captain?.authProvider === 'google';
@@ -437,7 +414,7 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                 onPress={() => setShowVesselEditor(true)}
               >
                 <Ionicons name="create-outline" size={14} color={colors.accent} />
-                <Text style={[styles.editSpecsText, { color: colors.accent }]}>Update Specs</Text>
+                <Text style={[styles.editSpecsText, { color: colors.accent }]}>Update</Text>
               </Pressable>
             </View>
 
@@ -528,8 +505,8 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                       {isGoogle
                         ? 'Google Sign-In'
                         : isPhone
-                        ? 'Mobile Number OTP'
-                        : 'Fleet Master Demo Access'}
+                          ? 'Mobile Number OTP'
+                          : 'Fleet Master Demo Access'}
                     </Text>
                     <Text style={[styles.authProviderSub, { color: colors.textMuted }]}>
                       {captain?.authMethodLabel || 'Authenticated Session'}
@@ -1063,6 +1040,16 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
           </View>
         </View>
       </Modal>
+      {/* 🔴 MODAL C: CUSTOM MARITIME LOGOUT CONFIRMATION */}
+      <LogoutConfirmModal
+        visible={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          onClose();
+          logout();
+        }}
+      />
     </Modal>
   );
 }

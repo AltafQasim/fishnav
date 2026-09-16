@@ -8,6 +8,7 @@ import { MarineLoginScreen } from '@/components/auth/marine-login-screen';
 import { MarineSplashScreen } from '@/components/auth/marine-splash-screen';
 import { MapColors } from '@/constants/map-theme';
 import { AppThemeProvider, useAppTheme } from '@/context/theme-context';
+import { MarineAlertProvider } from '@/context/marine-alert-context';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { LocationProvider } from '@/context/location-context';
 import { TripProvider } from '@/context/trip-context';
@@ -72,15 +73,17 @@ export default function RootLayout() {
 
   return (
     <AppThemeProvider>
-      <AuthProvider>
-        <LocationProvider>
-          <WaypointsProvider>
-            <TripProvider>
-              <RootContent />
-            </TripProvider>
-          </WaypointsProvider>
-        </LocationProvider>
-      </AuthProvider>
+      <MarineAlertProvider>
+        <AuthProvider>
+          <LocationProvider>
+            <WaypointsProvider>
+              <TripProvider>
+                <RootContent />
+              </TripProvider>
+            </WaypointsProvider>
+          </LocationProvider>
+        </AuthProvider>
+      </MarineAlertProvider>
     </AppThemeProvider>
   );
 }
