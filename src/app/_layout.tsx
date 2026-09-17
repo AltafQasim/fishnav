@@ -1,4 +1,3 @@
-import { DarkTheme, ThemeProvider } from 'expo-router';
 import { Slot, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect, useState } from 'react';
@@ -6,15 +5,17 @@ import { StyleSheet, View } from 'react-native';
 
 import { MarineLoginScreen } from '@/components/auth/marine-login-screen';
 import { MarineSplashScreen } from '@/components/auth/marine-splash-screen';
-import { MapColors } from '@/constants/map-theme';
-import { AppThemeProvider, useAppTheme } from '@/context/theme-context';
-import { MarineAlertProvider } from '@/context/marine-alert-context';
+import { FishNavProModal } from '@/components/subscription/fishnav-pro-modal';
+import { MarineReferralModal } from '@/components/subscription/marine-referral-modal';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import { LocationProvider } from '@/context/location-context';
+import { MarineAlertProvider } from '@/context/marine-alert-context';
+import { SubscriptionProvider } from '@/context/subscription-context';
+import { AppThemeProvider, useAppTheme } from '@/context/theme-context';
 import { TripProvider } from '@/context/trip-context';
 import { WaypointsProvider } from '@/context/waypoints-context';
 
-SplashScreen.preventAutoHideAsync().catch(() => {});
+SplashScreen.preventAutoHideAsync().catch(() => { });
 
 /**
  * 🛡️ ProtectedAuthGate
@@ -61,6 +62,8 @@ function RootContent() {
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <ProtectedAuthGate>
         <Slot />
+        <FishNavProModal />
+        <MarineReferralModal />
       </ProtectedAuthGate>
     </View>
   );
@@ -68,20 +71,22 @@ function RootContent() {
 
 export default function RootLayout() {
   useEffect(() => {
-    SplashScreen.hideAsync().catch(() => {});
+    SplashScreen.hideAsync().catch(() => { });
   }, []);
 
   return (
     <AppThemeProvider>
       <MarineAlertProvider>
         <AuthProvider>
-          <LocationProvider>
-            <WaypointsProvider>
-              <TripProvider>
-                <RootContent />
-              </TripProvider>
-            </WaypointsProvider>
-          </LocationProvider>
+          <SubscriptionProvider>
+            <LocationProvider>
+              <WaypointsProvider>
+                <TripProvider>
+                  <RootContent />
+                </TripProvider>
+              </WaypointsProvider>
+            </LocationProvider>
+          </SubscriptionProvider>
         </AuthProvider>
       </MarineAlertProvider>
     </AppThemeProvider>

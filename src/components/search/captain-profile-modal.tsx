@@ -1,11 +1,12 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LogoutConfirmModal } from '@/components/auth/logout-confirm-modal';
 import { GoogleLogoSvg } from '@/components/ui/google-logo-svg';
 import { useAuth } from '@/context/auth-context';
+import { SubscriptionPlan, useSubscription } from '@/context/subscription-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
 import { useWaypoints } from '@/context/waypoints-context';
@@ -98,10 +100,58 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
     router.push('/trips');
   };
 
+  const {
+    isPro,
+    proPlan,
+    proExpiresAt,
+    autoRenew,
+    licenseCertificateId,
+    invoiceNumber,
+    hasReferralBonus,
+    bonusProDaysRemaining,
+    isTrialActive,
+    isTrialExpired,
+    trialDaysRemaining,
+    trialHoursRemaining,
+    trialProgressPercent,
+    referralDaysEarned,
+    toggleAutoRenew,
+    subscribeToPro,
+    restorePurchases,
+    openProModal,
+    openReferralModal,
+  } = useSubscription();
+
   // Sub-modals state
   const [showPhotoPicker, setShowPhotoPicker] = useState(false);
   const [showVesselEditor, setShowVesselEditor] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [showPlanChangeModal, setShowPlanChangeModal] = useState(false);
+  const [selectedNewPlan, setSelectedNewPlan] = useState<SubscriptionPlan>('annual');
+
+  const planDisplayName = useMemo(() => {
+    if (proPlan === 'lifetime') return 'Lifetime Skipper Pass';
+    if (proPlan === 'quarterly') return 'Quarterly Voyager License';
+    return 'Annual Master Mariner License';
+  }, [proPlan]);
+
+  const planCostDisplay = useMemo(() => {
+    if (proPlan === 'lifetime') return '₹3,999 • One-Time Permanent';
+    if (proPlan === 'quarterly') return '₹499 / 3 Months (₹166/mo)';
+    return '₹1,499 / Year (₹125/mo)';
+  }, [proPlan]);
+
+  const handleCopyLicenseKey = async () => {
+    try {
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(licenseCertificateId);
+      }
+      Alert.alert('License Copied', `Maritime Certificate ID ${licenseCertificateId} copied to clipboard.`);
+    } catch {
+      Alert.alert('Certificate ID', licenseCertificateId);
+    }
+  };
 
   // Vessel Edit Form State
   const [editCaptainName, setEditCaptainName] = useState(captain?.name || '');
@@ -355,6 +405,389 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                 <Text style={[styles.statLbl, { color: colors.textMuted }]}>GPS LOCK</Text>
               </View>
             </View>
+
+            {/* 👑 PRO MEMBERSHIP & VESSEL LICENSE MANAGEMENT */}
+            <View style={styles.sectionHeaderBetween}>
+              <View style={styles.sectionHeaderLeft}>
+                <MaterialCommunityIcons name="crown" size={18} color="#F59E0B" />
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                  PRO MEMBERSHIP & VESSEL LICENSE
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.statusBadgePill,
+                  {
+                    backgroundColor: isPro
+                      ? 'rgba(245, 158, 11, 0.15)'
+                      : hasReferralBonus
+                        ? 'rgba(34, 197, 94, 0.15)'
+                        : isTrialExpired
+                          ? 'rgba(239, 68, 68, 0.15)'
+                          : 'rgba(0, 240, 255, 0.12)',
+                    borderColor: isPro
+                      ? '#F59E0B'
+                      : hasReferralBonus
+                        ? '#22C55E'
+                        : isTrialExpired
+                          ? '#EF4444'
+                          : colors.accent,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusBadgePillText,
+                    {
+                      color: isPro
+                        ? '#F59E0B'
+                        : hasReferralBonus
+                          ? '#22C55E'
+                          : isTrialExpired
+                            ? '#EF4444'
+                            : colors.accent,
+                    },
+                  ]}
+                >
+                  {isPro
+                    ? 'PRO ACTIVE 👑'
+                    : hasReferralBonus
+                      ? `${bonusProDaysRemaining}D BONUS 🎁`
+                      : isTrialExpired
+                        ? 'TRIAL EXPIRED 🚨'
+                        : `${trialDaysRemaining}D TRIAL ⚡`}
+                </Text>
+              </View>
+            </View>
+
+            {isPro ? (
+              <View
+                style={[
+                  styles.proLicenseCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.85)',
+                    borderColor: isLight ? '#FDE68A' : 'rgba(245, 158, 11, 0.35)',
+                  },
+                ]}
+              >
+                {/* Top Gold Stripe */}
+                <LinearGradient
+                  colors={['#F59E0B', '#D97706', '#B45309']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.proCardTopStripe}
+                />
+
+                <View style={styles.proLicenseContent}>
+                  {/* Plan Header */}
+                  <View style={styles.proPlanHeaderRow}>
+                    <View
+                      style={[
+                        styles.proPlanIconWrap,
+                        {
+                          backgroundColor: isLight ? '#FEF3C7' : 'rgba(245, 158, 11, 0.15)',
+                          borderColor: '#F59E0B',
+                        },
+                      ]}
+                    >
+                      <MaterialCommunityIcons name="shield-crown" size={24} color="#F59E0B" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.proPlanName, { color: colors.text }]}>
+                        {planDisplayName}
+                      </Text>
+                      <Text style={[styles.proPlanPrice, { color: '#F59E0B' }]}>
+                        {planCostDisplay}
+                      </Text>
+                    </View>
+                    <View style={styles.verifiedChip}>
+                      <Ionicons name="checkmark-circle" size={13} color="#10B981" />
+                      <Text style={styles.verifiedChipText}>ACTIVE</Text>
+                    </View>
+                  </View>
+
+                  {/* Expiration & Renewal Row */}
+                  <View
+                    style={[
+                      styles.renewalInfoBox,
+                      {
+                        backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.25)',
+                        borderColor: colors.cardBorder,
+                      },
+                    ]}
+                  >
+                    <View style={styles.renewalRowItem}>
+                      <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
+                      <Text style={[styles.renewalLabel, { color: colors.textSecondary }]}>Status / Expiry:</Text>
+                      <Text style={[styles.renewalValue, { color: colors.text }]}>
+                        {proPlan === 'lifetime' ? 'Perpetual Lifetime' : proExpiresAt || 'Active'}
+                      </Text>
+                    </View>
+
+                    {proPlan !== 'lifetime' && (
+                      <View style={styles.renewalRowItem}>
+                        <Ionicons
+                          name={autoRenew ? 'refresh-circle' : 'pause-circle'}
+                          size={15}
+                          color={autoRenew ? '#10B981' : '#F59E0B'}
+                        />
+                        <Text style={[styles.renewalLabel, { color: colors.textSecondary }]}>Auto-Renew:</Text>
+                        <Text
+                          style={[
+                            styles.renewalValue,
+                            { color: autoRenew ? '#10B981' : '#F59E0B', fontWeight: '700' },
+                          ]}
+                        >
+                          {autoRenew ? 'ACTIVE (Auto-Renews)' : 'PAUSED'}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Official Certificate ID with 1-Tap Copy */}
+                  <View
+                    style={[
+                      styles.certKeyBox,
+                      {
+                        backgroundColor: isLight ? '#FEF3C7' : 'rgba(245, 158, 11, 0.08)',
+                        borderColor: isLight ? '#FDE68A' : 'rgba(245, 158, 11, 0.25)',
+                      },
+                    ]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.certKeyLabel}>OFFICIAL MARITIME CERTIFICATE ID</Text>
+                      <Text style={[styles.certKeyValue, { color: colors.text }]}>{licenseCertificateId}</Text>
+                    </View>
+                    <Pressable
+                      style={[styles.copyCertBtn, { backgroundColor: isLight ? '#FFFFFF' : 'rgba(245, 158, 11, 0.2)' }]}
+                      onPress={handleCopyLicenseKey}
+                      hitSlop={8}
+                    >
+                      <Ionicons name="copy-outline" size={14} color="#F59E0B" />
+                      <Text style={styles.copyCertBtnText}>COPY</Text>
+                    </Pressable>
+                  </View>
+
+                  {/* Unlocked Capabilities Grid (4 Pills) */}
+                  <View style={styles.unlockedGrid}>
+                    <View style={[styles.unlockedItem, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
+                      <Ionicons name="cloud-offline" size={13} color="#10B981" />
+                      <Text style={[styles.unlockedText, { color: colors.text }]}>Offline Charts</Text>
+                    </View>
+                    <View style={[styles.unlockedItem, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
+                      <Ionicons name="fish" size={13} color="#00F0FF" />
+                      <Text style={[styles.unlockedText, { color: colors.text }]}>AI Hotspots</Text>
+                    </View>
+                    <View style={[styles.unlockedItem, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
+                      <Ionicons name="radio" size={13} color="#F59E0B" />
+                      <Text style={[styles.unlockedText, { color: colors.text }]}>AIS Radar</Text>
+                    </View>
+                    <View style={[styles.unlockedItem, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
+                      <Ionicons name="location" size={13} color="#A855F7" />
+                      <Text style={[styles.unlockedText, { color: colors.text }]}>Waypoints Sync</Text>
+                    </View>
+                  </View>
+
+                  {/* Quick Action Buttons for Subscription Management */}
+                  <View style={styles.proActionBtnGrid}>
+                    {/* Change / Switch Plan */}
+                    <Pressable
+                      style={[styles.proManageBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+                      onPress={() => setShowPlanChangeModal(true)}
+                    >
+                      <MaterialCommunityIcons name="swap-horizontal" size={15} color={colors.accent} />
+                      <Text style={[styles.proManageBtnText, { color: colors.text }]}>Change Plan</Text>
+                    </Pressable>
+
+                    {/* Auto-Renew Toggle */}
+                    {proPlan !== 'lifetime' && (
+                      <Pressable
+                        style={[styles.proManageBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+                        onPress={toggleAutoRenew}
+                      >
+                        <Ionicons
+                          name={autoRenew ? 'pause-outline' : 'play-outline'}
+                          size={15}
+                          color={autoRenew ? '#F59E0B' : '#10B981'}
+                        />
+                        <Text style={[styles.proManageBtnText, { color: colors.text }]}>
+                          {autoRenew ? 'Pause Renewal' : 'Resume Renewal'}
+                        </Text>
+                      </Pressable>
+                    )}
+
+                    {/* Tax Invoice & Receipt */}
+                    <Pressable
+                      style={[styles.proManageBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+                      onPress={() => setShowReceiptModal(true)}
+                    >
+                      <Ionicons name="receipt-outline" size={14} color={colors.textSecondary} />
+                      <Text style={[styles.proManageBtnText, { color: colors.text }]}>Tax Invoice</Text>
+                    </Pressable>
+
+                    {/* Restore Purchases */}
+                    <Pressable
+                      style={[styles.proManageBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+                      onPress={restorePurchases}
+                    >
+                      <Ionicons name="sync-outline" size={14} color={colors.textSecondary} />
+                      <Text style={[styles.proManageBtnText, { color: colors.text }]}>Restore</Text>
+                    </Pressable>
+                  </View>
+
+                  {/* Referral Bonus Bar if active */}
+                  {referralDaysEarned > 0 && (
+                    <View style={styles.refBonusRow}>
+                      <Ionicons name="gift" size={13} color="#22C55E" />
+                      <Text style={styles.refBonusText}>
+                        +{referralDaysEarned} Days Free added from Captain Invites
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            ) : hasReferralBonus ? (
+              <View
+                style={[
+                  styles.trialProfileCard,
+                  {
+                    backgroundColor: isLight ? '#F0FDF4' : 'rgba(34, 197, 94, 0.08)',
+                    borderColor: isLight ? '#BBF7D0' : 'rgba(34, 197, 94, 0.35)',
+                  },
+                ]}
+              >
+                <View style={styles.trialCardHeader}>
+                  <Ionicons name="gift" size={22} color="#22C55E" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.trialCardTitle, { color: '#22C55E' }]}>
+                      {bonusProDaysRemaining}-Day Referral Bonus Active
+                    </Text>
+                    <Text style={[styles.trialCardSub, { color: colors.textSecondary }]}>
+                      You have full offshore access to bathymetric charts, AI fishing zones, and AIS radar via referral bonus. No active paid subscription charge.
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.unlockedGrid}>
+                  <View style={[styles.unlockedItem, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
+                    <Ionicons name="cloud-offline" size={13} color="#10B981" />
+                    <Text style={[styles.unlockedText, { color: colors.text }]}>Offline Charts</Text>
+                  </View>
+                  <View style={[styles.unlockedItem, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
+                    <Ionicons name="fish" size={13} color="#00F0FF" />
+                    <Text style={[styles.unlockedText, { color: colors.text }]}>AI Hotspots</Text>
+                  </View>
+                  <View style={[styles.unlockedItem, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
+                    <Ionicons name="radio" size={13} color="#F59E0B" />
+                    <Text style={[styles.unlockedText, { color: colors.text }]}>AIS Radar</Text>
+                  </View>
+                </View>
+
+                <View style={styles.trialActionRow}>
+                  <Pressable
+                    style={styles.upgradeCtaBtn}
+                    onPress={() => {
+                      onClose();
+                      openProModal('profile_bonus_card');
+                    }}
+                  >
+                    <LinearGradient
+                      colors={['#00F0FF', '#0284C7']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.upgradeCtaGrad}
+                    >
+                      <MaterialCommunityIcons name="crown" size={17} color="#020B14" />
+                      <Text style={styles.upgradeCtaText}>UPGRADE TO PERMANENT PRO</Text>
+                    </LinearGradient>
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.referralCtaBtn, { borderColor: '#22C55E', backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}
+                    onPress={() => {
+                      onClose();
+                      openReferralModal();
+                    }}
+                  >
+                    <Ionicons name="people" size={14} color="#22C55E" />
+                    <Text style={[styles.referralCtaText, { color: '#22C55E' }]}>Invite More (+10d)</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <View
+                style={[
+                  styles.trialProfileCard,
+                  {
+                    backgroundColor: isTrialExpired
+                      ? isLight ? '#FEF2F2' : 'rgba(239, 68, 68, 0.1)'
+                      : isLight ? '#EFF6FF' : 'rgba(0, 240, 255, 0.08)',
+                    borderColor: isTrialExpired ? '#EF4444' : colors.accent,
+                  },
+                ]}
+              >
+                <View style={styles.trialCardHeader}>
+                  <Ionicons
+                    name={isTrialExpired ? 'alert-circle' : 'flash'}
+                    size={20}
+                    color={isTrialExpired ? '#EF4444' : colors.accent}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={[
+                        styles.trialCardTitle,
+                        { color: isTrialExpired ? '#EF4444' : colors.accent },
+                      ]}
+                    >
+                      {isTrialExpired ? '3-Day Free Trial Expired' : '3-Day Free Trial Active'}
+                    </Text>
+                    <Text style={[styles.trialCardSub, { color: colors.textSecondary }]}>
+                      {isTrialExpired
+                        ? 'Upgrade to Pro to unlock unlimited bathymetry, AIS radar and secret waypoints.'
+                        : `${trialHoursRemaining} hours remaining (${trialDaysRemaining} days) of full access.`}
+                    </Text>
+                  </View>
+                </View>
+
+                {!isTrialExpired && (
+                  <View style={styles.trialBarBg}>
+                    <View style={[styles.trialBarFill, { width: `${trialProgressPercent}%`, backgroundColor: colors.accent }]} />
+                  </View>
+                )}
+
+                <View style={styles.trialActionRow}>
+                  <Pressable
+                    style={styles.upgradeCtaBtn}
+                    onPress={() => {
+                      onClose();
+                      openProModal('profile_trial_card');
+                    }}
+                  >
+                    <LinearGradient
+                      colors={['#00F0FF', '#0284C7']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.upgradeCtaGrad}
+                    >
+                      <MaterialCommunityIcons name="crown" size={17} color="#020B14" />
+                      <Text style={styles.upgradeCtaText}>UPGRADE TO PRO LICENSE</Text>
+                    </LinearGradient>
+                  </Pressable>
+
+                  <Pressable
+                    style={[styles.referralCtaBtn, { borderColor: '#22C55E', backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}
+                    onPress={() => {
+                      onClose();
+                      openReferralModal();
+                    }}
+                  >
+                    <Ionicons name="people" size={14} color="#22C55E" />
+                    <Text style={[styles.referralCtaText, { color: '#22C55E' }]}>Get +10d Free</Text>
+                  </Pressable>
+                </View>
+              </View>
+            )}
 
             {/* 🚀 TRIPS & ROUTES LOGBOOK SHORTCUT */}
             <Pressable
@@ -1040,6 +1473,245 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
           </View>
         </View>
       </Modal>
+      {/* 🧾 MODAL D: TAX INVOICE & PRO RECEIPT */}
+      <Modal
+        visible={showReceiptModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowReceiptModal(false)}
+      >
+        <View style={styles.subModalOverlay}>
+          <Pressable style={styles.subModalTouch} onPress={() => setShowReceiptModal(false)} />
+          <View
+            style={[
+              styles.receiptCard,
+              {
+                backgroundColor: isLight ? '#FFFFFF' : '#031422',
+                borderColor: isLight ? '#E2E8F0' : 'rgba(0, 240, 255, 0.3)',
+              },
+            ]}
+          >
+            <View style={styles.receiptTopRow}>
+              <View style={styles.receiptLogoRow}>
+                <MaterialCommunityIcons name="ship-wheel" size={24} color={colors.accent} />
+                <View>
+                  <Text style={[styles.receiptBrand, { color: colors.text }]}>FishNav Marine</Text>
+                  <Text style={[styles.receiptSub, { color: colors.textMuted }]}>Official Maritime Tax Invoice</Text>
+                </View>
+              </View>
+              <Pressable
+                style={[styles.receiptCloseBtn, { backgroundColor: colors.chipBg }]}
+                onPress={() => setShowReceiptModal(false)}
+                hitSlop={8}
+              >
+                <Ionicons name="close" size={18} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            <View style={[styles.receiptDivider, { backgroundColor: colors.divider }]} />
+
+            <View style={styles.receiptBody}>
+              <View style={styles.receiptRow}>
+                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>Invoice No:</Text>
+                <Text style={[styles.receiptValue, { color: colors.text }]}>{invoiceNumber}</Text>
+              </View>
+              <View style={styles.receiptRow}>
+                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>License Certificate:</Text>
+                <Text style={[styles.receiptValue, { color: '#F59E0B' }]}>{licenseCertificateId}</Text>
+              </View>
+              <View style={styles.receiptRow}>
+                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>Vessel / Captain:</Text>
+                <Text style={[styles.receiptValue, { color: colors.text }]}>
+                  {captain?.vesselName || 'Sea Hunter II'} ({captain?.callSign || 'IND-GJ-8821'})
+                </Text>
+              </View>
+              <View style={styles.receiptRow}>
+                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>Plan Type:</Text>
+                <Text style={[styles.receiptValue, { color: colors.text }]}>{planDisplayName}</Text>
+              </View>
+              <View style={styles.receiptRow}>
+                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>Billing Period:</Text>
+                <Text style={[styles.receiptValue, { color: colors.text }]}>
+                  {proPlan === 'lifetime' ? 'Perpetual Lifetime' : proExpiresAt || '1 Year Active'}
+                </Text>
+              </View>
+              <View style={styles.receiptRow}>
+                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>Payment Status:</Text>
+                <View style={styles.paidBadge}>
+                  <Ionicons name="checkmark-circle" size={13} color="#10B981" />
+                  <Text style={styles.paidBadgeText}>PAID & VERIFIED</Text>
+                </View>
+              </View>
+
+              <View style={[styles.receiptDivider, { backgroundColor: colors.divider }]} />
+
+              <View style={styles.receiptRow}>
+                <Text style={[styles.receiptTotalLabel, { color: colors.text }]}>Total Amount Paid:</Text>
+                <Text style={[styles.receiptTotalVal, { color: colors.accent }]}>
+                  {proPlan === 'lifetime' ? '₹3,999.00' : proPlan === 'quarterly' ? '₹499.00' : '₹1,499.00'}
+                </Text>
+              </View>
+              <Text style={[styles.receiptGstNote, { color: colors.textMuted }]}>
+                Includes 18% Integrated Goods and Services Tax (IGST) for Marine Navigation Software.
+              </Text>
+            </View>
+
+            <Pressable
+              style={styles.receiptDoneBtn}
+              onPress={() => setShowReceiptModal(false)}
+            >
+              <LinearGradient
+                colors={colors.accentGradient || ['#0284C7', '#00F0FF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.receiptDoneGrad}
+              >
+                <Ionicons name="checkmark" size={18} color="#020B14" />
+                <Text style={styles.receiptDoneText}>CLOSE RECEIPT</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 🔄 MODAL E: SWITCH / CHANGE PRO PLAN */}
+      <Modal
+        visible={showPlanChangeModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPlanChangeModal(false)}
+      >
+        <View style={styles.subModalOverlay}>
+          <Pressable style={styles.subModalTouch} onPress={() => setShowPlanChangeModal(false)} />
+          <View
+            style={[
+              styles.changePlanCard,
+              {
+                backgroundColor: isLight ? '#FFFFFF' : '#031422',
+                borderColor: isLight ? '#E2E8F0' : 'rgba(0, 240, 255, 0.3)',
+              },
+            ]}
+          >
+            <View style={styles.receiptTopRow}>
+              <View style={styles.receiptLogoRow}>
+                <MaterialCommunityIcons name="swap-horizontal" size={24} color={colors.accent} />
+                <View>
+                  <Text style={[styles.receiptBrand, { color: colors.text }]}>Change License Plan</Text>
+                  <Text style={[styles.receiptSub, { color: colors.textMuted }]}>
+                    Switch between annual, quarterly or lifetime
+                  </Text>
+                </View>
+              </View>
+              <Pressable
+                style={[styles.receiptCloseBtn, { backgroundColor: colors.chipBg }]}
+                onPress={() => setShowPlanChangeModal(false)}
+                hitSlop={8}
+              >
+                <Ionicons name="close" size={18} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            <View style={styles.changePlanList}>
+              {/* Option 1: Annual */}
+              <Pressable
+                style={[
+                  styles.changePlanOption,
+                  selectedNewPlan === 'annual' && styles.changePlanOptionActive,
+                  {
+                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.6)',
+                    borderColor: selectedNewPlan === 'annual' ? '#00F0FF' : colors.cardBorder,
+                  },
+                ]}
+                onPress={() => setSelectedNewPlan('annual')}
+              >
+                <View style={styles.changePlanRadio}>
+                  {selectedNewPlan === 'annual' && <View style={styles.changePlanRadioDot} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.changePlanTitle, { color: colors.text }]}>Annual Master Mariner</Text>
+                  <Text style={[styles.changePlanSub, { color: colors.textSecondary }]}>₹1,499 / Year (Save 50%)</Text>
+                </View>
+                {proPlan === 'annual' && (
+                  <View style={styles.currentPlanPill}>
+                    <Text style={styles.currentPlanPillText}>CURRENT</Text>
+                  </View>
+                )}
+              </Pressable>
+
+              {/* Option 2: Quarterly */}
+              <Pressable
+                style={[
+                  styles.changePlanOption,
+                  selectedNewPlan === 'quarterly' && styles.changePlanOptionActive,
+                  {
+                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.6)',
+                    borderColor: selectedNewPlan === 'quarterly' ? '#00F0FF' : colors.cardBorder,
+                  },
+                ]}
+                onPress={() => setSelectedNewPlan('quarterly')}
+              >
+                <View style={styles.changePlanRadio}>
+                  {selectedNewPlan === 'quarterly' && <View style={styles.changePlanRadioDot} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.changePlanTitle, { color: colors.text }]}>Quarterly Voyager</Text>
+                  <Text style={[styles.changePlanSub, { color: colors.textSecondary }]}>₹499 / 3 Months (Seasonal)</Text>
+                </View>
+                {proPlan === 'quarterly' && (
+                  <View style={styles.currentPlanPill}>
+                    <Text style={styles.currentPlanPillText}>CURRENT</Text>
+                  </View>
+                )}
+              </Pressable>
+
+              {/* Option 3: Lifetime */}
+              <Pressable
+                style={[
+                  styles.changePlanOption,
+                  selectedNewPlan === 'lifetime' && styles.changePlanOptionActive,
+                  {
+                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.6)',
+                    borderColor: selectedNewPlan === 'lifetime' ? '#00F0FF' : colors.cardBorder,
+                  },
+                ]}
+                onPress={() => setSelectedNewPlan('lifetime')}
+              >
+                <View style={styles.changePlanRadio}>
+                  {selectedNewPlan === 'lifetime' && <View style={styles.changePlanRadioDot} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.changePlanTitle, { color: colors.text }]}>Lifetime Skipper Pass</Text>
+                  <Text style={[styles.changePlanSub, { color: '#F59E0B' }]}>₹3,999 • One-Time Permanent</Text>
+                </View>
+                {proPlan === 'lifetime' && (
+                  <View style={styles.currentPlanPill}>
+                    <Text style={styles.currentPlanPillText}>CURRENT</Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
+
+            <Pressable
+              style={styles.receiptDoneBtn}
+              onPress={() => {
+                subscribeToPro(selectedNewPlan);
+                setShowPlanChangeModal(false);
+              }}
+            >
+              <LinearGradient
+                colors={colors.accentGradient || ['#0284C7', '#00F0FF']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.receiptDoneGrad}
+              >
+                <MaterialCommunityIcons name="check" size={18} color="#020B14" />
+                <Text style={styles.receiptDoneText}>CONFIRM & SWITCH PLAN</Text>
+              </LinearGradient>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
       {/* 🔴 MODAL C: CUSTOM MARITIME LOGOUT CONFIRMATION */}
       <LogoutConfirmModal
         visible={showLogoutConfirm}
@@ -1725,5 +2397,431 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
     letterSpacing: 0.8,
+  },
+
+  // 👑 PRO MEMBERSHIP & LICENSE STYLES
+  statusBadgePill: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  statusBadgePillText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  proLicenseCard: {
+    borderRadius: 20,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+    marginBottom: 4,
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  proCardTopStripe: {
+    height: 4,
+    width: '100%',
+  },
+  proLicenseContent: {
+    padding: 16,
+    gap: 12,
+  },
+  proPlanHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  proPlanIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proPlanName: {
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  proPlanPrice: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  verifiedChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderColor: '#10B981',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  verifiedChipText: {
+    color: '#10B981',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  renewalInfoBox: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 10,
+    gap: 6,
+  },
+  renewalRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  renewalLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  renewalValue: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  certKeyBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    gap: 10,
+  },
+  certKeyLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#D97706',
+    letterSpacing: 0.6,
+    marginBottom: 2,
+  },
+  certKeyValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  copyCertBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+  },
+  copyCertBtnText: {
+    color: '#F59E0B',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  unlockedGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  unlockedItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 9,
+    borderWidth: 1,
+  },
+  unlockedText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  proActionBtnGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 2,
+  },
+  proManageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  proManageBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  refBonusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.25)',
+  },
+  refBonusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#22C55E',
+  },
+
+  // Trial Card In Profile
+  trialProfileCard: {
+    borderRadius: 18,
+    borderWidth: 1.5,
+    padding: 16,
+    gap: 12,
+    marginBottom: 4,
+  },
+  trialCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  trialCardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  trialCardSub: {
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 2,
+  },
+  trialBarBg: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(0, 240, 255, 0.15)',
+    overflow: 'hidden',
+  },
+  trialBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  trialActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  upgradeCtaBtn: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  upgradeCtaGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    gap: 6,
+  },
+  upgradeCtaText: {
+    color: '#020B14',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  referralCtaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  referralCtaText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  // Sub-modal Shared Styles
+  subModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 8, 16, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+  },
+  subModalTouch: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  receiptCard: {
+    width: '100%',
+    maxWidth: 440,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    padding: 20,
+    gap: 14,
+    shadowColor: '#00F0FF',
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+    elevation: 20,
+  },
+  receiptTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  receiptLogoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  receiptBrand: {
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  receiptSub: {
+    fontSize: 11,
+    marginTop: 1,
+  },
+  receiptCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  receiptDivider: {
+    height: 1,
+    width: '100%',
+  },
+  receiptBody: {
+    gap: 10,
+  },
+  receiptRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  receiptLabel: {
+    fontSize: 12,
+  },
+  receiptValue: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  paidBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  paidBadgeText: {
+    color: '#10B981',
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  receiptTotalLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  receiptTotalVal: {
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  receiptGstNote: {
+    fontSize: 10,
+    lineHeight: 14,
+    marginTop: 4,
+  },
+  receiptDoneBtn: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  receiptDoneGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 6,
+  },
+  receiptDoneText: {
+    color: '#020B14',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+  },
+
+  // Change Plan Card
+  changePlanCard: {
+    width: '100%',
+    maxWidth: 440,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    padding: 20,
+    gap: 14,
+    shadowColor: '#00F0FF',
+    shadowOpacity: 0.25,
+    shadowRadius: 18,
+    elevation: 20,
+  },
+  changePlanList: {
+    gap: 10,
+  },
+  changePlanOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+  },
+  changePlanOptionActive: {
+    borderColor: '#00F0FF',
+  },
+  changePlanRadio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: '#00F0FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  changePlanRadioDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#00F0FF',
+  },
+  changePlanTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  changePlanSub: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  currentPlanPill: {
+    backgroundColor: 'rgba(0, 240, 255, 0.15)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  currentPlanPillText: {
+    color: '#00F0FF',
+    fontSize: 9,
+    fontWeight: '900',
   },
 });

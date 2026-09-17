@@ -20,8 +20,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
-import { useAppTheme } from '@/context/theme-context';
 import { useAuth } from '@/context/auth-context';
+import { useSubscription } from '@/context/subscription-context';
+import { useAppTheme } from '@/context/theme-context';
 import { useWaypoints } from '@/context/waypoints-context';
 import type { UserLocation } from '@/hooks/use-user-location';
 import { distanceNm, formatBearing, formatNm } from '@/utils/geo';
@@ -215,6 +216,7 @@ export function MarineSearchHeader({
   const router = useRouter();
   const { captain } = useAuth();
   const { waypoints } = useWaypoints();
+  const { isPro, hasReferralBonus, bonusProDaysRemaining, isTrialActive, isTrialExpired, trialDaysRemaining, openProModal } = useSubscription();
 
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -433,6 +435,59 @@ export function MarineSearchHeader({
             </Pressable>
           )}
         </View>
+
+        {/* Pro / 3-Day Trial Status Badge */}
+        <Pressable
+          style={[
+            styles.trialBadgePill,
+            {
+              backgroundColor: isPro
+                ? 'rgba(245, 158, 11, 0.15)'
+                : hasReferralBonus
+                  ? 'rgba(34, 197, 94, 0.15)'
+                  : isTrialExpired
+                    ? 'rgba(239, 68, 68, 0.16)'
+                    : isLight
+                      ? '#EFF6FF'
+                      : 'rgba(0, 240, 255, 0.14)',
+              borderColor: isPro
+                ? '#F59E0B'
+                : hasReferralBonus
+                  ? '#22C55E'
+                  : isTrialExpired
+                    ? '#EF4444'
+                    : colors.accent,
+            },
+          ]}
+          onPress={() => openProModal('header_badge')}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="FishNav Pro membership status"
+        >
+          {isPro ? (
+            <>
+              <MaterialCommunityIcons name="crown" size={12} color="#F59E0B" />
+              <Text style={[styles.trialBadgeText, { color: '#F59E0B' }]}>PRO</Text>
+            </>
+          ) : hasReferralBonus ? (
+            <>
+              <Ionicons name="gift" size={12} color="#22C55E" />
+              <Text style={[styles.trialBadgeText, { color: '#22C55E' }]}>{bonusProDaysRemaining}d BONUS</Text>
+            </>
+          ) : isTrialExpired ? (
+            <>
+              <Ionicons name="alert-circle" size={12} color="#EF4444" />
+              <Text style={[styles.trialBadgeText, { color: '#EF4444' }]}>EXPIRED</Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name="flash" size={11} color={colors.accent} />
+              <Text style={[styles.trialBadgeText, { color: colors.accent }]}>
+                {trialDaysRemaining}d TRIAL
+              </Text>
+            </>
+          )}
+        </Pressable>
 
         {/* 3. LAST / END: User Profile Avatar */}
         <Pressable
@@ -874,5 +929,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
     lineHeight: 16,
+  },
+  trialBadgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 4,
+    marginRight: 6,
+  },
+  trialBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.4,
   },
 });

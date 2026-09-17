@@ -33,6 +33,7 @@ import { SlidingSheetContainer } from '@/components/ui/sliding-sheet-container';
 import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
 import { useTripTracking } from '@/context/trip-context';
+import { useSubscription } from '@/context/subscription-context';
 import { useWaypoints } from '@/context/waypoints-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useUserLocation } from '@/hooks/use-user-location';
@@ -99,6 +100,17 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     exitNavigation,
     clearSelectedTrip,
   } = useTripTracking();
+  const { isTrialExpired, isPro, openProModal } = useSubscription();
+
+  // Auto-prompt Pro modal if trial has expired on app open
+  React.useEffect(() => {
+    if (isTrialExpired && !isPro) {
+      const timer = setTimeout(() => {
+        openProModal('trial_expired_auto');
+      }, 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [isTrialExpired, isPro, openProModal]);
 
   // If a trip was clicked from Trips screen, zoom to it on the map
   React.useEffect(() => {

@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapColors } from '@/constants/map-theme';
 import { useAuth } from '@/context/auth-context';
+import { useSubscription } from '@/context/subscription-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
 import { useWaypoints } from '@/context/waypoints-context';
@@ -26,6 +27,21 @@ export function SettingsSheetContent() {
   const { captain, updateCaptain } = useAuth();
   const { waypoints, resetWaypoints } = useWaypoints();
   const { savedTrips } = useTripTracking();
+  const {
+    isPro,
+    hasReferralBonus,
+    bonusProDaysRemaining,
+    isTrialActive,
+    isTrialExpired,
+    trialDaysRemaining,
+    referralDaysEarned,
+    referralCount,
+    openProModal,
+    openReferralModal,
+    devResetTrial,
+    devExpireTrial,
+    devAddReferralReward,
+  } = useSubscription();
 
   // Vessel Profile
   const [boatName, setBoatName] = useState(captain?.vesselName || 'Sea Hunter II');
@@ -103,8 +119,178 @@ export function SettingsSheetContent() {
         styles.content,
         { paddingBottom: Math.max(insets.bottom, 20) + 110 },
       ]}
-      showsVerticalScrollIndicator={false}
-    >
+      showsVerticalScrollIndicator={false} >
+      {/* 👑 Section 0: FishNav Pro & Fleet Referral Membership */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionHeader, { color: '#F59E0B' }]}>
+            MEMBERSHIP & PRO ACCESS
+          </Text>
+          <View
+            style={[
+              styles.badgeTheme,
+              {
+                backgroundColor: isPro
+                  ? 'rgba(245, 158, 11, 0.15)'
+                  : hasReferralBonus
+                    ? 'rgba(34, 197, 94, 0.15)'
+                    : isTrialExpired
+                      ? 'rgba(239, 68, 68, 0.15)'
+                      : 'rgba(0, 240, 255, 0.15)',
+                borderColor: isPro
+                  ? '#F59E0B'
+                  : hasReferralBonus
+                    ? '#22C55E'
+                    : isTrialExpired
+                      ? '#EF4444'
+                      : colors.accent,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.badgeThemeText,
+                {
+                  color: isPro
+                    ? '#F59E0B'
+                    : hasReferralBonus
+                      ? '#22C55E'
+                      : isTrialExpired
+                        ? '#EF4444'
+                        : colors.accent,
+                },
+              ]}
+            >
+              {isPro
+                ? 'PRO MEMBER 👑'
+                : hasReferralBonus
+                  ? `${bonusProDaysRemaining}D BONUS 🎁`
+                  : isTrialExpired
+                    ? 'TRIAL EXPIRED 🚨'
+                    : `${trialDaysRemaining}D TRIAL ACTIVE ⚡`}
+            </Text>
+          </View>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <View style={styles.proMembershipRow}>
+            <View
+              style={[
+                styles.proIconBox,
+                {
+                  backgroundColor: isPro
+                    ? 'rgba(245, 158, 11, 0.15)'
+                    : hasReferralBonus
+                      ? 'rgba(34, 197, 94, 0.12)'
+                      : 'rgba(0, 240, 255, 0.12)',
+                  borderColor: isPro ? '#F59E0B' : hasReferralBonus ? '#22C55E' : colors.accent,
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={isPro ? 'crown' : hasReferralBonus ? 'gift' : 'shield-star'}
+                size={24}
+                color={isPro ? '#F59E0B' : hasReferralBonus ? '#22C55E' : colors.accent}
+              />
+            </View>
+
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.proMembershipTitle, { color: colors.text }]}>
+                {isPro
+                  ? 'FishNav Pro Console Active'
+                  : hasReferralBonus
+                    ? 'Referral Bonus Pass Active'
+                    : '3-Day Free Trial Mode'}
+              </Text>
+              <Text style={[styles.proMembershipSub, { color: colors.textSecondary }]}>
+                {isPro
+                  ? 'Full bathymetry, AI fishing hotspots & AIS vessel radar unlocked.'
+                  : hasReferralBonus
+                    ? `You have ${bonusProDaysRemaining} days of free Pro access from Captain Invites.`
+                    : isTrialExpired
+                      ? 'Free trial has ended. Upgrade to continue high-res navigation.'
+                      : `You have ${trialDaysRemaining} days remaining of unrestricted Pro trial.`}
+              </Text>
+            </View>
+          </View>
+
+          {/* Referral Bonus Tag if any */}
+          {referralDaysEarned > 0 && (
+            <View style={styles.referralBonusPill}>
+              <Ionicons name="gift" size={14} color="#22C55E" />
+              <Text style={styles.referralBonusPillText}>
+                +{referralDaysEarned} Days Free Pro earned from {referralCount} Captain Invites
+              </Text>
+            </View>
+          )}
+
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+
+          {/* Action Buttons: Upgrade Pro & Invite Crew */}
+          <View style={styles.actionsRow}>
+            <Pressable
+              style={[
+                styles.actionBtn,
+                {
+                  backgroundColor: isPro
+                    ? colors.chipBg
+                    : isLight
+                      ? '#E0F2FE'
+                      : 'rgba(0, 240, 255, 0.18)',
+                  borderColor: colors.accent,
+                },
+              ]}
+              onPress={() => openProModal('settings_btn')}
+            >
+              <MaterialCommunityIcons
+                name="crown"
+                size={16}
+                color={colors.accent}
+              />
+              <Text style={[styles.actionBtnText, { color: colors.accent }]}>
+                {isPro ? 'Manage Pro' : 'Upgrade to Pro'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.actionBtn,
+                {
+                  backgroundColor: isLight ? '#DCFCE7' : 'rgba(34, 197, 94, 0.14)',
+                  borderColor: '#22C55E',
+                },
+              ]}
+              onPress={openReferralModal}
+            >
+              <Ionicons name="people" size={16} color="#22C55E" />
+              <Text style={[styles.actionBtnText, { color: '#22C55E' }]}>
+                Invite Crew (+10d)
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Dev / Testing Quick Controls */}
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+
+          <View style={styles.devControlsRow}>
+            <Text style={[styles.devControlsTitle, { color: colors.textSecondary }]}>
+              TESTING / DEMO HELPERS:
+            </Text>
+            <View style={styles.devBtnsWrap}>
+              <Pressable style={styles.devChip} onPress={devResetTrial}>
+                <Text style={styles.devChipText}>Reset 3D Trial</Text>
+              </Pressable>
+              <Pressable style={[styles.devChip, { borderColor: '#EF4444' }]} onPress={devExpireTrial}>
+                <Text style={[styles.devChipText, { color: '#EF4444' }]}>Expire Trial</Text>
+              </Pressable>
+              <Pressable style={[styles.devChip, { borderColor: '#22C55E' }]} onPress={devAddReferralReward}>
+                <Text style={[styles.devChipText, { color: '#22C55E' }]}>+10d Referral</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </View>
+
       {/* 🚀 Trips & Recorded Routes Logbook Shortcut */}
       <Pressable
         style={[

@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GoogleLogoSvg } from '@/components/ui/google-logo-svg';
 import { useAuth } from '@/context/auth-context';
+import { useSubscription } from '@/context/subscription-context';
 
 type MarineLoginScreenProps = {
   onLoginSuccess: () => void;
@@ -27,14 +28,13 @@ type PhoneStep = 'phone' | 'otp';
 export function MarineLoginScreen({ onLoginSuccess }: MarineLoginScreenProps) {
   const insets = useSafeAreaInsets();
   const { loginWithPhone, loginWithGoogle, loginAsDemo } = useAuth();
+  const { applyReferralCode } = useSubscription();
 
   // Mobile Auth state
   const [step, setStep] = useState<PhoneStep>('phone');
   const [phone, setPhone] = useState('9876543210');
   const [otp, setOtp] = useState('');
-  const [captainName, setCaptainName] = useState('Capt. Vikram Rathore');
-  const [vesselName, setVesselName] = useState('Sea Hunter II');
-  const [showVesselCustomization, setShowVesselCustomization] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
 
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
   const [isLoadingPhone, setIsLoadingPhone] = useState(false);
@@ -63,6 +63,9 @@ export function MarineLoginScreen({ onLoginSuccess }: MarineLoginScreenProps) {
         name: 'Capt. Vikram Rathore',
         email: 'capt.vikram@gmail.com',
       });
+      if (referralCode.trim()) {
+        applyReferralCode(referralCode.trim());
+      }
       onLoginSuccess();
     } catch {
       setErrorMsg('Google Sign-In failed. Please try again.');
@@ -104,9 +107,12 @@ export function MarineLoginScreen({ onLoginSuccess }: MarineLoginScreenProps) {
       await new Promise((resolve) => setTimeout(resolve, 500));
       await loginWithPhone(
         `+91 ${phone.replace(/\D/g, '').slice(-10)}`,
-        captainName,
-        vesselName,
+        'Capt. Vikram Rathore',
+        'Sea Hunter II',
       );
+      if (referralCode.trim()) {
+        applyReferralCode(referralCode.trim());
+      }
       onLoginSuccess();
     } catch {
       setErrorMsg('Verification failed. Please try again.');
@@ -248,57 +254,40 @@ export function MarineLoginScreen({ onLoginSuccess }: MarineLoginScreenProps) {
                 </View>
               </View>
 
-              {/* Optional: Add Vessel Details accordion */}
-              <Pressable
-                style={styles.accordionHeader}
-                onPress={() => setShowVesselCustomization((v) => !v)}
-              >
-                <Ionicons
-                  name={showVesselCustomization ? 'boat' : 'boat-outline'}
-                  size={16}
-                  color="#38BDF8"
-                />
-                <Text style={styles.accordionTitle}>
-                  {showVesselCustomization ? 'Hide Vessel Details' : '+ Add Vessel & Captain Details (Optional)'}
-                </Text>
-                <Ionicons
-                  name={showVesselCustomization ? 'chevron-up' : 'chevron-down'}
-                  size={16}
-                  color="#64748B"
-                />
-              </Pressable>
-
-              {showVesselCustomization && (
-                <View style={styles.vesselFields}>
-                  <View style={styles.fieldGroup}>
-                    <Text style={styles.fieldLabel}>CAPTAIN / MASTER NAME</Text>
-                    <View style={styles.inputWrap}>
-                      <Ionicons name="person-outline" size={18} color="#38BDF8" style={styles.inputIcon} />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="e.g. Capt. Vikram Rathore"
-                        placeholderTextColor="#64748B"
-                        value={captainName}
-                        onChangeText={setCaptainName}
-                      />
-                    </View>
-                  </View>
-
-                  <View style={styles.fieldGroup}>
-                    <Text style={styles.fieldLabel}>VESSEL NAME</Text>
-                    <View style={styles.inputWrap}>
-                      <Ionicons name="boat-outline" size={18} color="#38BDF8" style={styles.inputIcon} />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="e.g. Sea Hunter II"
-                        placeholderTextColor="#64748B"
-                        value={vesselName}
-                        onChangeText={setVesselName}
-                      />
-                    </View>
+              {/* Referral Code Field (Optional: Get 10 Days Free Pro) */}
+              <View style={styles.fieldGroup}>
+                <View style={styles.fieldLabelRow}>
+                  <Text style={styles.fieldLabel}>CAPTAIN REFERRAL CODE (OPTIONAL)</Text>
+                  <View style={styles.proRewardBadge}>
+                    <Ionicons name="gift" size={11} color="#22C55E" />
+                    <Text style={styles.proRewardBadgeText}>+10 DAYS FREE PRO</Text>
                   </View>
                 </View>
-              )}
+                <View style={styles.inputWrap}>
+                  <Ionicons name="ticket-outline" size={18} color="#22C55E" style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, { letterSpacing: referralCode ? 1.2 : 0 }]}
+                    placeholder="e.g. NAV-GJ8821"
+                    placeholderTextColor="#64748B"
+                    value={referralCode}
+                    onChangeText={(val) => setReferralCode(val.toUpperCase())}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                  />
+                  {referralCode.length > 0 && (
+                    <Pressable
+                      onPress={() => setReferralCode('')}
+                      hitSlop={8}
+                      style={styles.inputClearBtn}
+                    >
+                      <Ionicons name="close-circle" size={16} color="#64748B" />
+                    </Pressable>
+                  )}
+                </View>
+                <Text style={styles.referralHint}>
+                  Have a fellow Captain&apos;s invite code? Enter it to get 10 days of free Pro access on sign-up!
+                </Text>
+              </View>
 
               {/* Error box */}
               {errorMsg && (
@@ -725,22 +714,37 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#00F0FF',
   },
-  accordionHeader: {
+  fieldLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    gap: 6,
+    justifyContent: 'space-between',
+    marginBottom: 6,
   },
-  accordionTitle: {
-    flex: 1,
-    color: '#38BDF8',
+  proRewardBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.35)',
+    gap: 4,
+  },
+  proRewardBadgeText: {
+    color: '#22C55E',
+    fontSize: 9.5,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  referralHint: {
+    color: '#64748B',
     fontSize: 11,
-    fontWeight: '700',
+    lineHeight: 15,
+    marginTop: 4,
   },
-  vesselFields: {
-    gap: 12,
-    paddingTop: 4,
-    paddingBottom: 8,
+  inputClearBtn: {
+    paddingHorizontal: 8,
   },
   otpBanner: {
     flexDirection: 'row',
