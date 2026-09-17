@@ -1,15 +1,17 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
   TextInput,
-  View
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,6 +21,14 @@ import { useSubscription } from '@/context/subscription-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
 import { useWaypoints } from '@/context/waypoints-context';
+import { useUserLocation } from '@/hooks/use-user-location';
+import {
+  offlineTileManager,
+  PRESET_OFFLINE_REGIONS,
+  type DownloadedRegionMeta,
+  type DownloadProgress,
+  type OfflineRegion,
+} from '@/services/offline-tile-manager';
 
 export function SettingsSheetContent() {
   const router = useRouter();
@@ -84,6 +94,101 @@ export function SettingsSheetContent() {
   // Map overlays
   const [showContours, setShowContours] = useState(true);
   const [showSeamarks, setShowSeamarks] = useState(true);
+
+  // Developer / demo controls visibility
+  const [showDevControls, setShowDevControls] = useState(false);
+
+  // 🗺️ Offline Marine Charts State
+  const { location } = useUserLocation();
+  const [downloadedRegions, setDownloadedRegions] = useState<DownloadedRegionMeta[]>([]);
+  const [storageUsageMb, setStorageUsageMb] = useState<number>(0);
+  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
+
+  const refreshOfflineStatus = useCallback(async () => {
+    const [regions, mb] = await Promise.all([
+      offlineTileManager.getDownloadedRegions(),
+      offlineTileManager.getOfflineStorageUsageMb(),
+    ]);
+    setDownloadedRegions(regions);
+    setStorageUsageMb(mb);
+  }, []);
+
+  const [showAllRegions, setShowAllRegions] = useState(false);
+
+  const displayedRegions = useMemo(() => {
+    return offlineTileManager.getNearbyRegions(
+      location?.latitude,
+      location?.longitude,
+      showAllRegions ? 10 : 4,
+    );
+  }, [location?.latitude, location?.longitude, showAllRegions]);
+
+  useEffect(() => {
+    refreshOfflineStatus();
+  }, [refreshOfflineStatus]);
+
+  const handleDownloadRegion = async (region: OfflineRegion) => {
+    if (downloadProgress?.isDownloading) {
+      Alert.alert('Download in Progress', 'Please wait until the current map chart finishes downloading.');
+      return;
+    }
+
+    setDownloadProgress({
+      total: region.estimatedTiles,
+      completed: 0,
+      failed: 0,
+      percent: 0,
+      regionId: region.id,
+      regionName: region.name,
+      isDownloading: true,
+    });
+
+    const success = await offlineTileManager.downloadRegion(region, (progress) => {
+      setDownloadProgress(progress);
+    });
+
+    await refreshOfflineStatus();
+    setDownloadProgress(null);
+
+    if (success) {
+      Alert.alert(
+        '✓ Chart Saved Offline',
+        `"${region.name}" has been successfully downloaded! You can now navigate this area in deep sea with 0% cellular internet.`
+      );
+    } else {
+      Alert.alert(
+        'Download Incomplete',
+        'Could not complete downloading all map tiles. Please check your internet connection and try again.'
+      );
+    }
+  };
+
+  const handleDownloadCurrentArea = () => {
+    // If live GPS is ready, use it; otherwise fallback to primary marine zone (Veraval)
+    const lat = location?.latitude ?? 20.9022;
+    const lng = location?.longitude ?? 70.3667;
+    const region = offlineTileManager.createCurrentAreaRegion(lat, lng);
+    handleDownloadRegion(region);
+  };
+
+  const handleClearCache = () => {
+    Alert.alert(
+      'Clear Offline Charts',
+      'Are you sure you want to remove all downloaded offline map tiles? They can be re-downloaded at any time.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            await offlineTileManager.clearAllOfflineTiles();
+            await refreshOfflineStatus();
+            Alert.alert('Cleared', 'All offline map tiles have been cleared.');
+          },
+        },
+      ]
+    );
+  };
 
   const handleExportGpx = () => {
     Alert.alert(
@@ -268,26 +373,6 @@ export function SettingsSheetContent() {
               </Text>
             </Pressable>
           </View>
-
-          {/* Dev / Testing Quick Controls */}
-          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
-
-          <View style={styles.devControlsRow}>
-            <Text style={[styles.devControlsTitle, { color: colors.textSecondary }]}>
-              TESTING / DEMO HELPERS:
-            </Text>
-            <View style={styles.devBtnsWrap}>
-              <Pressable style={styles.devChip} onPress={devResetTrial}>
-                <Text style={styles.devChipText}>Reset 3D Trial</Text>
-              </Pressable>
-              <Pressable style={[styles.devChip, { borderColor: '#EF4444' }]} onPress={devExpireTrial}>
-                <Text style={[styles.devChipText, { color: '#EF4444' }]}>Expire Trial</Text>
-              </Pressable>
-              <Pressable style={[styles.devChip, { borderColor: '#22C55E' }]} onPress={devAddReferralReward}>
-                <Text style={[styles.devChipText, { color: '#22C55E' }]}>+10d Referral</Text>
-              </Pressable>
-            </View>
-          </View>
         </View>
       </View>
 
@@ -313,6 +398,315 @@ export function SettingsSheetContent() {
         </View>
         <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
       </Pressable>
+
+      {/* 🗺️ OFFLINE MARINE CHARTS & REGIONAL TILES */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeaderRow}>
+          <View style={styles.sectionHeaderLeft}>
+            <MaterialCommunityIcons name="map-clock-outline" size={18} color={colors.accent} style={{ marginRight: 6 }} />
+            <Text style={[styles.sectionHeader, { color: colors.accent }]}>
+              OFFLINE NAUTICAL CHARTS
+            </Text>
+          </View>
+          <View
+            style={[
+              styles.badgeTheme,
+              {
+                backgroundColor: downloadedRegions.length > 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                borderColor: downloadedRegions.length > 0 ? '#22C55E' : '#F59E0B',
+              },
+            ]}
+          >
+            <Text style={[styles.badgeThemeText, { color: downloadedRegions.length > 0 ? '#22C55E' : '#F59E0B' }]}>
+              {downloadedRegions.length > 0 ? 'DEEP-SEA READY ✓' : 'NEEDS SETUP ⚡'}
+            </Text>
+          </View>
+        </View>
+
+        {/* 🛡️ Nautical Offline Readiness Strip */}
+        <View
+          style={[
+            styles.offlineStatusStrip,
+            {
+              backgroundColor: downloadedRegions.length > 0 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+              borderColor: downloadedRegions.length > 0 ? 'rgba(34, 197, 94, 0.3)' : 'rgba(245, 158, 11, 0.3)',
+            },
+          ]}
+        >
+          <View style={styles.statusStripLeft}>
+            <View
+              style={[
+                styles.statusIconWrap,
+                { backgroundColor: downloadedRegions.length > 0 ? 'rgba(34, 197, 94, 0.2)' : 'rgba(245, 158, 11, 0.2)' },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={downloadedRegions.length > 0 ? 'shield-check' : 'cloud-download-outline'}
+                size={20}
+                color={downloadedRegions.length > 0 ? '#22C55E' : '#F59E0B'}
+              />
+            </View>
+            <View style={styles.statusStripTextWrap}>
+              <Text style={[styles.statusStripTitle, { color: downloadedRegions.length > 0 ? '#22C55E' : '#F59E0B' }]}>
+                {downloadedRegions.length > 0 ? 'OFFLINE CHARTS READY FOR SEA' : 'NO OFFLINE CHARTS SAVED'}
+              </Text>
+              <Text style={[styles.statusStripSub, { color: colors.textSecondary }]}>
+                {downloadedRegions.length > 0
+                  ? `${downloadedRegions.length} chart zone(s) saved • ${storageUsageMb} MB cached on phone`
+                  : 'Pre-download charts while connected to port Wi-Fi or 4G before sailing'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Live Download Progress Notification Card */}
+        {downloadProgress?.isDownloading && (
+          <View style={[styles.downloadProgressCard, { backgroundColor: colors.chipBg, borderColor: colors.accent }]}>
+            <View style={styles.progressHeaderRow}>
+              <View style={styles.progressTitleWrap}>
+                <ActivityIndicator size="small" color={colors.accent} style={{ marginRight: 8 }} />
+                <Text style={[styles.progressTitleText, { color: colors.text }]}>
+                  Downloading {downloadProgress.regionName}...
+                </Text>
+              </View>
+              <Pressable onPress={() => offlineTileManager.cancelDownload()} style={styles.cancelDownloadBtn}>
+                <Text style={styles.cancelDownloadText}>Cancel</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.progressBarTrack}>
+              <View style={[styles.progressBarFill, { width: `${downloadProgress.percent}%`, backgroundColor: colors.accent }]} />
+            </View>
+
+            <View style={styles.progressStatsRow}>
+              <Text style={[styles.progressStatText, { color: colors.textSecondary }]}>
+                {downloadProgress.completed} / {downloadProgress.total} tiles ({downloadProgress.percent}%)
+              </Text>
+              <Text style={[styles.progressStatText, { color: colors.accent }]}>
+                {downloadProgress.percent === 100 ? 'Finalizing cache...' : 'Saving high-res tiles'}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          {/* 📍 Hero Option: Current Boat Sea Area */}
+          <View
+            style={[
+              styles.currentAreaHeroCard,
+              {
+                backgroundColor: isLight ? '#F0FDF4' : 'rgba(0, 240, 255, 0.05)',
+                borderColor: isLight ? '#86EFAC' : 'rgba(0, 240, 255, 0.25)',
+              },
+            ]}
+          >
+            <View style={styles.currentAreaHeader}>
+              <View style={styles.currentAreaBadge}>
+                <Ionicons name="navigate" size={11} color={colors.accent} style={{ marginRight: 4 }} />
+                <Text style={[styles.currentAreaBadgeText, { color: colors.accent }]}>
+                  CURRENT BOAT PERIMETER
+                </Text>
+              </View>
+              <Text style={[styles.currentAreaCoordText, { color: colors.textMuted }]}>
+                {location
+                  ? `${location.latitude.toFixed(3)}°N, ${location.longitude.toFixed(3)}°E`
+                  : 'Veraval Port Waters'}
+              </Text>
+            </View>
+
+            <View style={styles.currentAreaBody}>
+              <View style={styles.currentAreaTextWrap}>
+                <Text style={[styles.currentAreaTitle, { color: colors.text }]}>
+                  Surrounding Sea Chart (30 NM)
+                </Text>
+                <Text style={[styles.currentAreaDesc, { color: colors.textSecondary }]}>
+                  Instant 30 Nautical Mile boundary covering all fishing spots, banks & channels
+                </Text>
+              </View>
+              <Pressable
+                style={[
+                  styles.downloadHeroBtn,
+                  { backgroundColor: colors.accent },
+                  downloadProgress?.isDownloading && { opacity: 0.5 },
+                ]}
+                disabled={downloadProgress?.isDownloading}
+                onPress={handleDownloadCurrentArea}
+              >
+                {downloadProgress?.regionId === 'current-area' ? (
+                  <ActivityIndicator size="small" color={isLight ? '#FFFFFF' : '#020B14'} />
+                ) : (
+                  <>
+                    <Ionicons name="cloud-download" size={15} color={isLight ? '#FFFFFF' : '#020B14'} />
+                    <Text style={[styles.downloadHeroBtnText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>
+                      Download
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+
+          {/* 📍 Dynamic Nearby Harbor Suggestions Header */}
+          <View style={styles.nearbyHeaderRow}>
+            <View style={styles.nearbyTitleWithDot}>
+              <View
+                style={[
+                  styles.pulsingGpsDot,
+                  { backgroundColor: location ? '#22C55E' : '#F59E0B' },
+                ]}
+              />
+              <Text style={[styles.harborPacksHeader, { color: colors.textSecondary }]}>
+                {location ? 'NEARBY HARBOR CHARTS (GPS SUGGESTIONS)' : 'POPULAR HARBOR CHARTS (GUJARAT)'}
+              </Text>
+            </View>
+            <View style={[styles.nearbyGpsBadge, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
+              <Ionicons name="location-outline" size={11} color={colors.accent} style={{ marginRight: 2 }} />
+              <Text style={[styles.nearbyGpsBadgeText, { color: colors.accent }]}>
+                {location ? 'TOP 4 CLOSEST' : 'DEFAULT'}
+              </Text>
+            </View>
+          </View>
+
+          {/* List of 3 to 4 Nearby Ports */}
+          {displayedRegions.map((region, idx) => {
+            const isDownloaded = downloadedRegions.some((r) => r.id === region.id);
+            const isDownloadingThis = downloadProgress?.regionId === region.id;
+
+            return (
+              <View key={region.id}>
+                {idx > 0 && <View style={[styles.divider, { backgroundColor: colors.divider }]} />}
+                <View style={styles.offlineItemRow}>
+                  <View
+                    style={[
+                      styles.offlineIconWrap,
+                      { backgroundColor: isDownloaded ? 'rgba(34, 197, 94, 0.15)' : colors.chipBg },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={isDownloaded ? 'check-decagram' : 'anchor'}
+                      size={22}
+                      color={isDownloaded ? '#22C55E' : colors.accent}
+                    />
+                  </View>
+                  <View style={styles.offlineTextWrap}>
+                    <View style={styles.regionTitleLine}>
+                      <Text style={[styles.offlineItemTitle, { color: colors.text }]}>
+                        {region.name}
+                      </Text>
+                      {isDownloaded ? (
+                        <View style={styles.downloadedPill}>
+                          <Text style={styles.downloadedPillText}>SAVED</Text>
+                        </View>
+                      ) : (
+                        region.distanceNm !== undefined && (
+                          <View
+                            style={[
+                              styles.distancePill,
+                              {
+                                backgroundColor:
+                                  region.distanceNm <= 3
+                                    ? 'rgba(34, 197, 94, 0.15)'
+                                    : colors.chipBg,
+                                borderColor:
+                                  region.distanceNm <= 3 ? '#22C55E' : colors.chipBorder,
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.distancePillText,
+                                {
+                                  color: region.distanceNm <= 3 ? '#22C55E' : colors.accent,
+                                },
+                              ]}
+                            >
+                              {region.distanceNm <= 3 ? '⚓ IN PORT' : `${region.distanceNm} NM`}
+                            </Text>
+                          </View>
+                        )
+                      )}
+                    </View>
+                    <Text style={[styles.offlineItemDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {region.description}
+                    </Text>
+                    <Text style={[styles.offlineSizeLabel, { color: colors.textMuted }]}>
+                      {region.estimatedTiles} tiles • ~{region.estimatedSizeMb} MB • Zoom {region.minZoom}-{region.maxZoom}
+                    </Text>
+                  </View>
+
+                  <Pressable
+                    style={[
+                      styles.downloadActionBtn,
+                      isDownloaded
+                        ? { backgroundColor: colors.chipBg, borderColor: '#22C55E', borderWidth: 1 }
+                        : { backgroundColor: colors.accent },
+                      downloadProgress?.isDownloading && { opacity: 0.5 },
+                    ]}
+                    disabled={downloadProgress?.isDownloading}
+                    onPress={() => handleDownloadRegion(region)}
+                  >
+                    {isDownloadingThis ? (
+                      <ActivityIndicator size="small" color={isLight ? '#FFFFFF' : '#020B14'} />
+                    ) : (
+                      <>
+                        <Ionicons
+                          name={isDownloaded ? 'sync-outline' : 'cloud-download-outline'}
+                          size={14}
+                          color={isDownloaded ? '#22C55E' : isLight ? '#FFFFFF' : '#020B14'}
+                        />
+                        <Text
+                          style={[
+                            styles.downloadActionBtnText,
+                            { color: isDownloaded ? '#22C55E' : isLight ? '#FFFFFF' : '#020B14' },
+                          ]}
+                        >
+                          {isDownloaded ? 'Update' : 'Download'}
+                        </Text>
+                      </>
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+            );
+          })}
+
+          {/* Show More / Show Less Toggle Button */}
+          <Pressable
+            style={[styles.showMoreRegionsBtn, { borderTopColor: colors.divider, borderTopWidth: 1 }]}
+            onPress={() => setShowAllRegions((prev) => !prev)}
+          >
+            <Text style={[styles.showMoreRegionsBtnText, { color: colors.accent }]}>
+              {showAllRegions
+                ? '▴ Show Top 4 Nearest Only'
+                : '▾ Show All 10 Coastal Regions'}
+            </Text>
+          </Pressable>
+
+          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+
+          {/* Storage Footer */}
+          <View style={styles.storageFooterRow}>
+            <View style={styles.storageStatsWrap}>
+              <Ionicons name="save-outline" size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
+              <Text style={[styles.storageStatsText, { color: colors.textSecondary }]}>
+                Offline Storage: <Text style={{ color: colors.text, fontWeight: '700' }}>{storageUsageMb} MB</Text>
+                {downloadedRegions.length > 0
+                  ? ` (${downloadedRegions.length} pack${downloadedRegions.length > 1 ? 's' : ''})`
+                  : ' (No maps saved)'}
+              </Text>
+            </View>
+
+            {storageUsageMb > 0 && (
+              <Pressable style={styles.clearCacheBtn} onPress={handleClearCache}>
+                <Ionicons name="trash-outline" size={14} color="#EF4444" style={{ marginRight: 4 }} />
+                <Text style={styles.clearCacheBtnText}>Clear</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+      </View>
 
       {/* 🎨 APP THEME: HIGH CONTRAST / DARK / LIGHT */}
       <View style={styles.section}>
@@ -775,6 +1169,54 @@ export function SettingsSheetContent() {
           </View>
         </View>
       </View>
+
+      {/* 🛠️ Captain Developer & Diagnostics Sandbox (Collapsible) */}
+      <View style={[styles.section, { marginTop: 4, marginBottom: 28 }]}>
+        <Pressable
+          style={[styles.devToggleBar, { borderColor: colors.cardBorder }]}
+          onPress={() => setShowDevControls((prev) => !prev)}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="construct-outline" size={13} color={colors.textSecondary} />
+            <Text style={[styles.devToggleBarText, { color: colors.textSecondary }]}>
+              DEVELOPER & DEMO CONTROLS
+            </Text>
+          </View>
+          <Ionicons
+            name={showDevControls ? 'chevron-up' : 'chevron-down'}
+            size={16}
+            color={colors.textSecondary}
+          />
+        </Pressable>
+
+        {showDevControls && (
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.cardBorder,
+                marginTop: 6,
+              },
+            ]}
+          >
+            <Text style={[styles.devControlsTitle, { color: colors.textSecondary, marginBottom: 8 }]}>
+              TRIAL & REWARD SIMULATION
+            </Text>
+            <View style={styles.devBtnsWrap}>
+              <Pressable style={styles.devChip} onPress={devResetTrial}>
+                <Text style={styles.devChipText}>Reset 3D Trial</Text>
+              </Pressable>
+              <Pressable style={[styles.devChip, { borderColor: '#EF4444' }]} onPress={devExpireTrial}>
+                <Text style={[styles.devChipText, { color: '#EF4444' }]}>Expire Trial</Text>
+              </Pressable>
+              <Pressable style={[styles.devChip, { borderColor: '#22C55E' }]} onPress={devAddReferralReward}>
+                <Text style={[styles.devChipText, { color: '#22C55E' }]}>+10d Referral</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -1053,5 +1495,325 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
+  },
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  offlineSectionSub: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: -4,
+    marginBottom: 12,
+    paddingHorizontal: 2,
+  },
+  downloadProgressCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 12,
+  },
+  progressHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  progressTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  progressTitleText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  cancelDownloadBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+  },
+  cancelDownloadText: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  progressBarTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  progressStatsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  progressStatText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  offlineItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 10,
+  },
+  offlineIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  offlineTextWrap: {
+    flex: 1,
+  },
+  regionTitleLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  offlineItemTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  downloadedPill: {
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    borderColor: '#22C55E',
+    borderWidth: 1,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  downloadedPillText: {
+    color: '#22C55E',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  offlineItemDesc: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  offlineSizeLabel: {
+    fontSize: 10,
+    marginTop: 2,
+  },
+  downloadActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  downloadActionBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  harborPacksHeader: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  storageFooterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  storageStatsWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  storageStatsText: {
+    fontSize: 11,
+  },
+  clearCacheBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+  },
+  clearCacheBtnText: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  nearbyHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  nearbyTitleWithDot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  pulsingGpsDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    marginRight: 6,
+  },
+  nearbyGpsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+    borderWidth: 1,
+  },
+  nearbyGpsBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  distancePill: {
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 5,
+    borderWidth: 1,
+  },
+  distancePillText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  showMoreRegionsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    gap: 4,
+  },
+  showMoreRegionsBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  offlineStatusStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginBottom: 12,
+  },
+  statusStripLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  statusIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statusStripTextWrap: {
+    flex: 1,
+  },
+  statusStripTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  statusStripSub: {
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  currentAreaHeroCard: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    padding: 12,
+    margin: 8,
+  },
+  currentAreaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  currentAreaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 240, 255, 0.12)',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 5,
+  },
+  currentAreaBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  currentAreaCoordText: {
+    fontSize: 10,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  currentAreaBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  currentAreaTextWrap: {
+    flex: 1,
+  },
+  currentAreaTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  currentAreaDesc: {
+    fontSize: 11,
+    marginTop: 3,
+    lineHeight: 15,
+  },
+  downloadHeroBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+    borderRadius: 9,
+    gap: 5,
+  },
+  downloadHeroBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  devToggleBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+  },
+  devToggleBarText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.7,
   },
 });

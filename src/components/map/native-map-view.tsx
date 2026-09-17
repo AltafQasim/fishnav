@@ -1,8 +1,10 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 
 import { buildLeafletHtml } from '@/components/map/leaflet-map-html';
+import { leafletCacheService } from '@/services/leaflet-cache-service';
+import { offlineTileManager } from '@/services/offline-tile-manager';
 import type { MapStyleId } from '@/components/map/map-style-selector';
 import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
@@ -102,7 +104,35 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const readyRef = useRef(false);
     const queueRef = useRef<MapCommand[]>([]);
-    const html = useMemo(() => buildLeafletHtml(), []);
+    const [cachedJs, setCachedJs] = useState<string | null>(null);
+
+    useEffect(() => {
+      let isMounted = true;
+      // 1. Immediately check if Leaflet JS is cached in local filesystem
+      leafletCacheService.getCachedAssets().then(({ js }) => {
+        if (isMounted && js) {
+          setCachedJs(js);
+        }
+      });
+
+      // 2. Pre-cache in background if online (stores permanently on device)
+      leafletCacheService.preCacheAssets().then((downloaded) => {
+        if (downloaded && isMounted) {
+          leafletCacheService.getCachedAssets().then(({ js }) => {
+            if (isMounted && js) setCachedJs(js);
+          });
+        }
+      });
+
+      return () => {
+        isMounted = false;
+      };
+    }, []);
+
+    const html = useMemo(() => {
+      const offlineBaseDir = offlineTileManager.getOfflineTilesBaseDir();
+      return buildLeafletHtml(cachedJs, offlineBaseDir);
+    }, [cachedJs]);
 
     const send = useCallback((cmd: MapCommand) => {
       if (!readyRef.current) {
@@ -322,13 +352,16 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
         <WebView
           ref={webRef}
           originWhitelist={['*']}
-          source={{ html }}
+          source={{ html, baseUrl: 'file:///' }}
           style={styles.map}
           onMessage={onMessage}
           javaScriptEnabled
           domStorageEnabled
           mixedContentMode="always"
           allowsInlineMediaPlayback
+          allowFileAccess
+          allowFileAccessFromFileURLs
+          allowUniversalAccessFromFileURLs
           setSupportMultipleWindows={false}
           startInLoadingState
           renderLoading={() => (

@@ -3,8 +3,9 @@ import {
   DEFAULT_MAP_REGION,
   FISHING_SPOTS,
 } from '@/constants/fishing-spots';
+import { BUNDLED_LEAFLET_CSS } from '@/constants/leaflet-css';
 
-export function buildLeafletHtml() {
+export function buildLeafletHtml(cachedJs?: string | null, offlineTilesDir?: string | null) {
   const initialSpots = JSON.stringify(
     FISHING_SPOTS.map((s) => ({
       id: s.id,
@@ -29,13 +30,21 @@ export function buildLeafletHtml() {
     zoom: 11,
   });
 
+  const offlineDirJson = JSON.stringify(offlineTilesDir || '');
+
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+${BUNDLED_LEAFLET_CSS}
+  </style>
+  ${
+    cachedJs
+      ? `<script>\n${cachedJs}\n</script>`
+      : `<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>`
+  }
   <style>
     * { box-sizing: border-box; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
     html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #00162B; overflow: hidden; }
@@ -240,6 +249,7 @@ export function buildLeafletHtml() {
     let SPOTS = ${initialSpots};
     let DANGER = ${initialDanger};
     const DEFAULT = ${defaultCenter};
+    const OFFLINE_BASE_DIR = ${offlineDirJson};
 
     let map = null;
     let baseLayer = null;
@@ -270,24 +280,63 @@ export function buildLeafletHtml() {
 
     const spotMarkers = {};
 
-    // Available tile sets
+    function createOfflineAwareTileLayer(onlineUrl, options, isOfflineEligible) {
+      var LayerClass = L.TileLayer.extend({
+        createTile: function(coords, done) {
+          var tile = document.createElement('img');
+          tile.setAttribute('role', 'presentation');
+          tile.alt = '';
+
+          var onlineSrc = this.getTileUrl(coords);
+
+          if (OFFLINE_BASE_DIR && isOfflineEligible) {
+            var localPath = OFFLINE_BASE_DIR + coords.z + '_' + coords.x + '_' + coords.y + '.png';
+
+            tile.onload = function() {
+              done(null, tile);
+            };
+
+            tile.onerror = function() {
+              // Local offline tile not present; fallback to online network tile
+              tile.onerror = function() {
+                // If online also fails (e.g. deep sea without internet), finish gracefully
+                done(null, tile);
+              };
+              tile.src = onlineSrc;
+            };
+
+            tile.src = localPath;
+            return tile;
+          }
+
+          tile.onload = function() { done(null, tile); };
+          tile.onerror = function() { done(null, tile); };
+          tile.src = onlineSrc;
+          return tile;
+        }
+      });
+
+      return new LayerClass(onlineUrl, options);
+    }
+
+    // Available tile sets (Offline tiles priority + online fallback)
     const baseLayers = {
-      standard: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      standard: createOfflineAwareTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap'
-      }),
+      }, true),
       satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         maxZoom: 19,
         attribution: 'Tiles &copy; Esri'
       }),
-      marine: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      marine: createOfflineAwareTileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
         attribution: '&copy; OSM &copy; CARTO'
-      }),
-      night: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      }, true),
+      night: createOfflineAwareTileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
         attribution: '&copy; OSM &copy; CARTO'
-      })
+      }, true)
     };
 
     function post(msg) {
