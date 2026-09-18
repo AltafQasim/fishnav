@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
+import { notificationService } from '@/services/notification-service';
 import { persistentStorage } from '@/services/persistent-storage';
 import { distanceNm } from '@/utils/geo';
 
@@ -208,6 +209,32 @@ const REGIONS_METADATA_KEY = '@fishnav_downloaded_regions_v1';
 const CARTO_VOYAGER_TEMPLATE = 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
 
 let activeDownloadAbort = false;
+let activeProgress: DownloadProgress | null = null;
+let activeDownloadPromise: Promise<boolean> | null = null;
+let activeRegionId: string | null = null;
+const progressSubscribers = new Set<(progress: DownloadProgress | null) => void>();
+
+function notifyProgress(progress: DownloadProgress | null) {
+  activeProgress = progress;
+  if (!progress || !progress.isDownloading) {
+    activeRegionId = null;
+    activeDownloadPromise = null;
+  } else {
+    activeRegionId = progress.regionId;
+  }
+
+  progressSubscribers.forEach((subscriber) => {
+    try {
+      subscriber(progress);
+    } catch (err) {
+      console.warn('[OfflineTileManager] Subscriber notify error:', err);
+    }
+  });
+
+  if (progress && progress.isDownloading) {
+    notificationService.updateDownloadProgress(progress).catch(() => {});
+  }
+}
 
 // Convert Lat/Lng to Slippy Tile numbers
 export function lon2tile(lon: number, zoom: number): number {
@@ -374,10 +401,99 @@ export const offlineTileManager = {
   },
 
   /**
-   * Cancel ongoing download
+   * Get current in-flight download progress (if any)
+   */
+  getCurrentProgress(): DownloadProgress | null {
+    return activeProgress;
+  },
+
+  /**
+   * Check if any region is currently downloading in background
+   */
+  isDownloading(): boolean {
+    return Boolean(activeProgress?.isDownloading);
+  },
+
+  /**
+   * Get ID of the region currently downloading
+   */
+  getActiveRegionId(): string | null {
+    return activeRegionId;
+  },
+
+  /**
+   * Subscribe to live download progress updates across components (SettingsSheet, FloatingPill, HUD, etc.)
+   */
+  subscribeToProgress(listener: (progress: DownloadProgress | null) => void): () => void {
+    progressSubscribers.add(listener);
+    // Send immediate current state
+    listener(activeProgress);
+    return () => {
+      progressSubscribers.delete(listener);
+    };
+  },
+
+  /**
+   * Start downloading an offline region with automatic singleton state, background continuity & notifications
+   */
+  async startDownload(
+    region: OfflineRegion,
+    onProgress?: (progress: DownloadProgress) => void,
+  ): Promise<boolean> {
+    if (activeProgress?.isDownloading) {
+      if (activeRegionId === region.id && activeDownloadPromise) {
+        return activeDownloadPromise;
+      }
+      console.warn('[OfflineTileManager] Another region download is already running.');
+      return false;
+    }
+
+    activeDownloadAbort = false;
+    activeRegionId = region.id;
+
+    // Trigger permission request in background
+    notificationService.requestPermissions().catch(() => {});
+
+    const initialProgress: DownloadProgress = {
+      total: region.estimatedTiles,
+      completed: 0,
+      failed: 0,
+      percent: 0,
+      regionId: region.id,
+      regionName: region.name,
+      isDownloading: true,
+    };
+    notifyProgress(initialProgress);
+    onProgress?.(initialProgress);
+
+    const handleProgress = (prog: DownloadProgress) => {
+      notifyProgress(prog);
+      onProgress?.(prog);
+    };
+
+    activeDownloadPromise =
+      Platform.OS === 'web' || !FileSystem.documentDirectory
+        ? this.downloadRegionWeb(region, handleProgress)
+        : this.downloadRegion(region, handleProgress);
+
+    const success = await activeDownloadPromise;
+    activeDownloadPromise = null;
+    activeRegionId = null;
+    notifyProgress(null);
+    return success;
+  },
+
+  /**
+   * Cancel ongoing download cleanly
    */
   cancelDownload() {
     activeDownloadAbort = true;
+    const regionName = activeProgress?.regionName;
+    notifyProgress(null);
+    notificationService.dismissDownloadNotification().catch(() => {});
+    if (regionName) {
+      console.log(`[OfflineTileManager] Download cancelled for ${regionName}`);
+    }
   },
 
   /**
@@ -423,7 +539,7 @@ export const offlineTileManager = {
       }
 
       const percent = Math.min(100, Math.round((completed / total) * 100));
-      onProgress?.({
+      const prog: DownloadProgress = {
         total,
         completed,
         failed: 0,
@@ -431,7 +547,9 @@ export const offlineTileManager = {
         regionId: region.id,
         regionName: region.name,
         isDownloading: true,
-      });
+      };
+      notifyProgress(prog);
+      onProgress?.(prog);
     }
 
     const success = completed > 0 && !activeDownloadAbort;
@@ -447,17 +565,24 @@ export const offlineTileManager = {
         sizeBytes: completed * 45 * 1024,
       });
       await persistentStorage.setItem(REGIONS_METADATA_KEY, JSON.stringify(updated));
+      await notificationService.completeDownloadNotification(region.name, true);
+    } else if (activeDownloadAbort) {
+      await notificationService.dismissDownloadNotification();
+    } else {
+      await notificationService.completeDownloadNotification(region.name, false);
     }
 
-    onProgress?.({
+    const finalProg: DownloadProgress = {
       total,
       completed,
       failed: 0,
-      percent: 100,
+      percent: success ? 100 : 0,
       regionId: region.id,
       regionName: region.name,
       isDownloading: false,
-    });
+    };
+    notifyProgress(null);
+    onProgress?.(finalProg);
 
     return success;
   },
@@ -575,7 +700,7 @@ export const offlineTileManager = {
       );
 
       const percent = Math.min(100, Math.round((completed / total) * 100));
-      onProgress?.({
+      const prog: DownloadProgress = {
         total,
         completed,
         failed,
@@ -583,7 +708,9 @@ export const offlineTileManager = {
         regionId: region.id,
         regionName: region.name,
         isDownloading: true,
-      });
+      };
+      notifyProgress(prog);
+      onProgress?.(prog);
     }
 
     const success = completed > 0 && !activeDownloadAbort;
@@ -599,17 +726,24 @@ export const offlineTileManager = {
         sizeBytes: completed * 45 * 1024,
       });
       await persistentStorage.setItem(REGIONS_METADATA_KEY, JSON.stringify(updated));
+      await notificationService.completeDownloadNotification(region.name, true);
+    } else if (activeDownloadAbort) {
+      await notificationService.dismissDownloadNotification();
+    } else {
+      await notificationService.completeDownloadNotification(region.name, false);
     }
 
-    onProgress?.({
+    const finalProg: DownloadProgress = {
       total,
       completed,
       failed,
-      percent: Math.min(100, Math.round((completed / total) * 100)),
+      percent: success ? 100 : Math.min(100, Math.round((completed / total) * 100)),
       regionId: region.id,
       regionName: region.name,
       isDownloading: false,
-    });
+    };
+    notifyProgress(null);
+    onProgress?.(finalProg);
 
     return success;
   },

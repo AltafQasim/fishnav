@@ -49,6 +49,30 @@ ${BUNDLED_LEAFLET_CSS}
     * { box-sizing: border-box; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
     html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #00162B; overflow: hidden; }
     
+    /* 🌊 High-Performance Tile Rendering & Smooth Transitions */
+    .leaflet-tile {
+      transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      will-change: opacity;
+    }
+    .leaflet-tile-container img, .leaflet-tile-container canvas {
+      image-rendering: auto;
+    }
+    
+    /* 🌫️ Overzoom / Parent Tile Fallback with Soft Nautical Blur */
+    .tile-fallback-blur {
+      filter: blur(1.8px) contrast(1.08) saturate(1.1) !important;
+      opacity: 0.92 !important;
+      transition: opacity 0.25s ease-in, filter 0.25s ease !important;
+      background-color: #00162B !important;
+    }
+    
+    /* ⚓ Uncharted Deep-Water Bathymetric Blurred Canvas Fallback */
+    .tile-ocean-fallback {
+      filter: blur(1.5px) !important;
+      opacity: 0.9 !important;
+      background-color: #00162B !important;
+    }
+
     .leaflet-control-attribution {
       font-size: 8px !important;
       background: rgba(0, 22, 43, 0.75) !important;
@@ -280,61 +304,289 @@ ${BUNDLED_LEAFLET_CSS}
 
     const spotMarkers = {};
 
+    // Fast in-memory cache for loaded parent images & missing state
+    var tileMemoryCache = {};
+    var missingTileCache = {};
+
+    function getLocalTilePath(z, x, y) {
+      if (!OFFLINE_BASE_DIR) return null;
+      var base = OFFLINE_BASE_DIR;
+      if (!base.startsWith('file://') && !base.startsWith('http') && !base.startsWith('/')) {
+        base = 'file://' + base;
+      }
+      return base + z + '_' + x + '_' + y + '.png';
+    }
+
+    function drawBlurredOceanTile(canvas, coords, style) {
+      var ctx = canvas.getContext('2d');
+      var isNight = style === 'night';
+      
+      // Base marine deep bathymetric gradient
+      var grad = ctx.createLinearGradient(0, 0, 256, 256);
+      if (isNight) {
+        grad.addColorStop(0, '#010912');
+        grad.addColorStop(0.5, '#031728');
+        grad.addColorStop(1, '#020C17');
+      } else {
+        grad.addColorStop(0, '#001428');
+        grad.addColorStop(0.5, '#002547');
+        grad.addColorStop(1, '#001021');
+      }
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 256, 256);
+
+      // Subtle bathymetric contour curves (soft blurred oceanic ripples)
+      ctx.save();
+      ctx.strokeStyle = isNight ? 'rgba(0, 240, 255, 0.05)' : 'rgba(56, 189, 248, 0.07)';
+      ctx.lineWidth = 1.6;
+      
+      var seed = (Math.abs(coords.x) * 31 + Math.abs(coords.y) * 17 + coords.z * 13) % 100;
+      var offsetY = (seed / 100) * 40;
+
+      ctx.beginPath();
+      ctx.moveTo(0, 50 + offsetY);
+      ctx.bezierCurveTo(80, 30 + offsetY, 160, 80 + offsetY, 256, 60 + offsetY);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(0, 150 + offsetY);
+      ctx.bezierCurveTo(90, 180 + offsetY, 170, 130 + offsetY, 256, 160 + offsetY);
+      ctx.stroke();
+
+      // Subtle nautical coordinate grid cross at tile center
+      ctx.strokeStyle = isNight ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 240, 255, 0.05)';
+      ctx.beginPath();
+      ctx.moveTo(124, 128); ctx.lineTo(132, 128);
+      ctx.moveTo(128, 124); ctx.lineTo(128, 132);
+      ctx.stroke();
+
+      ctx.restore();
+
+      canvas.className = 'leaflet-tile tile-ocean-fallback';
+      canvas.style.filter = 'blur(1.6px)';
+      canvas.style.opacity = '0.92';
+    }
+
+    function renderBlurredFallback(coords, done, canvas) {
+      if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+      }
+
+      // 1. Attempt Parent Tile at z - 1 (Overzoom upscale with soft nautical blur)
+      if (coords.z > 4) {
+        var pZ = coords.z - 1;
+        var pX = Math.floor(coords.x / 2);
+        var pY = Math.floor(coords.y / 2);
+        var parentKey = pZ + '_' + pX + '_' + pY;
+        var parentPath = getLocalTilePath(pZ, pX, pY);
+
+        var drawParentToCanvas = function(img) {
+          try {
+            var ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            var subX = coords.x % 2;
+            var subY = coords.y % 2;
+            ctx.drawImage(img, subX * 128, subY * 128, 128, 128, 0, 0, 256, 256);
+            canvas.className = 'leaflet-tile tile-fallback-blur';
+            canvas.style.filter = 'blur(1.6px)';
+            canvas.style.opacity = '0.92';
+            done(null, canvas);
+            return true;
+          } catch (e) {
+            return false;
+          }
+        };
+
+        // Check memory cache first
+        if (tileMemoryCache[parentKey]) {
+          if (drawParentToCanvas(tileMemoryCache[parentKey])) {
+            return;
+          }
+        }
+
+        if (parentPath && !missingTileCache[parentKey]) {
+          var pImg = new Image();
+          pImg.crossOrigin = 'anonymous';
+          var handled = false;
+
+          pImg.onload = function() {
+            if (handled) return;
+            handled = true;
+            tileMemoryCache[parentKey] = pImg;
+            if (!drawParentToCanvas(pImg)) {
+              drawBlurredOceanTile(canvas, coords, activeStyle);
+              done(null, canvas);
+            }
+          };
+
+          pImg.onerror = function() {
+            if (handled) return;
+            handled = true;
+            missingTileCache[parentKey] = true;
+
+            // 2. Attempt Grandparent Tile at z - 2
+            if (coords.z > 5) {
+              var gpZ = coords.z - 2;
+              var gpX = Math.floor(coords.x / 4);
+              var gpY = Math.floor(coords.y / 4);
+              var gpKey = gpZ + '_' + gpX + '_' + gpY;
+              var gpPath = getLocalTilePath(gpZ, gpX, gpY);
+
+              if (gpPath && !missingTileCache[gpKey]) {
+                var gpImg = new Image();
+                gpImg.crossOrigin = 'anonymous';
+                gpImg.onload = function() {
+                  try {
+                    tileMemoryCache[gpKey] = gpImg;
+                    var ctx2 = canvas.getContext('2d');
+                    ctx2.imageSmoothingEnabled = true;
+                    ctx2.imageSmoothingQuality = 'high';
+                    var gpSubX = coords.x % 4;
+                    var gpSubY = coords.y % 4;
+                    ctx2.drawImage(gpImg, gpSubX * 64, gpSubY * 64, 64, 64, 0, 0, 256, 256);
+                    canvas.className = 'leaflet-tile tile-fallback-blur';
+                    canvas.style.filter = 'blur(2.2px)';
+                    canvas.style.opacity = '0.88';
+                    done(null, canvas);
+                  } catch (e) {
+                    drawBlurredOceanTile(canvas, coords, activeStyle);
+                    done(null, canvas);
+                  }
+                };
+                gpImg.onerror = function() {
+                  missingTileCache[gpKey] = true;
+                  drawBlurredOceanTile(canvas, coords, activeStyle);
+                  done(null, canvas);
+                };
+                gpImg.src = gpPath;
+                return;
+              }
+            }
+
+            drawBlurredOceanTile(canvas, coords, activeStyle);
+            done(null, canvas);
+          };
+
+          pImg.src = parentPath;
+          return;
+        }
+      }
+
+      // Default: Beautiful blurred ocean bathymetry canvas
+      drawBlurredOceanTile(canvas, coords, activeStyle);
+      done(null, canvas);
+    }
+
     function createOfflineAwareTileLayer(onlineUrl, options, isOfflineEligible) {
+      var mergedOptions = Object.assign({
+        maxZoom: 19,
+        minZoom: 3,
+        keepBuffer: 8,
+        updateWhenIdle: false,
+        updateWhenZooming: false,
+        updateInterval: 50,
+      }, options || {});
+
       var LayerClass = L.TileLayer.extend({
         createTile: function(coords, done) {
           var tile = document.createElement('img');
           tile.setAttribute('role', 'presentation');
           tile.alt = '';
+          tile.className = 'leaflet-tile';
 
           var onlineSrc = this.getTileUrl(coords);
+          var localPath = getLocalTilePath(coords.z, coords.x, coords.y);
+          var tileKey = coords.z + '_' + coords.x + '_' + coords.y;
 
-          if (OFFLINE_BASE_DIR && isOfflineEligible) {
-            var localPath = OFFLINE_BASE_DIR + coords.z + '_' + coords.x + '_' + coords.y + '.png';
-
-            tile.onload = function() {
-              done(null, tile);
-            };
-
-            tile.onerror = function() {
-              // Local offline tile not present; fallback to online network tile
-              tile.onerror = function() {
-                // If online also fails (e.g. deep sea without internet), finish gracefully
-                done(null, tile);
-              };
-              tile.src = onlineSrc;
-            };
-
-            tile.src = localPath;
+          // 1. Web Browser CacheStorage Check (for PWA / Web offline)
+          if (typeof window !== 'undefined' && 'caches' in window) {
+            window.caches.open('fishnav_offline_tiles').then(function(cache) {
+              cache.match(onlineSrc).then(function(matchResp) {
+                if (matchResp && matchResp.ok) {
+                  matchResp.blob().then(function(blob) {
+                    tile.onload = function() { done(null, tile); };
+                    tile.onerror = function() { renderBlurredFallback(coords, done); };
+                    tile.src = URL.createObjectURL(blob);
+                  }).catch(function() {
+                    proceedWithNativeOrOnline();
+                  });
+                } else {
+                  proceedWithNativeOrOnline();
+                }
+              }).catch(function() {
+                proceedWithNativeOrOnline();
+              });
+            }).catch(function() {
+              proceedWithNativeOrOnline();
+            });
             return tile;
           }
 
-          tile.onload = function() { done(null, tile); };
-          tile.onerror = function() { done(null, tile); };
-          tile.src = onlineSrc;
+          proceedWithNativeOrOnline();
           return tile;
+
+          function proceedWithNativeOrOnline() {
+            // 2. Native Offline Filesystem Check
+            if (localPath && isOfflineEligible && !missingTileCache[tileKey]) {
+              tile.onload = function() {
+                done(null, tile);
+              };
+
+              tile.onerror = function() {
+                // Local tile not found on disk: mark key in missing cache
+                missingTileCache[tileKey] = true;
+
+                // If online network is available, attempt online tile
+                if (navigator.onLine !== false) {
+                  tile.onload = function() {
+                    done(null, tile);
+                  };
+                  tile.onerror = function() {
+                    // Online failed too (e.g. at sea or poor signal) -> smooth blur fallback!
+                    renderBlurredFallback(coords, done);
+                  };
+                  tile.src = onlineSrc;
+                } else {
+                  // Offline -> immediately show smooth blur fallback!
+                  renderBlurredFallback(coords, done);
+                }
+              };
+
+              tile.src = localPath;
+              return;
+            }
+
+            // 3. Online fallback or direct load
+            tile.onload = function() {
+              done(null, tile);
+            };
+            tile.onerror = function() {
+              // Online tile failed (offline or network error) -> smooth blur fallback!
+              renderBlurredFallback(coords, done);
+            };
+            tile.src = onlineSrc;
+          }
         }
       });
 
-      return new LayerClass(onlineUrl, options);
+      return new LayerClass(onlineUrl, mergedOptions);
     }
 
-    // Available tile sets (Offline tiles priority + online fallback)
+    // Available tile sets (Offline tiles priority + online fallback + blur overzoom)
     const baseLayers = {
       standard: createOfflineAwareTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
         attribution: '&copy; OpenStreetMap'
       }, true),
-      satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 19,
+      satellite: createOfflineAwareTileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri'
-      }),
+      }, false),
       marine: createOfflineAwareTileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
         attribution: '&copy; OSM &copy; CARTO'
       }, true),
       night: createOfflineAwareTileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
         attribution: '&copy; OSM &copy; CARTO'
       }, true)
     };
@@ -426,7 +678,14 @@ ${BUNDLED_LEAFLET_CSS}
       map = L.map('map', {
         zoomControl: false,
         attributionControl: true,
-        preferCanvas: true
+        preferCanvas: true,
+        fadeAnimation: true,
+        zoomAnimation: true,
+        markerZoomAnimation: true,
+        inertia: true,
+        inertiaDeceleration: 3000,
+        inertiaMaxSpeed: 2000,
+        worldCopyJump: false
       }).setView([DEFAULT.lat, DEFAULT.lng], DEFAULT.zoom);
 
       setBaseStyle('standard');

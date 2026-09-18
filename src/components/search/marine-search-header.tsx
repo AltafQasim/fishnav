@@ -216,7 +216,18 @@ export function MarineSearchHeader({
   const router = useRouter();
   const { captain } = useAuth();
   const { waypoints } = useWaypoints();
-  const { isPro, hasReferralBonus, bonusProDaysRemaining, isTrialActive, isTrialExpired, trialDaysRemaining, openProModal } = useSubscription();
+  const {
+    isPro,
+    proPlan,
+    proDaysRemaining,
+    isExpiringSoon,
+    hasReferralBonus,
+    bonusProDaysRemaining,
+    isTrialActive,
+    isTrialExpired,
+    trialDaysRemaining,
+    openProModal,
+  } = useSubscription();
 
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -442,7 +453,9 @@ export function MarineSearchHeader({
             styles.trialBadgePill,
             {
               backgroundColor: isPro
-                ? 'rgba(245, 158, 11, 0.15)'
+                ? isExpiringSoon
+                  ? 'rgba(239, 68, 68, 0.16)'
+                  : 'rgba(245, 158, 11, 0.15)'
                 : hasReferralBonus
                   ? 'rgba(34, 197, 94, 0.15)'
                   : isTrialExpired
@@ -451,7 +464,9 @@ export function MarineSearchHeader({
                       ? '#EFF6FF'
                       : 'rgba(0, 240, 255, 0.14)',
               borderColor: isPro
-                ? '#F59E0B'
+                ? isExpiringSoon
+                  ? '#EF4444'
+                  : '#F59E0B'
                 : hasReferralBonus
                   ? '#22C55E'
                   : isTrialExpired
@@ -466,8 +481,20 @@ export function MarineSearchHeader({
         >
           {isPro ? (
             <>
-              <MaterialCommunityIcons name="crown" size={12} color="#F59E0B" />
-              <Text style={[styles.trialBadgeText, { color: '#F59E0B' }]}>PRO</Text>
+              <MaterialCommunityIcons
+                name={isExpiringSoon ? 'alert-circle' : 'crown'}
+                size={12}
+                color={isExpiringSoon ? '#EF4444' : '#F59E0B'}
+              />
+              <Text style={[styles.trialBadgeText, { color: isExpiringSoon ? '#EF4444' : '#F59E0B' }]}>
+                {isExpiringSoon
+                  ? `PRO ${proDaysRemaining}d ⚠️`
+                  : proPlan === 'lifetime'
+                    ? 'PRO ♾️'
+                    : proDaysRemaining <= 60
+                      ? `PRO ${proDaysRemaining}d`
+                      : 'PRO 👑'}
+              </Text>
             </>
           ) : hasReferralBonus ? (
             <>

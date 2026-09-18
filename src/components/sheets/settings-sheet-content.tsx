@@ -19,6 +19,7 @@ import { MapColors } from '@/constants/map-theme';
 import { useAuth } from '@/context/auth-context';
 import { useSubscription } from '@/context/subscription-context';
 import { useAppTheme } from '@/context/theme-context';
+import { useOfflineDownload } from '@/context/offline-map-context';
 import { useTripTracking } from '@/context/trip-context';
 import { useWaypoints } from '@/context/waypoints-context';
 import { useUserLocation } from '@/hooks/use-user-location';
@@ -39,11 +40,27 @@ export function SettingsSheetContent() {
   const { savedTrips } = useTripTracking();
   const {
     isPro,
+    proPlan,
+    proExpiresAt,
+    proDaysRemaining,
+    proHoursRemaining,
+    proFormattedExpiry,
+    proProgressPercent,
+    isExpiringSoon,
+    isProExpired,
+    planDisplayName,
+    autoRenew,
+    toggleAutoRenew,
+    licenseCertificateId,
     hasReferralBonus,
     bonusProDaysRemaining,
+    bonusProFormattedExpiry,
     isTrialActive,
     isTrialExpired,
     trialDaysRemaining,
+    trialHoursRemaining,
+    trialProgressPercent,
+    trialFormattedExpiry,
     referralDaysEarned,
     referralCount,
     openProModal,
@@ -51,7 +68,19 @@ export function SettingsSheetContent() {
     devResetTrial,
     devExpireTrial,
     devAddReferralReward,
+    devSetExpiryDays,
   } = useSubscription();
+
+  const handleCopyLicense = async () => {
+    try {
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(licenseCertificateId);
+      }
+      Alert.alert('License Copied', `Maritime Certificate ID ${licenseCertificateId} copied to clipboard.`);
+    } catch {
+      Alert.alert('Certificate ID', licenseCertificateId);
+    }
+  };
 
   // Vessel Profile
   const [boatName, setBoatName] = useState(captain?.vesselName || 'Sea Hunter II');
@@ -98,20 +127,18 @@ export function SettingsSheetContent() {
   // Developer / demo controls visibility
   const [showDevControls, setShowDevControls] = useState(false);
 
-  // 🗺️ Offline Marine Charts State
+  // 🗺️ Offline Marine Charts State (Synchronized with Global Background Service)
   const { location } = useUserLocation();
-  const [downloadedRegions, setDownloadedRegions] = useState<DownloadedRegionMeta[]>([]);
-  const [storageUsageMb, setStorageUsageMb] = useState<number>(0);
-  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
-
-  const refreshOfflineStatus = useCallback(async () => {
-    const [regions, mb] = await Promise.all([
-      offlineTileManager.getDownloadedRegions(),
-      offlineTileManager.getOfflineStorageUsageMb(),
-    ]);
-    setDownloadedRegions(regions);
-    setStorageUsageMb(mb);
-  }, []);
+  const {
+    downloadProgress,
+    isDownloading,
+    downloadedRegions,
+    storageUsageMb,
+    startDownload,
+    cancelDownload,
+    refreshOfflineStatus,
+    clearAllTiles,
+  } = useOfflineDownload();
 
   const [showAllRegions, setShowAllRegions] = useState(false);
 
@@ -123,32 +150,22 @@ export function SettingsSheetContent() {
     );
   }, [location?.latitude, location?.longitude, showAllRegions]);
 
-  useEffect(() => {
-    refreshOfflineStatus();
-  }, [refreshOfflineStatus]);
+  const isCurrentAreaDownloaded = useMemo(
+    () => downloadedRegions.some((r) => r.id === 'current-area'),
+    [downloadedRegions],
+  );
+  const currentAreaMeta = useMemo(
+    () => downloadedRegions.find((r) => r.id === 'current-area'),
+    [downloadedRegions],
+  );
 
   const handleDownloadRegion = async (region: OfflineRegion) => {
-    if (downloadProgress?.isDownloading) {
+    if (isDownloading) {
       Alert.alert('Download in Progress', 'Please wait until the current map chart finishes downloading.');
       return;
     }
 
-    setDownloadProgress({
-      total: region.estimatedTiles,
-      completed: 0,
-      failed: 0,
-      percent: 0,
-      regionId: region.id,
-      regionName: region.name,
-      isDownloading: true,
-    });
-
-    const success = await offlineTileManager.downloadRegion(region, (progress) => {
-      setDownloadProgress(progress);
-    });
-
-    await refreshOfflineStatus();
-    setDownloadProgress(null);
+    const success = await startDownload(region);
 
     if (success) {
       Alert.alert(
@@ -181,8 +198,7 @@ export function SettingsSheetContent() {
           text: 'Clear All',
           style: 'destructive',
           onPress: async () => {
-            await offlineTileManager.clearAllOfflineTiles();
-            await refreshOfflineStatus();
+            await clearAllTiles();
             Alert.alert('Cleared', 'All offline map tiles have been cleared.');
           },
         },
@@ -228,22 +244,29 @@ export function SettingsSheetContent() {
       {/* 👑 Section 0: FishNav Pro & Fleet Referral Membership */}
       <View style={styles.section}>
         <View style={styles.sectionHeaderRow}>
-          <Text style={[styles.sectionHeader, { color: '#F59E0B' }]}>
-            MEMBERSHIP & PRO ACCESS
-          </Text>
+          <View style={styles.sectionHeaderLeft}>
+            <MaterialCommunityIcons name="crown" size={15} color="#F59E0B" style={{ marginRight: 5 }} />
+            <Text style={[styles.sectionHeader, { color: '#F59E0B', marginLeft: 0 }]}>
+              MEMBERSHIP & VESSEL LICENSE
+            </Text>
+          </View>
           <View
             style={[
               styles.badgeTheme,
               {
                 backgroundColor: isPro
-                  ? 'rgba(245, 158, 11, 0.15)'
+                  ? isExpiringSoon
+                    ? 'rgba(239, 68, 68, 0.15)'
+                    : 'rgba(245, 158, 11, 0.15)'
                   : hasReferralBonus
                     ? 'rgba(34, 197, 94, 0.15)'
                     : isTrialExpired
                       ? 'rgba(239, 68, 68, 0.15)'
                       : 'rgba(0, 240, 255, 0.15)',
                 borderColor: isPro
-                  ? '#F59E0B'
+                  ? isExpiringSoon
+                    ? '#EF4444'
+                    : '#F59E0B'
                   : hasReferralBonus
                     ? '#22C55E'
                     : isTrialExpired
@@ -257,7 +280,9 @@ export function SettingsSheetContent() {
                 styles.badgeThemeText,
                 {
                   color: isPro
-                    ? '#F59E0B'
+                    ? isExpiringSoon
+                      ? '#EF4444'
+                      : '#F59E0B'
                     : hasReferralBonus
                       ? '#22C55E'
                       : isTrialExpired
@@ -267,7 +292,11 @@ export function SettingsSheetContent() {
               ]}
             >
               {isPro
-                ? 'PRO MEMBER 👑'
+                ? proPlan === 'lifetime'
+                  ? 'LIFETIME 👑'
+                  : isExpiringSoon
+                    ? `EXPIRES IN ${proDaysRemaining}D ⚠️`
+                    : `${proDaysRemaining}D LEFT 👑`
                 : hasReferralBonus
                   ? `${bonusProDaysRemaining}D BONUS 🎁`
                   : isTrialExpired
@@ -278,49 +307,372 @@ export function SettingsSheetContent() {
         </View>
 
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          {/* Top Status Header Row */}
           <View style={styles.proMembershipRow}>
             <View
               style={[
                 styles.proIconBox,
                 {
                   backgroundColor: isPro
-                    ? 'rgba(245, 158, 11, 0.15)'
+                    ? isExpiringSoon
+                      ? 'rgba(239, 68, 68, 0.15)'
+                      : 'rgba(245, 158, 11, 0.15)'
                     : hasReferralBonus
                       ? 'rgba(34, 197, 94, 0.12)'
-                      : 'rgba(0, 240, 255, 0.12)',
-                  borderColor: isPro ? '#F59E0B' : hasReferralBonus ? '#22C55E' : colors.accent,
+                      : isTrialExpired
+                        ? 'rgba(239, 68, 68, 0.12)'
+                        : 'rgba(0, 240, 255, 0.12)',
+                  borderColor: isPro
+                    ? isExpiringSoon
+                      ? '#EF4444'
+                      : '#F59E0B'
+                    : hasReferralBonus
+                      ? '#22C55E'
+                      : isTrialExpired
+                        ? '#EF4444'
+                        : colors.accent,
                 },
               ]}
             >
               <MaterialCommunityIcons
-                name={isPro ? 'crown' : hasReferralBonus ? 'gift' : 'shield-star'}
-                size={24}
-                color={isPro ? '#F59E0B' : hasReferralBonus ? '#22C55E' : colors.accent}
+                name={isPro ? (isExpiringSoon ? 'shield-alert' : 'shield-crown') : hasReferralBonus ? 'gift' : isTrialExpired ? 'shield-off' : 'shield-star'}
+                size={26}
+                color={isPro ? (isExpiringSoon ? '#EF4444' : '#F59E0B') : hasReferralBonus ? '#22C55E' : isTrialExpired ? '#EF4444' : colors.accent}
               />
             </View>
 
             <View style={{ flex: 1 }}>
-              <Text style={[styles.proMembershipTitle, { color: colors.text }]}>
-                {isPro
-                  ? 'FishNav Pro Console Active'
-                  : hasReferralBonus
-                    ? 'Referral Bonus Pass Active'
-                    : '3-Day Free Trial Mode'}
-              </Text>
+              <View style={styles.planTitleBadgeRow}>
+                <Text style={[styles.proMembershipTitle, { color: colors.text }]}>
+                  {planDisplayName}
+                </Text>
+                <View
+                  style={[
+                    styles.statusPill,
+                    {
+                      backgroundColor: isPro
+                        ? isExpiringSoon
+                          ? 'rgba(239, 68, 68, 0.15)'
+                          : 'rgba(16, 185, 129, 0.15)'
+                        : hasReferralBonus
+                          ? 'rgba(34, 197, 94, 0.15)'
+                          : isTrialExpired
+                            ? 'rgba(239, 68, 68, 0.15)'
+                            : 'rgba(0, 240, 255, 0.15)',
+                      borderColor: isPro
+                        ? isExpiringSoon
+                          ? '#EF4444'
+                          : '#10B981'
+                        : hasReferralBonus
+                          ? '#22C55E'
+                          : isTrialExpired
+                            ? '#EF4444'
+                            : colors.accent,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusPillText,
+                      {
+                        color: isPro
+                          ? isExpiringSoon
+                            ? '#EF4444'
+                            : '#10B981'
+                          : hasReferralBonus
+                            ? '#22C55E'
+                            : isTrialExpired
+                              ? '#EF4444'
+                              : colors.accent,
+                      },
+                    ]}
+                  >
+                    {isPro ? (isExpiringSoon ? 'EXPIRING SOON' : 'ACTIVE') : hasReferralBonus ? 'REFERRAL PASS' : isTrialExpired ? 'EXPIRED' : 'ACTIVE TRIAL'}
+                  </Text>
+                </View>
+              </View>
               <Text style={[styles.proMembershipSub, { color: colors.textSecondary }]}>
                 {isPro
-                  ? 'Full bathymetry, AI fishing hotspots & AIS vessel radar unlocked.'
+                  ? proPlan === 'lifetime'
+                    ? 'Perpetual master license. High-res bathymetry & AIS radar unlocked forever.'
+                    : 'Official vessel license active with full offshore bathymetry & AIS radar.'
                   : hasReferralBonus
-                    ? `You have ${bonusProDaysRemaining} days of free Pro access from Captain Invites.`
+                    ? 'Unlocked via Captain referral invitations. Zero recurring charges.'
                     : isTrialExpired
                       ? 'Free trial has ended. Upgrade to continue high-res navigation.'
-                      : `You have ${trialDaysRemaining} days remaining of unrestricted Pro trial.`}
+                      : 'Unrestricted Pro evaluation pass. All features active.'}
               </Text>
             </View>
           </View>
 
+          {/* ⚡ Glowing Expiry & Countdown HUD Console */}
+          <View
+            style={[
+              styles.expiryHudConsole,
+              {
+                backgroundColor: isLight ? '#F8FAFC' : 'rgba(2, 12, 23, 0.85)',
+                borderColor: isPro
+                  ? isExpiringSoon
+                    ? '#EF4444'
+                    : isLight
+                      ? '#FDE68A'
+                      : 'rgba(245, 158, 11, 0.35)'
+                  : hasReferralBonus
+                    ? 'rgba(34, 197, 94, 0.3)'
+                    : isTrialExpired
+                      ? 'rgba(239, 68, 68, 0.35)'
+                      : isLight
+                        ? '#E0F2FE'
+                        : 'rgba(0, 240, 255, 0.25)',
+              },
+            ]}
+          >
+            {isPro ? (
+              proPlan === 'lifetime' ? (
+                // Lifetime View
+                <View style={styles.hudLifetimeWrap}>
+                  <View style={styles.hudLifetimeLeft}>
+                    <Text style={[styles.hudHugeInfinity, { color: '#F59E0B' }]}>♾️</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.hudHeadline, { color: colors.text }]}>
+                        PERPETUAL LIFETIME ACCESS
+                      </Text>
+                      <Text style={[styles.hudSubtitle, { color: colors.textSecondary }]}>
+                        Never expires • All bathymetry, radar & offline charts guaranteed
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ) : (
+                // Annual or Quarterly Pro View
+                <View>
+                  <View style={styles.hudTopRow}>
+                    <View style={styles.hudCountdownBox}>
+                      <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
+                        TIME REMAINING
+                      </Text>
+                      <View style={styles.hudDaysRow}>
+                        <Text
+                          style={[
+                            styles.hudBigNumber,
+                            { color: isExpiringSoon ? '#EF4444' : '#F59E0B' },
+                          ]}
+                        >
+                          {proDaysRemaining}
+                        </Text>
+                        <Text
+                          style={[
+                            styles.hudBigUnit,
+                            { color: isExpiringSoon ? '#EF4444' : '#F59E0B' },
+                          ]}
+                        >
+                          {proDaysRemaining === 1 ? 'DAY' : 'DAYS'} LEFT
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.hudDateInfoBox}>
+                      <View style={styles.hudDatePill}>
+                        <Ionicons name="calendar" size={13} color={isExpiringSoon ? '#EF4444' : '#F59E0B'} />
+                        <Text style={[styles.hudDateText, { color: colors.text }]}>
+                          Expires: <Text style={{ fontWeight: '800' }}>{proFormattedExpiry}</Text>
+                        </Text>
+                      </View>
+                      <Pressable
+                        style={[
+                          styles.autoRenewPill,
+                          {
+                            backgroundColor: autoRenew
+                              ? 'rgba(16, 185, 129, 0.12)'
+                              : 'rgba(245, 158, 11, 0.12)',
+                            borderColor: autoRenew ? '#10B981' : '#F59E0B',
+                          },
+                        ]}
+                        onPress={toggleAutoRenew}
+                        hitSlop={6}
+                      >
+                        <Ionicons
+                          name={autoRenew ? 'refresh-circle' : 'pause-circle'}
+                          size={13}
+                          color={autoRenew ? '#10B981' : '#F59E0B'}
+                        />
+                        <Text
+                          style={[
+                            styles.autoRenewText,
+                            { color: autoRenew ? '#10B981' : '#F59E0B' },
+                          ]}
+                        >
+                          Auto-Renew: {autoRenew ? 'ON' : 'PAUSED'}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  {/* Visual Expiry Timeline Progress Bar */}
+                  <View style={styles.hudProgressWrap}>
+                    <View style={styles.hudProgressTrack}>
+                      <View
+                        style={[
+                          styles.hudProgressFill,
+                          {
+                            width: `${Math.max(5, 100 - proProgressPercent)}%`,
+                            backgroundColor: isExpiringSoon ? '#EF4444' : '#F59E0B',
+                          },
+                        ]}
+                      />
+                    </View>
+                    <View style={styles.hudProgressLabels}>
+                      <Text style={[styles.hudProgressLabelText, { color: colors.textMuted }]}>
+                        Cycle: {proPlan === 'quarterly' ? '90 Days' : '365 Days'}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.hudProgressLabelText,
+                          { color: isExpiringSoon ? '#EF4444' : '#F59E0B', fontWeight: '700' },
+                        ]}
+                      >
+                        {proDaysRemaining} days remaining ({Math.max(1, 100 - proProgressPercent)}%)
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              )
+            ) : hasReferralBonus ? (
+              // Referral Bonus View
+              <View>
+                <View style={styles.hudTopRow}>
+                  <View style={styles.hudCountdownBox}>
+                    <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
+                      REFERRAL PASS REMAINING
+                    </Text>
+                    <View style={styles.hudDaysRow}>
+                      <Text style={[styles.hudBigNumber, { color: '#22C55E' }]}>
+                        {bonusProDaysRemaining}
+                      </Text>
+                      <Text style={[styles.hudBigUnit, { color: '#22C55E' }]}>
+                        {bonusProDaysRemaining === 1 ? 'DAY' : 'DAYS'} FREE
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.hudDateInfoBox}>
+                    <View style={styles.hudDatePill}>
+                      <Ionicons name="gift" size={13} color="#22C55E" />
+                      <Text style={[styles.hudDateText, { color: colors.text }]}>
+                        Valid Until: <Text style={{ fontWeight: '800' }}>{bonusProFormattedExpiry}</Text>
+                      </Text>
+                    </View>
+                    <Text style={[styles.hudSubInfo, { color: colors.textSecondary }]}>
+                      +{referralDaysEarned}d earned from {referralCount} crew invites
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              // Free Trial or Expired View
+              <View>
+                <View style={styles.hudTopRow}>
+                  <View style={styles.hudCountdownBox}>
+                    <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
+                      {isTrialExpired ? 'TRIAL STATUS' : 'FREE EVALUATION PERIOD'}
+                    </Text>
+                    <View style={styles.hudDaysRow}>
+                      <Text
+                        style={[
+                          styles.hudBigNumber,
+                          { color: isTrialExpired ? '#EF4444' : colors.accent },
+                        ]}
+                      >
+                        {isTrialExpired ? '0h' : `${trialHoursRemaining}h`}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.hudBigUnit,
+                          { color: isTrialExpired ? '#EF4444' : colors.accent },
+                        ]}
+                      >
+                        {isTrialExpired ? 'EXPIRED' : `LEFT (${trialDaysRemaining}d)`}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.hudDateInfoBox}>
+                    <View style={styles.hudDatePill}>
+                      <Ionicons
+                        name={isTrialExpired ? 'alert-circle' : 'time'}
+                        size={13}
+                        color={isTrialExpired ? '#EF4444' : colors.accent}
+                      />
+                      <Text style={[styles.hudDateText, { color: colors.text }]}>
+                        {isTrialExpired ? 'Trial Ended' : `Trial Ends: ${trialFormattedExpiry}`}
+                      </Text>
+                    </View>
+                    <Text style={[styles.hudSubInfo, { color: colors.textSecondary }]}>
+                      {isTrialExpired
+                        ? 'Offshore charts locked'
+                        : 'Upgrade anytime for permanent access'}
+                    </Text>
+                  </View>
+                </View>
+                {!isTrialExpired && (
+                  <View style={styles.hudProgressWrap}>
+                    <View style={styles.hudProgressTrack}>
+                      <View
+                        style={[
+                          styles.hudProgressFill,
+                          {
+                            width: `${Math.max(5, 100 - trialProgressPercent)}%`,
+                            backgroundColor: colors.accent,
+                          },
+                        ]}
+                      />
+                    </View>
+                    <View style={styles.hudProgressLabels}>
+                      <Text style={[styles.hudProgressLabelText, { color: colors.textMuted }]}>
+                        72 Hours Free Evaluation
+                      </Text>
+                      <Text style={[styles.hudProgressLabelText, { color: colors.accent, fontWeight: '700' }]}>
+                        {trialHoursRemaining} hours left
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* License Certificate & Copy Bar */}
+            <View style={[styles.hudCertRow, { borderTopColor: colors.divider }]}>
+              <View style={styles.hudCertLeft}>
+                <MaterialCommunityIcons name="certificate" size={14} color="#F59E0B" />
+                <Text style={[styles.hudCertLabel, { color: colors.textMuted }]}>
+                  LICENSE ID:
+                </Text>
+                <Text style={[styles.hudCertValue, { color: colors.text }]}>
+                  {licenseCertificateId}
+                </Text>
+              </View>
+              <Pressable style={styles.hudCopyBtn} onPress={handleCopyLicense} hitSlop={8}>
+                <Ionicons name="copy-outline" size={12} color={colors.accent} />
+                <Text style={[styles.hudCopyBtnText, { color: colors.accent }]}>COPY</Text>
+              </Pressable>
+            </View>
+          </View>
+
+          {/* ⚠️ Expiring Soon Urgent Alert Bar */}
+          {isExpiringSoon && (
+            <View style={styles.expiringSoonAlertBox}>
+              <Ionicons name="warning" size={18} color="#EF4444" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.expiringSoonAlertTitle}>
+                  LICENSE EXPIRING SOON! ({proDaysRemaining} Days Left)
+                </Text>
+                <Text style={styles.expiringSoonAlertDesc}>
+                  Your vessel license will expire on {proFormattedExpiry}. Renew now to avoid offshore chart blackout & radar shutdown.
+                </Text>
+              </View>
+            </View>
+          )}
+
           {/* Referral Bonus Tag if any */}
-          {referralDaysEarned > 0 && (
+          {referralDaysEarned > 0 && !hasReferralBonus && (
             <View style={styles.referralBonusPill}>
               <Ionicons name="gift" size={14} color="#22C55E" />
               <Text style={styles.referralBonusPillText}>
@@ -329,31 +681,38 @@ export function SettingsSheetContent() {
             </View>
           )}
 
-          <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+          <View style={[styles.divider, { backgroundColor: colors.divider, marginVertical: 10 }]} />
 
-          {/* Action Buttons: Upgrade Pro & Invite Crew */}
+          {/* Action Buttons: Upgrade Pro / Renew & Invite Crew */}
           <View style={styles.actionsRow}>
             <Pressable
               style={[
                 styles.actionBtn,
                 {
-                  backgroundColor: isPro
-                    ? colors.chipBg
-                    : isLight
-                      ? '#E0F2FE'
-                      : 'rgba(0, 240, 255, 0.18)',
-                  borderColor: colors.accent,
+                  backgroundColor: isExpiringSoon
+                    ? '#EF4444'
+                    : isPro
+                      ? colors.chipBg
+                      : isLight
+                        ? '#E0F2FE'
+                        : 'rgba(0, 240, 255, 0.18)',
+                  borderColor: isExpiringSoon ? '#DC2626' : colors.accent,
                 },
               ]}
               onPress={() => openProModal('settings_btn')}
             >
               <MaterialCommunityIcons
-                name="crown"
+                name={isExpiringSoon ? 'refresh-circle' : 'crown'}
                 size={16}
-                color={colors.accent}
+                color={isExpiringSoon ? '#FFFFFF' : colors.accent}
               />
-              <Text style={[styles.actionBtnText, { color: colors.accent }]}>
-                {isPro ? 'Manage Pro' : 'Upgrade to Pro'}
+              <Text
+                style={[
+                  styles.actionBtnText,
+                  { color: isExpiringSoon ? '#FFFFFF' : colors.accent, fontWeight: '800' },
+                ]}
+              >
+                {isExpiringSoon ? 'Renew License Now' : isPro ? 'Manage Pro & Billing' : 'Upgrade to Pro'}
               </Text>
             </Pressable>
 
@@ -469,7 +828,7 @@ export function SettingsSheetContent() {
                   Downloading {downloadProgress.regionName}...
                 </Text>
               </View>
-              <Pressable onPress={() => offlineTileManager.cancelDownload()} style={styles.cancelDownloadBtn}>
+              <Pressable onPress={() => cancelDownload()} style={styles.cancelDownloadBtn}>
                 <Text style={styles.cancelDownloadText}>Cancel</Text>
               </Pressable>
             </View>
@@ -501,10 +860,28 @@ export function SettingsSheetContent() {
             ]}
           >
             <View style={styles.currentAreaHeader}>
-              <View style={styles.currentAreaBadge}>
-                <Ionicons name="navigate" size={11} color={colors.accent} style={{ marginRight: 4 }} />
-                <Text style={[styles.currentAreaBadgeText, { color: colors.accent }]}>
-                  CURRENT BOAT PERIMETER
+              <View
+                style={[
+                  styles.currentAreaBadge,
+                  isCurrentAreaDownloaded && {
+                    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+                    borderColor: '#22C55E',
+                  },
+                ]}
+              >
+                <Ionicons
+                  name={isCurrentAreaDownloaded ? 'checkmark-circle' : 'navigate'}
+                  size={11}
+                  color={isCurrentAreaDownloaded ? '#22C55E' : colors.accent}
+                  style={{ marginRight: 4 }}
+                />
+                <Text
+                  style={[
+                    styles.currentAreaBadgeText,
+                    { color: isCurrentAreaDownloaded ? '#22C55E' : colors.accent },
+                  ]}
+                >
+                  {isCurrentAreaDownloaded ? '30 NM CACHED OFFLINE' : 'CURRENT BOAT PERIMETER'}
                 </Text>
               </View>
               <Text style={[styles.currentAreaCoordText, { color: colors.textMuted }]}>
@@ -520,25 +897,43 @@ export function SettingsSheetContent() {
                   Surrounding Sea Chart (30 NM)
                 </Text>
                 <Text style={[styles.currentAreaDesc, { color: colors.textSecondary }]}>
-                  Instant 30 Nautical Mile boundary covering all fishing spots, banks & channels
+                  {isCurrentAreaDownloaded
+                    ? `✓ Active 30 NM zone is saved (${currentAreaMeta?.tileCount || 260} tiles). Tap 'Update' if boat moved to a new zone.`
+                    : 'Instant 30 Nautical Mile boundary covering all fishing spots, banks & channels'}
                 </Text>
               </View>
               <Pressable
                 style={[
                   styles.downloadHeroBtn,
-                  { backgroundColor: colors.accent },
+                  isCurrentAreaDownloaded
+                    ? { backgroundColor: colors.chipBg, borderColor: '#22C55E', borderWidth: 1 }
+                    : { backgroundColor: colors.accent },
                   downloadProgress?.isDownloading && { opacity: 0.5 },
                 ]}
                 disabled={downloadProgress?.isDownloading}
                 onPress={handleDownloadCurrentArea}
               >
                 {downloadProgress?.regionId === 'current-area' ? (
-                  <ActivityIndicator size="small" color={isLight ? '#FFFFFF' : '#020B14'} />
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <ActivityIndicator size="small" color={isLight ? '#FFFFFF' : '#020B14'} />
+                    <Text style={[styles.downloadHeroBtnText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>
+                      {downloadProgress?.percent}%
+                    </Text>
+                  </View>
                 ) : (
                   <>
-                    <Ionicons name="cloud-download" size={15} color={isLight ? '#FFFFFF' : '#020B14'} />
-                    <Text style={[styles.downloadHeroBtnText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>
-                      Download
+                    <Ionicons
+                      name={isCurrentAreaDownloaded ? 'sync-outline' : 'cloud-download'}
+                      size={15}
+                      color={isCurrentAreaDownloaded ? '#22C55E' : isLight ? '#FFFFFF' : '#020B14'}
+                    />
+                    <Text
+                      style={[
+                        styles.downloadHeroBtnText,
+                        { color: isCurrentAreaDownloaded ? '#22C55E' : isLight ? '#FFFFFF' : '#020B14' },
+                      ]}
+                    >
+                      {isCurrentAreaDownloaded ? 'Update' : 'Download'}
                     </Text>
                   </>
                 )}
@@ -648,7 +1043,17 @@ export function SettingsSheetContent() {
                     onPress={() => handleDownloadRegion(region)}
                   >
                     {isDownloadingThis ? (
-                      <ActivityIndicator size="small" color={isLight ? '#FFFFFF' : '#020B14'} />
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                        <ActivityIndicator size="small" color={isLight ? '#FFFFFF' : '#020B14'} />
+                        <Text
+                          style={[
+                            styles.downloadActionBtnText,
+                            { color: isLight ? '#FFFFFF' : '#020B14', fontWeight: '800' },
+                          ]}
+                        >
+                          {downloadProgress?.percent}%
+                        </Text>
+                      </View>
                     ) : (
                       <>
                         <Ionicons
@@ -1212,6 +1617,12 @@ export function SettingsSheetContent() {
               </Pressable>
               <Pressable style={[styles.devChip, { borderColor: '#22C55E' }]} onPress={devAddReferralReward}>
                 <Text style={[styles.devChipText, { color: '#22C55E' }]}>+10d Referral</Text>
+              </Pressable>
+              <Pressable style={[styles.devChip, { borderColor: '#F59E0B' }]} onPress={() => devSetExpiryDays(5)}>
+                <Text style={[styles.devChipText, { color: '#F59E0B' }]}>Set 5d Expiry</Text>
+              </Pressable>
+              <Pressable style={[styles.devChip, { borderColor: '#10B981' }]} onPress={() => devSetExpiryDays(365)}>
+                <Text style={[styles.devChipText, { color: '#10B981' }]}>Set 1y Pro</Text>
               </Pressable>
             </View>
           </View>
@@ -1816,4 +2227,233 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.7,
   },
+  // Section 0: Pro Membership & Expiry Styles
+  proMembershipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 10,
+  },
+  proIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  planTitleBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+    marginBottom: 2,
+  },
+  proMembershipTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    flex: 1,
+  },
+  statusPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+  },
+  statusPillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  proMembershipSub: {
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  expiryHudConsole: {
+    borderRadius: 12,
+    borderWidth: 1.5,
+    padding: 12,
+    marginVertical: 4,
+  },
+  hudLifetimeWrap: {
+    paddingVertical: 4,
+  },
+  hudLifetimeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  hudHugeInfinity: {
+    fontSize: 32,
+  },
+  hudHeadline: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  hudSubtitle: {
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  hudTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  hudCountdownBox: {
+    flex: 1,
+  },
+  hudSmallLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
+  hudDaysRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 5,
+  },
+  hudBigNumber: {
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  hudBigUnit: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  hudDateInfoBox: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  hudDatePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  hudDateText: {
+    fontSize: 11,
+  },
+  hudSubInfo: {
+    fontSize: 10,
+  },
+  autoRenewPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 5,
+    borderWidth: 1,
+  },
+  autoRenewText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  hudProgressWrap: {
+    marginBottom: 8,
+  },
+  hudProgressTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  hudProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  hudProgressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  hudProgressLabelText: {
+    fontSize: 10,
+  },
+  hudCertRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    paddingTop: 8,
+    marginTop: 4,
+  },
+  hudCertLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  hudCertLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  hudCertValue: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  hudCopyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: 'rgba(0, 240, 255, 0.1)',
+  },
+  hudCopyBtnText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  expiringSoonAlertBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderColor: '#EF4444',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginVertical: 6,
+  },
+  expiringSoonAlertTitle: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  expiringSoonAlertDesc: {
+    color: '#FCA5A5',
+    fontSize: 10,
+    marginTop: 2,
+    lineHeight: 14,
+  },
+  referralBonusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    marginVertical: 4,
+  },
+  referralBonusPillText: {
+    color: '#22C55E',
+    fontSize: 11,
+    fontWeight: '700',
+  },
 });
+

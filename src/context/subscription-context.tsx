@@ -19,6 +19,14 @@ export type SubscriptionContextType = {
   isPro: boolean;
   proPlan: SubscriptionPlan | null;
   proExpiresAt: string | null;
+  proExpiresAtMs: number | null;
+  proDaysRemaining: number;
+  proHoursRemaining: number;
+  proFormattedExpiry: string;
+  proProgressPercent: number;
+  isExpiringSoon: boolean;
+  isProExpired: boolean;
+  planDisplayName: string;
   autoRenew: boolean;
   licenseCertificateId: string;
   invoiceNumber: string;
@@ -27,6 +35,7 @@ export type SubscriptionContextType = {
   hasReferralBonus: boolean;
   bonusProDaysRemaining: number;
   bonusProExpiry: number | null;
+  bonusProFormattedExpiry: string;
 
   // Full access status (bypasses paywall)
   hasFullAccess: boolean;
@@ -39,6 +48,7 @@ export type SubscriptionContextType = {
   trialDaysRemaining: number;
   trialHoursRemaining: number;
   trialProgressPercent: number;
+  trialFormattedExpiry: string;
 
   // Referral Program (10 Days per Invite)
   referralCode: string;
@@ -69,6 +79,7 @@ export type SubscriptionContextType = {
   devResetTrial: () => void;
   devExpireTrial: () => void;
   devAddReferralReward: () => void;
+  devSetExpiryDays: (days: number) => void;
 };
 
 const SubscriptionContext = createContext<SubscriptionContextType | undefined>(undefined);
@@ -79,6 +90,21 @@ const REFERRAL_STORAGE_KEY = 'fishnav_referral_state_v1';
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000; // 72 Hours Free Trial
 const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000; // 10 Days Pro per referral
+const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+
+export function formatMaritimeDate(timestampMs: number): string {
+  try {
+    const d = new Date(timestampMs);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = d.getDate();
+    const month = months[d.getMonth()];
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
+  } catch {
+    return 'Active';
+  }
+}
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
   const { captain } = useAuth();
@@ -87,6 +113,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const [isPro, setIsPro] = useState(false);
   const [proPlan, setProPlan] = useState<SubscriptionPlan | null>(null);
   const [proExpiresAt, setProExpiresAt] = useState<string | null>(null);
+  const [proExpiresAtMs, setProExpiresAtMs] = useState<number | null>(null);
   const [autoRenew, setAutoRenew] = useState(true);
 
   // 2. Trial Timestamp State
@@ -150,7 +177,29 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           if (parsed.isPro && parsed.plan) {
             setIsPro(true);
             setProPlan(parsed.plan);
-            setProExpiresAt(parsed.expiresAt || null);
+
+            if (parsed.plan === 'lifetime') {
+              setProExpiresAt('Lifetime Access');
+              setProExpiresAtMs(null);
+            } else if (parsed.expiresAtMs && typeof parsed.expiresAtMs === 'number') {
+              setProExpiresAtMs(parsed.expiresAtMs);
+              setProExpiresAt(parsed.expiresAt || formatMaritimeDate(parsed.expiresAtMs));
+            } else if (parsed.expiresAt && parsed.expiresAt !== '1 Year Active' && parsed.expiresAt !== 'Lifetime Access') {
+              const parsedDate = Date.parse(parsed.expiresAt);
+              if (!isNaN(parsedDate) && parsedDate > Date.now() - 30 * 24 * 60 * 60 * 1000) {
+                setProExpiresAtMs(parsedDate);
+                setProExpiresAt(formatMaritimeDate(parsedDate));
+              } else {
+                const defaultMs = Date.now() + ONE_YEAR_MS;
+                setProExpiresAtMs(defaultMs);
+                setProExpiresAt(formatMaritimeDate(defaultMs));
+              }
+            } else {
+              const defaultMs = Date.now() + ONE_YEAR_MS;
+              setProExpiresAtMs(defaultMs);
+              setProExpiresAt(formatMaritimeDate(defaultMs));
+            }
+
             if (typeof parsed.autoRenew === 'boolean') {
               setAutoRenew(parsed.autoRenew);
             }
@@ -158,6 +207,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             setIsPro(false);
             setProPlan(null);
             setProExpiresAt(null);
+            setProExpiresAtMs(null);
           }
         }
 
@@ -185,17 +235,32 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       newCount: number,
       newDays: number,
       newBonusExpiry: number | null,
-      newAutoRenew: boolean = true
+      newAutoRenew: boolean = true,
+      newExpiresAtMs?: number | null,
+      newExpiresAtStr?: string | null
     ) => {
       try {
         if (typeof window !== 'undefined' && window.localStorage) {
           window.localStorage.setItem(TRIAL_STORAGE_KEY, String(newTrialStart));
+
+          let calculatedExpiryMs = newExpiresAtMs;
+          if (newPro && newPlan && newPlan !== 'lifetime' && (calculatedExpiryMs === undefined || calculatedExpiryMs === null)) {
+            calculatedExpiryMs = proExpiresAtMs || Date.now() + (newPlan === 'quarterly' ? NINETY_DAYS_MS : ONE_YEAR_MS);
+          } else if (newPlan === 'lifetime') {
+            calculatedExpiryMs = null;
+          }
+
+          const expiryString = newPro && newPlan
+            ? (newExpiresAtStr || (newPlan === 'lifetime' ? 'Lifetime Access' : formatMaritimeDate(calculatedExpiryMs || (Date.now() + ONE_YEAR_MS))))
+            : null;
+
           window.localStorage.setItem(
             PRO_STORAGE_KEY,
             JSON.stringify({
               isPro: newPro && newPlan !== null,
               plan: newPlan,
-              expiresAt: newPro && newPlan ? (newPlan === 'lifetime' ? 'Lifetime Access' : '2027-12-31') : null,
+              expiresAt: expiryString,
+              expiresAtMs: calculatedExpiryMs,
               autoRenew: newAutoRenew,
             })
           );
@@ -214,10 +279,10 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         // ignore
       }
     },
-    [referralRewardMode]
+    [proExpiresAtMs, referralRewardMode]
   );
 
-  // Trial Time Calculations
+  // Time Calculations
   const now = Date.now();
   const elapsedTrialMs = Math.max(0, now - trialStartDate);
   const trialDurationMs = THREE_DAYS_MS;
@@ -226,14 +291,46 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const trialHoursRemaining = Math.ceil(trialMsRemaining / (1000 * 60 * 60));
   const trialDaysRemaining = Math.ceil(trialMsRemaining / (1000 * 60 * 60 * 24));
   const trialProgressPercent = Math.min(100, Math.round((elapsedTrialMs / trialDurationMs) * 100));
+  const trialFormattedExpiry = formatMaritimeDate(trialStartDate + trialDurationMs);
 
   // Referral Bonus Calculations (10 Days per invite)
   const hasActiveReferralBonus = bonusProExpiry !== null && bonusProExpiry > now;
   const bonusProMsRemaining = bonusProExpiry ? Math.max(0, bonusProExpiry - now) : 0;
   const bonusProDaysRemaining = Math.ceil(bonusProMsRemaining / (1000 * 60 * 60 * 24));
+  const bonusProFormattedExpiry = bonusProExpiry ? formatMaritimeDate(bonusProExpiry) : '';
 
   // Paid Pro Status: ONLY true if user actually purchased an active plan
   const isPaidPro = isPro && proPlan !== null;
+  const isLifetime = isPaidPro && proPlan === 'lifetime';
+
+  // Pro Expiry & Days Remaining Calculation
+  const proMsRemaining = isLifetime ? Infinity : proExpiresAtMs ? Math.max(0, proExpiresAtMs - now) : 0;
+  const proDaysRemaining = isLifetime ? 9999 : Math.ceil(proMsRemaining / (1000 * 60 * 60 * 24));
+  const proHoursRemaining = isLifetime ? 99999 : Math.ceil(proMsRemaining / (1000 * 60 * 60));
+
+  const proTotalPeriodMs = proPlan === 'quarterly' ? NINETY_DAYS_MS : ONE_YEAR_MS;
+  const proProgressPercent = isLifetime
+    ? 100
+    : Math.max(0, Math.min(100, Math.round(((proTotalPeriodMs - proMsRemaining) / proTotalPeriodMs) * 100)));
+
+  const isExpiringSoon = isPaidPro && !isLifetime && proDaysRemaining <= 15 && proDaysRemaining > 0;
+  const isProExpired = isPaidPro && !isLifetime && proExpiresAtMs !== null && proExpiresAtMs <= now;
+
+  const proFormattedExpiry = useMemo(() => {
+    if (!isPaidPro) return '';
+    if (proPlan === 'lifetime') return 'Lifetime Access (Never Expires)';
+    if (proExpiresAtMs) return formatMaritimeDate(proExpiresAtMs);
+    return proExpiresAt || 'Active';
+  }, [isPaidPro, proPlan, proExpiresAtMs, proExpiresAt]);
+
+  const planDisplayName = useMemo(() => {
+    if (proPlan === 'lifetime') return 'Lifetime Skipper Pass';
+    if (proPlan === 'quarterly') return 'Quarterly Voyager License';
+    if (proPlan === 'annual') return 'Annual Master Mariner License';
+    if (hasActiveReferralBonus) return 'Captain Referral Pass';
+    if (trialMsRemaining > 0) return '3-Day Free Trial';
+    return 'Trial Expired';
+  }, [proPlan, hasActiveReferralBonus, trialMsRemaining]);
 
   // Unrestricted Access: User has full access to features if Paid Pro OR active Referral Bonus OR Trial Active
   const hasFullAccess = isPaidPro || hasActiveReferralBonus || trialMsRemaining > 0;
@@ -266,47 +363,52 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
   const subscribeToPro = useCallback(
     (plan: SubscriptionPlan) => {
+      const durationMs = plan === 'lifetime' ? null : plan === 'quarterly' ? NINETY_DAYS_MS : ONE_YEAR_MS;
+      const expiryMs = durationMs ? Date.now() + durationMs : null;
+      const expiresStr = plan === 'lifetime' ? 'Lifetime Access' : formatMaritimeDate(expiryMs!);
+
       setIsPro(true);
       setProPlan(plan);
       setAutoRenew(true);
-      const expires = plan === 'lifetime' ? 'Lifetime Access' : '1 Year Active';
-      setProExpiresAt(expires);
-      persistState(true, plan, trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, true);
+      setProExpiresAt(expiresStr);
+      setProExpiresAtMs(expiryMs);
+
+      persistState(true, plan, trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, true, expiryMs, expiresStr);
       setIsProModalVisible(false);
 
       Alert.alert(
         '👑 Welcome to FishNav Pro!',
-        `Your ${plan.toUpperCase()} marine navigation license is now active. All bathymetric charts, AI fishing zones, and AIS radar are permanently unlocked.`
+        `Your ${plan.toUpperCase()} marine navigation license is now active.\n\n📅 Valid Through: ${expiresStr}${plan !== 'lifetime' ? ' (Auto-renews)' : ''}\n⚓ Certificate ID: ${licenseCertificateId}`
       );
     },
-    [trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, persistState]
+    [trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, licenseCertificateId, persistState]
   );
 
   const toggleAutoRenew = useCallback(() => {
     const nextVal = !autoRenew;
     setAutoRenew(nextVal);
-    persistState(isPro, proPlan, trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, nextVal);
+    persistState(isPro, proPlan, trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, nextVal, proExpiresAtMs, proExpiresAt);
     if (nextVal) {
       Alert.alert(
         'Auto-Renewal Resumed ⚓',
-        'Your vessel license will automatically renew at the end of the billing period to avoid offshore navigation interruption.'
+        `Your vessel license will automatically renew on ${proFormattedExpiry || 'end of period'} to avoid offshore navigation interruption.`
       );
     } else {
       Alert.alert(
         'Auto-Renewal Paused',
-        `Auto-renewal has been paused. Your Pro marine license remains fully active until ${proExpiresAt || 'end of period'}. No further charges will occur.`
+        `Auto-renewal has been paused. Your Pro marine license remains fully active until ${proFormattedExpiry || 'end of period'}. No further charges will occur.`
       );
     }
-  }, [autoRenew, isPro, proPlan, trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, proExpiresAt, persistState]);
+  }, [autoRenew, isPro, proPlan, trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, proExpiresAtMs, proExpiresAt, proFormattedExpiry, persistState]);
 
   const cancelSubscription = useCallback(() => {
     setAutoRenew(false);
-    persistState(isPro, proPlan, trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, false);
+    persistState(isPro, proPlan, trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, false, proExpiresAtMs, proExpiresAt);
     Alert.alert(
       'Subscription Cancelled',
-      `Auto-renewal has been turned off. You retain full Pro access and offline charts until ${proExpiresAt || 'end of current cycle'}.`
+      `Auto-renewal has been turned off. You retain full Pro access and offline charts until ${proFormattedExpiry || 'end of current cycle'}.`
     );
-  }, [isPro, proPlan, trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, proExpiresAt, persistState]);
+  }, [isPro, proPlan, trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, proExpiresAtMs, proExpiresAt, proFormattedExpiry, persistState]);
 
   const restorePurchases = useCallback(async (): Promise<boolean> => {
     try {
@@ -315,13 +417,19 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         if (savedPro) {
           const parsed = JSON.parse(savedPro);
           if (parsed.isPro) {
+            const plan: SubscriptionPlan = parsed.plan || 'annual';
+            const expiryMs = parsed.expiresAtMs || (plan === 'lifetime' ? null : Date.now() + ONE_YEAR_MS);
+            const expiresStr = plan === 'lifetime' ? 'Lifetime Access' : formatMaritimeDate(expiryMs!);
+
             setIsPro(true);
-            setProPlan(parsed.plan || 'annual');
-            setProExpiresAt(parsed.expiresAt || '1 Year Active');
+            setProPlan(plan);
+            setProExpiresAt(expiresStr);
+            setProExpiresAtMs(expiryMs);
             if (typeof parsed.autoRenew === 'boolean') setAutoRenew(parsed.autoRenew);
+
             Alert.alert(
               'License Restored! ⚓',
-              `Verified active ${String(parsed.plan || 'annual').toUpperCase()} marine license. All bathymetric contours, radar & secret waypoints unlocked.`
+              `Verified active ${String(plan).toUpperCase()} marine license.\nValid until: ${expiresStr}\nCertificate ID: ${licenseCertificateId}`
             );
             return true;
           }
@@ -336,7 +444,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       Alert.alert('Restore Error', 'Unable to reach maritime licensing server. Please check internet connection.');
       return false;
     }
-  }, []);
+  }, [licenseCertificateId]);
 
   const applyReferralCode = useCallback(
     (code: string): boolean => {
@@ -352,15 +460,15 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       setBonusProExpiry(newExpiry);
       const newDays = referralDaysEarned + 10;
       setReferralDaysEarned(newDays);
-      persistState(isPro, proPlan, trialStartDate, referralCount, newDays, newExpiry, autoRenew);
+      persistState(isPro, proPlan, trialStartDate, referralCount, newDays, newExpiry, autoRenew, proExpiresAtMs, proExpiresAt);
 
       Alert.alert(
         '🎁 10 Days Pro Activated!',
-        `Referral code ${trimmed} applied successfully! 10 days of full Pro access have been added to your account.`
+        `Referral code ${trimmed} applied successfully! 10 days of full Pro access added until ${formatMaritimeDate(newExpiry)}.`
       );
       return true;
     },
-    [referralCode, bonusProExpiry, referralDaysEarned, isPro, proPlan, trialStartDate, referralCount, autoRenew, persistState]
+    [referralCode, bonusProExpiry, referralDaysEarned, isPro, proPlan, trialStartDate, referralCount, autoRenew, proExpiresAtMs, proExpiresAt, persistState]
   );
 
   const shareReferralInvite = useCallback(async () => {
@@ -389,20 +497,24 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     setTrialStartDate(nowTs);
     setIsPro(false);
     setProPlan(null);
+    setProExpiresAt(null);
+    setProExpiresAtMs(null);
     setBonusProExpiry(null);
     setAutoRenew(true);
-    persistState(false, null, nowTs, referralCount, referralDaysEarned, null, true);
+    persistState(false, null, nowTs, referralCount, referralDaysEarned, null, true, null, null);
     Alert.alert('Trial Reset', '3-Day Free Trial has been reset back to Day 1 (72 hours remaining).');
   }, [referralCount, referralDaysEarned, persistState]);
 
   const devExpireTrial = useCallback(() => {
-    const fourDaysAgo = Date.now() - (4 * 24 * 60 * 60 * 1000);
+    const fourDaysAgo = Date.now() - 4 * 24 * 60 * 60 * 1000;
     setTrialStartDate(fourDaysAgo);
     setIsPro(false);
     setProPlan(null);
+    setProExpiresAt(null);
+    setProExpiresAtMs(null);
     setBonusProExpiry(null);
     setAutoRenew(true);
-    persistState(false, null, fourDaysAgo, referralCount, referralDaysEarned, null, true);
+    persistState(false, null, fourDaysAgo, referralCount, referralDaysEarned, null, true, null, null);
     Alert.alert('Trial Expired', 'Trial simulated as expired (> 72 hours passed). Pro modal is now locked on screen.');
   }, [referralCount, referralDaysEarned, persistState]);
 
@@ -415,13 +527,31 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     setReferralCount(newCount);
     setReferralDaysEarned(newDays);
     setBonusProExpiry(newExpiry);
-    persistState(isPro, proPlan, trialStartDate, newCount, newDays, newExpiry, autoRenew);
+    persistState(isPro, proPlan, trialStartDate, newCount, newDays, newExpiry, autoRenew, proExpiresAtMs, proExpiresAt);
 
     Alert.alert(
       '🎉 Referral Bonus Earned!',
-      `Simulated successful referral invite #${newCount}! You have earned +10 Days of Free Pro access.`
+      `Simulated successful referral invite #${newCount}! You have earned +10 Days of Free Pro access until ${formatMaritimeDate(newExpiry)}.`
     );
-  }, [referralCount, referralDaysEarned, bonusProExpiry, isPro, proPlan, trialStartDate, autoRenew, persistState]);
+  }, [referralCount, referralDaysEarned, bonusProExpiry, isPro, proPlan, trialStartDate, autoRenew, proExpiresAtMs, proExpiresAt, persistState]);
+
+  const devSetExpiryDays = useCallback(
+    (days: number) => {
+      const newExpiry = Date.now() + days * 24 * 60 * 60 * 1000;
+      setIsPro(true);
+      const activePlan = proPlan && proPlan !== 'lifetime' ? proPlan : 'annual';
+      setProPlan(activePlan);
+      setProExpiresAtMs(newExpiry);
+      const str = formatMaritimeDate(newExpiry);
+      setProExpiresAt(str);
+      persistState(true, activePlan, trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, autoRenew, newExpiry, str);
+      Alert.alert(
+        'Simulated Expiry Updated',
+        `Pro plan expiration set to ${days} days remaining (${str}). Check the glowing expiry countdown and alerts!`
+      );
+    },
+    [proPlan, trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, autoRenew, persistState]
+  );
 
   const value = useMemo(
     () => ({
@@ -430,6 +560,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       hasFullAccess,
       proPlan,
       proExpiresAt,
+      proExpiresAtMs,
+      proDaysRemaining,
+      proHoursRemaining,
+      proFormattedExpiry,
+      proProgressPercent,
+      isExpiringSoon,
+      isProExpired,
+      planDisplayName,
       autoRenew,
       licenseCertificateId,
       invoiceNumber,
@@ -440,6 +578,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       trialDaysRemaining,
       trialHoursRemaining,
       trialProgressPercent,
+      trialFormattedExpiry,
       referralCode,
       referralLink,
       referralCount,
@@ -447,6 +586,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       referralMonthsEarned: Math.round(referralDaysEarned / 10),
       bonusProDaysRemaining,
       bonusProExpiry,
+      bonusProFormattedExpiry,
       referralRewardMode,
       setReferralRewardMode,
       isProModalVisible: isProModalActuallyVisible,
@@ -464,6 +604,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       devResetTrial,
       devExpireTrial,
       devAddReferralReward,
+      devSetExpiryDays,
     }),
     [
       isPaidPro,
@@ -471,6 +612,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       hasFullAccess,
       proPlan,
       proExpiresAt,
+      proExpiresAtMs,
+      proDaysRemaining,
+      proHoursRemaining,
+      proFormattedExpiry,
+      proProgressPercent,
+      isExpiringSoon,
+      isProExpired,
+      planDisplayName,
       autoRenew,
       licenseCertificateId,
       invoiceNumber,
@@ -481,12 +630,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       trialDaysRemaining,
       trialHoursRemaining,
       trialProgressPercent,
+      trialFormattedExpiry,
       referralCode,
       referralLink,
       referralCount,
       referralDaysEarned,
       bonusProDaysRemaining,
       bonusProExpiry,
+      bonusProFormattedExpiry,
       referralRewardMode,
       isProModalActuallyVisible,
       isReferralModalVisible,
@@ -503,6 +654,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       devResetTrial,
       devExpireTrial,
       devAddReferralReward,
+      devSetExpiryDays,
     ]
   );
 

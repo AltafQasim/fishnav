@@ -41,12 +41,19 @@ export function FishNavProModal() {
     isPro,
     proPlan,
     proExpiresAt,
+    proDaysRemaining,
+    proHoursRemaining,
+    proFormattedExpiry,
+    proProgressPercent,
+    isExpiringSoon,
+    planDisplayName,
     autoRenew,
     licenseCertificateId,
     toggleAutoRenew,
     restorePurchases,
     hasReferralBonus,
     bonusProDaysRemaining,
+    bonusProFormattedExpiry,
     hasFullAccess,
     isProModalVisible,
     closeProModal,
@@ -55,6 +62,7 @@ export function FishNavProModal() {
     trialDaysRemaining,
     trialHoursRemaining,
     trialProgressPercent,
+    trialFormattedExpiry,
     subscribeToPro,
     openReferralModal,
   } = useSubscription();
@@ -175,23 +183,99 @@ export function FishNavProModal() {
                   styles.trialCard,
                   {
                     backgroundColor: isLight ? '#FEF3C7' : 'rgba(245, 158, 11, 0.1)',
-                    borderColor: '#F59E0B',
+                    borderColor: isExpiringSoon ? '#EF4444' : '#F59E0B',
                   },
                 ]}
               >
                 <View style={styles.trialHeaderRow}>
-                  <MaterialCommunityIcons name="shield-crown" size={20} color="#F59E0B" />
-                  <Text style={[styles.trialTitle, { color: '#F59E0B' }]}>
+                  <MaterialCommunityIcons
+                    name={isExpiringSoon ? 'shield-alert' : 'shield-crown'}
+                    size={22}
+                    color={isExpiringSoon ? '#EF4444' : '#F59E0B'}
+                  />
+                  <Text
+                    style={[
+                      styles.trialTitle,
+                      { color: isExpiringSoon ? '#EF4444' : '#F59E0B' },
+                    ]}
+                  >
                     {proPlan === 'lifetime'
                       ? 'LIFETIME SKIPPER LICENSE ACTIVE'
-                      : proPlan === 'quarterly'
-                        ? 'QUARTERLY VOYAGER ACTIVE'
-                        : 'ANNUAL MASTER MARINER ACTIVE'}
+                      : isExpiringSoon
+                        ? `LICENSE EXPIRING SOON (${proDaysRemaining}D LEFT)`
+                        : proPlan === 'quarterly'
+                          ? `QUARTERLY VOYAGER (${proDaysRemaining}D LEFT)`
+                          : `ANNUAL MASTER MARINER (${proDaysRemaining}D LEFT)`}
                   </Text>
                 </View>
 
-                <Text style={[styles.trialDesc, { color: colors.textSecondary }]}>
-                  License ID: {licenseCertificateId} • {proPlan === 'lifetime' ? 'Perpetual Access' : `Valid until ${proExpiresAt || '2027-12-31'}`}
+                {/* Big Expiry Countdown Row */}
+                {proPlan === 'lifetime' ? (
+                  <View style={styles.modalLifetimeRow}>
+                    <Text style={{ fontSize: 24 }}>♾️</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.modalCountdownTitle, { color: colors.text }]}>
+                        PERPETUAL MARINE ACCESS
+                      </Text>
+                      <Text style={[styles.trialDesc, { color: colors.textSecondary }]}>
+                        No expiration date • All future bathymetric charts & AIS radar updates included.
+                      </Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.modalCountdownContainer}>
+                    <View style={styles.modalCountdownHero}>
+                      <View>
+                        <Text style={[styles.modalCountdownSub, { color: colors.textSecondary }]}>
+                          TIME REMAINING
+                        </Text>
+                        <Text
+                          style={[
+                            styles.modalCountdownBigNum,
+                            { color: isExpiringSoon ? '#EF4444' : '#F59E0B' },
+                          ]}
+                        >
+                          {proDaysRemaining} <Text style={styles.modalCountdownUnit}>DAYS LEFT</Text>
+                        </Text>
+                      </View>
+                      <View style={styles.modalExpiryDatePill}>
+                        <Ionicons name="calendar" size={13} color={isExpiringSoon ? '#EF4444' : '#F59E0B'} />
+                        <Text style={[styles.modalExpiryDateText, { color: colors.text }]}>
+                          Valid Until: <Text style={{ fontWeight: '800' }}>{proFormattedExpiry}</Text>
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Progress Bar */}
+                    <View style={styles.modalProgressTrack}>
+                      <View
+                        style={[
+                          styles.modalProgressFill,
+                          {
+                            width: `${Math.max(5, 100 - proProgressPercent)}%`,
+                            backgroundColor: isExpiringSoon ? '#EF4444' : '#F59E0B',
+                          },
+                        ]}
+                      />
+                    </View>
+                    <View style={styles.modalProgressLabels}>
+                      <Text style={[styles.modalProgressLabelText, { color: colors.textMuted }]}>
+                        {proPlan === 'quarterly' ? '90-Day Cycle' : '1-Year License Cycle'}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.modalProgressLabelText,
+                          { color: isExpiringSoon ? '#EF4444' : '#F59E0B', fontWeight: '700' },
+                        ]}
+                      >
+                        {proDaysRemaining} days remaining ({Math.max(1, 100 - proProgressPercent)}%)
+                      </Text>
+                    </View>
+                  </View>
+                )}
+
+                <Text style={[styles.trialDesc, { color: colors.textSecondary, marginTop: 4 }]}>
+                  License ID: {licenseCertificateId}
                 </Text>
 
                 {proPlan !== 'lifetime' && (
@@ -817,4 +901,70 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  modalLifetimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 6,
+  },
+  modalCountdownTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  modalCountdownContainer: {
+    paddingVertical: 6,
+  },
+  modalCountdownHero: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalCountdownSub: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
+  modalCountdownBigNum: {
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  modalCountdownUnit: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  modalExpiryDatePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  modalExpiryDateText: {
+    fontSize: 11,
+  },
+  modalProgressTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  modalProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  modalProgressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  modalProgressLabelText: {
+    fontSize: 10,
+  },
 });
+

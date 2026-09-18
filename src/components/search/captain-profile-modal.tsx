@@ -104,6 +104,10 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
     isPro,
     proPlan,
     proExpiresAt,
+    proDaysRemaining,
+    proFormattedExpiry,
+    proProgressPercent,
+    isExpiringSoon,
     autoRenew,
     licenseCertificateId,
     invoiceNumber,
@@ -513,35 +517,50 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                       styles.renewalInfoBox,
                       {
                         backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.25)',
-                        borderColor: colors.cardBorder,
+                        borderColor: isExpiringSoon ? '#EF4444' : colors.cardBorder,
                       },
                     ]}
                   >
                     <View style={styles.renewalRowItem}>
-                      <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
-                      <Text style={[styles.renewalLabel, { color: colors.textSecondary }]}>Status / Expiry:</Text>
-                      <Text style={[styles.renewalValue, { color: colors.text }]}>
-                        {proPlan === 'lifetime' ? 'Perpetual Lifetime' : proExpiresAt || 'Active'}
+                      <Ionicons name="calendar-outline" size={14} color={isExpiringSoon ? '#EF4444' : colors.textSecondary} />
+                      <Text style={[styles.renewalLabel, { color: colors.textSecondary }]}>Expiration Date:</Text>
+                      <Text style={[styles.renewalValue, { color: isExpiringSoon ? '#EF4444' : colors.text, fontWeight: '800' }]}>
+                        {proPlan === 'lifetime' ? 'Perpetual Lifetime ♾️' : proFormattedExpiry}
                       </Text>
                     </View>
 
                     {proPlan !== 'lifetime' && (
-                      <View style={styles.renewalRowItem}>
-                        <Ionicons
-                          name={autoRenew ? 'refresh-circle' : 'pause-circle'}
-                          size={15}
-                          color={autoRenew ? '#10B981' : '#F59E0B'}
-                        />
-                        <Text style={[styles.renewalLabel, { color: colors.textSecondary }]}>Auto-Renew:</Text>
-                        <Text
-                          style={[
-                            styles.renewalValue,
-                            { color: autoRenew ? '#10B981' : '#F59E0B', fontWeight: '700' },
-                          ]}
-                        >
-                          {autoRenew ? 'ACTIVE (Auto-Renews)' : 'PAUSED'}
-                        </Text>
-                      </View>
+                      <>
+                        <View style={styles.renewalRowItem}>
+                          <Ionicons name="hourglass-outline" size={14} color={isExpiringSoon ? '#EF4444' : '#F59E0B'} />
+                          <Text style={[styles.renewalLabel, { color: colors.textSecondary }]}>Time Remaining:</Text>
+                          <Text
+                            style={[
+                              styles.renewalValue,
+                              { color: isExpiringSoon ? '#EF4444' : '#F59E0B', fontWeight: '800' },
+                            ]}
+                          >
+                            {proDaysRemaining} Days Left {isExpiringSoon ? '(EXPIRING SOON ⚠️)' : ''}
+                          </Text>
+                        </View>
+
+                        <View style={styles.renewalRowItem}>
+                          <Ionicons
+                            name={autoRenew ? 'refresh-circle' : 'pause-circle'}
+                            size={15}
+                            color={autoRenew ? '#10B981' : '#F59E0B'}
+                          />
+                          <Text style={[styles.renewalLabel, { color: colors.textSecondary }]}>Auto-Renew:</Text>
+                          <Text
+                            style={[
+                              styles.renewalValue,
+                              { color: autoRenew ? '#10B981' : '#F59E0B', fontWeight: '700' },
+                            ]}
+                          >
+                            {autoRenew ? 'ACTIVE (Auto-Renews)' : 'PAUSED'}
+                          </Text>
+                        </View>
+                      </>
                     )}
                   </View>
 

@@ -24,6 +24,7 @@ import {
 import { MarineDirectionsModal } from '@/components/navigation/marine-directions-modal';
 import { CaptainProfileModal } from '@/components/search/captain-profile-modal';
 import { MarineSearchHeader } from '@/components/search/marine-search-header';
+import { MarineDownloadPill } from '@/components/map/marine-download-pill';
 import { CalendarSheetContent } from '@/components/sheets/calendar-sheet-content';
 import { CompassSheetContent } from '@/components/sheets/compass-sheet-content';
 import { SettingsSheetContent } from '@/components/sheets/settings-sheet-content';
@@ -363,6 +364,12 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
           onFocus={() => setActiveTab(null)}
         />
       )}
+
+      {/* 🗺️ Live Floating Background Map Download Progress HUD */}
+      <MarineDownloadPill
+        onOpenSettings={() => setActiveTab('settings')}
+        isSettingsOpen={activeTab === 'settings'}
+      />
 
       {/* 📍 Map Picking Mode: Guidance Header */}
       {isMapPickingMode && (
