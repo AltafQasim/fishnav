@@ -1,12 +1,12 @@
 import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useMemo, useState } from 'react';
 
 export type AppThemeId = 'high-contrast' | 'light';
 
 export type AppThemeColors = {
-  surfaceSubtle: any;
-  border: any;
+  surfaceSubtle?: string;
+  border?: string;
   id: AppThemeId;
   name: string;
   tag: string;
@@ -131,18 +131,21 @@ export function AppThemeProvider({ children }: { children: React.ReactNode }) {
 
   const navTheme = isLight ? DefaultTheme : DarkTheme;
 
+  const value = useMemo(
+    () => ({
+      theme,
+      activeTheme: theme,
+      colors,
+      setTheme,
+      isHighContrast,
+      isDark,
+      isLight,
+    }),
+    [theme, colors, isHighContrast, isLight]
+  );
+
   return (
-    <ThemeContext.Provider
-      value={{
-        theme,
-        activeTheme: theme,
-        colors,
-        setTheme,
-        isHighContrast,
-        isDark,
-        isLight,
-      }}
-    >
+    <ThemeContext.Provider value={value}>
       <NavThemeProvider value={navTheme}>
         <StatusBar style={colors.statusBar} />
         {children}

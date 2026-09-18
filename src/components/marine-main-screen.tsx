@@ -1,5 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -122,56 +122,48 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
   }, [selectedTripForMap]);
 
   // Handle Tab Click from Bottom Bar
-  const handleTabPress = (tab: 'waypoint' | 'weather' | 'compass' | 'calendar' | 'settings') => {
-    // If tapping the already open tab, toggle it closed to view full map; otherwise open it
-    if (activeTab === tab) {
-      setActiveTab(null);
-    } else {
-      setActiveTab(tab);
-    }
-  };
+  const handleTabPress = useCallback((tab: 'waypoint' | 'weather' | 'compass' | 'calendar' | 'settings') => {
+    setActiveTab((prev) => (prev === tab ? null : tab));
+  }, []);
 
-  const handleCloseSheet = () => {
+  const handleCloseSheet = useCallback(() => {
     setActiveTab(null);
-  };
+  }, []);
 
-  const handleViewSpotOnMap = (spot: FishingSpot) => {
+  const handleViewSpotOnMap = useCallback((spot: FishingSpot) => {
     setSelectedSpotId(spot.id);
     setActiveNavigationTarget(spot);
     setFollowUser(false);
     mapRef.current?.goToSpot(spot);
-    // Dismiss sheet so spot is visible on map
     setActiveTab(null);
-  };
+  }, [setSelectedSpotId, setActiveNavigationTarget]);
 
-  const handleStartNavigationToSpot = (spot: FishingSpot) => {
+  const handleStartNavigationToSpot = useCallback((spot: FishingSpot) => {
     mapRef.current?.fitRoute(spot);
     setFollowUser(true);
     startNavigation(spot);
     setSelectedSpotId(null);
     setActiveTab(null);
-  };
+  }, [startNavigation, setSelectedSpotId]);
 
-  const handleGoPress = () => {
-    // Open Google Maps Directions & Route Planning Modal!
+  const handleGoPress = useCallback(() => {
     setDirectionsDestination(selectedSpot ?? null);
     setShowDirectionsModal(true);
-  };
+  }, [selectedSpot]);
 
-  const handleMapClick = (lat: number, lng: number) => {
+  const handleMapClick = useCallback((lat: number, lng: number) => {
     if (isMapPickingMode) {
       setDroppedPin({ latitude: lat, longitude: lng });
       mapRef.current?.setDroppedPin(lat, lng);
       return;
     }
-    // Dismiss any open spot selection or bottom sheet; no pin is dropped
     setSelectedSpotId(null);
     setFollowUser(false);
     mapRef.current?.clearDroppedPin();
-  };
+  }, [isMapPickingMode, setSelectedSpotId]);
 
   // Stats for the pin dropped in Map-Picking mode
-  const pickingPinStats = React.useMemo(() => {
+  const pickingPinStats = useMemo(() => {
     if (!droppedPin || !location) return null;
     const nm = distanceNm(location.latitude, location.longitude, droppedPin.latitude, droppedPin.longitude);
     const brg = bearingDegrees(location.latitude, location.longitude, droppedPin.latitude, droppedPin.longitude);
@@ -182,7 +174,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     };
   }, [droppedPin, location]);
 
-  const handleConfirmPickedPinAndStart = () => {
+  const handleConfirmPickedPinAndStart = useCallback(() => {
     if (!droppedPin) return;
     const customSpot: FishingSpot = {
       id: `dest-${Date.now()}`,
@@ -197,9 +189,9 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     setDroppedPin(null);
     mapRef.current?.clearDroppedPin();
     handleStartNavigationToSpot(customSpot);
-  };
+  }, [droppedPin, handleStartNavigationToSpot]);
 
-  const handleConfirmPickedPinToDirections = () => {
+  const handleConfirmPickedPinToDirections = useCallback(() => {
     if (!droppedPin) return;
     const customSpot: FishingSpot = {
       id: `dest-${Date.now()}`,
@@ -215,35 +207,39 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     mapRef.current?.clearDroppedPin();
     setDirectionsDestination(customSpot);
     setShowDirectionsModal(true);
-  };
+  }, [droppedPin]);
 
-  const handleCancelMapPicking = () => {
+  const handleCancelMapPicking = useCallback(() => {
     setIsMapPickingMode(false);
     setDroppedPin(null);
     mapRef.current?.clearDroppedPin();
-  };
+  }, []);
 
-  const handlePlotCoordinate = (lat: number, lng: number, label?: string) => {
+  const handlePlotCoordinate = useCallback((lat: number, lng: number, label?: string) => {
     setSelectedSpotId(null);
     setFollowUser(false);
     mapRef.current?.flyTo(lat, lng, 14);
     mapRef.current?.clearDroppedPin();
-  };
+  }, [setSelectedSpotId]);
 
-  const handleLocate = () => {
+  const handleLocate = useCallback(() => {
     setFollowUser(true);
     void refresh();
     mapRef.current?.centerOnUser();
-  };
+  }, [refresh]);
 
-  const handleResetNorth = () => {
+  const handleResetNorth = useCallback(() => {
     setHeadingUp(false);
     mapRef.current?.centerOnUser();
-  };
+  }, []);
+
+  const handleUserPanned = useCallback(() => {
+    setFollowUser(false);
+  }, []);
 
   // Nav stats if a spot is tapped on the map
   const activeTarget = selectedSpot;
-  const navStats = React.useMemo(() => {
+  const navStats = useMemo(() => {
     if (!activeTarget || !location) {
       return { distanceLabel: '—', bearingLabel: '—', etaLabel: '—' };
     }
@@ -256,7 +252,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     };
   }, [activeTarget, location]);
 
-  const getSheetMetadata = () => {
+  const meta = useMemo(() => {
     switch (activeTab) {
       case 'waypoint':
         return {
@@ -291,9 +287,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
       default:
         return { title: '', subtitle: '', badgeText: '' };
     }
-  };
-
-  const meta = getSheetMetadata();
+  }, [activeTab, waypoints.length]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -316,7 +310,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
           savedTracks={savedTrips}
           onSelectSpot={handleViewSpotOnMap}
           onMapClick={handleMapClick}
-          onUserPanned={() => setFollowUser(false)}
+          onUserPanned={handleUserPanned}
         />
 
         {/* Floating Right Map Controls (Zoom In/Out, Locate, Heading Mode, GO) */}

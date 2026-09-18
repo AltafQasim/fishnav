@@ -246,7 +246,7 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Navigation without auto-recording
-  const startNavigation = (target?: FishingSpot | null) => {
+  const startNavigation = useCallback((target?: FishingSpot | null) => {
     setIsNavigating(true);
     setTargetSpot(target ?? null);
     setIsTracking(false);
@@ -257,10 +257,10 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
     setMaxSpeedKnots(0);
     setActivePoints([]);
     lastLocationRef.current = null;
-  };
+  }, []);
 
   // Optional Trip Track Recording
-  const startTripRecording = () => {
+  const startTripRecording = useCallback(() => {
     setIsTracking(true);
     setIsPaused(false);
     setStartTime(Date.now());
@@ -282,9 +282,33 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
       setActivePoints([]);
       lastLocationRef.current = null;
     }
-  };
+  }, [currentSpeedKnots, location, heading]);
 
-  const stopTripRecording = () => {
+  const finishTracking = useCallback(() => {
+    setIsPaused(true);
+    const summary: FishingTrip = {
+      id: `trip_${Date.now()}`,
+      name: targetSpot
+        ? `Trip to ${targetSpot.name}`
+        : `Marine Voyage - ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`,
+      startTime: startTime || Date.now() - elapsedSeconds * 1000,
+      endTime: Date.now(),
+      durationSeconds: Math.max(elapsedSeconds, 1),
+      distanceNm: Number(distanceCoveredNm.toFixed(2)),
+      avgSpeedKnots: avgSpeedKnots,
+      maxSpeedKnots: Number(maxSpeedKnots.toFixed(1)),
+      targetSpotId: targetSpot?.id,
+      targetSpotName: targetSpot?.name,
+      color: '#00F0FF',
+      visibleOnMap: true,
+      points: [...activePoints],
+    };
+
+    setPendingTripSummary(summary);
+    setShowSaveModal(true);
+  }, [targetSpot, startTime, elapsedSeconds, distanceCoveredNm, avgSpeedKnots, maxSpeedKnots, activePoints]);
+
+  const stopTripRecording = useCallback(() => {
     if (activePoints.length > 1 || distanceCoveredNm > 0.01) {
       finishTracking();
     } else {
@@ -295,18 +319,18 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
       setActivePoints([]);
       lastLocationRef.current = null;
     }
-  };
+  }, [activePoints.length, distanceCoveredNm, finishTracking]);
 
-  const toggleTripRecording = () => {
+  const toggleTripRecording = useCallback(() => {
     if (isTracking) {
       stopTripRecording();
     } else {
       startTripRecording();
     }
-  };
+  }, [isTracking, stopTripRecording, startTripRecording]);
 
   // Action Methods
-  const startTracking = (target?: FishingSpot | null) => {
+  const startTracking = useCallback((target?: FishingSpot | null) => {
     setIsTracking(true);
     setIsPaused(false);
     setIsNavigating(true);
@@ -331,41 +355,17 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
       setActivePoints([]);
       lastLocationRef.current = null;
     }
-  };
+  }, [location, currentSpeedKnots, heading]);
 
-  const pauseTracking = () => {
+  const pauseTracking = useCallback(() => {
     setIsPaused(true);
-  };
+  }, []);
 
-  const resumeTracking = () => {
+  const resumeTracking = useCallback(() => {
     setIsPaused(false);
-  };
+  }, []);
 
-  const finishTracking = () => {
-    setIsPaused(true);
-    const summary: FishingTrip = {
-      id: `trip_${Date.now()}`,
-      name: targetSpot
-        ? `Trip to ${targetSpot.name}`
-        : `Marine Voyage - ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`,
-      startTime: startTime || Date.now() - elapsedSeconds * 1000,
-      endTime: Date.now(),
-      durationSeconds: Math.max(elapsedSeconds, 1),
-      distanceNm: Number(distanceCoveredNm.toFixed(2)),
-      avgSpeedKnots: avgSpeedKnots,
-      maxSpeedKnots: Number(maxSpeedKnots.toFixed(1)),
-      targetSpotId: targetSpot?.id,
-      targetSpotName: targetSpot?.name,
-      color: '#00F0FF',
-      visibleOnMap: true,
-      points: [...activePoints],
-    };
-
-    setPendingTripSummary(summary);
-    setShowSaveModal(true);
-  };
-
-  const saveTrip = async (name: string, notes?: string) => {
+  const saveTrip = useCallback(async (name: string, notes?: string) => {
     if (!pendingTripSummary) throw new Error('No pending trip to save');
     const finalTrip: FishingTrip = {
       ...pendingTripSummary,
@@ -389,9 +389,9 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
     lastLocationRef.current = null;
 
     return saved;
-  };
+  }, [pendingTripSummary]);
 
-  const discardTrip = () => {
+  const discardTrip = useCallback(() => {
     setShowSaveModal(false);
     setPendingTripSummary(null);
     setIsTracking(false);
@@ -402,38 +402,36 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
     setDistanceCoveredNm(0);
     setElapsedSeconds(0);
     lastLocationRef.current = null;
-  };
+  }, []);
 
-  const closeSaveModal = () => {
+  const closeSaveModal = useCallback(() => {
     setShowSaveModal(false);
-  };
+  }, []);
 
-  const deleteTrip = async (id: string) => {
+  const deleteTrip = useCallback(async (id: string) => {
     const success = await tripRepository.delete(id);
     if (success) {
       setSavedTrips((prev) => prev.filter((t) => t.id !== id));
-      if (selectedTripForMap?.id === id) {
-        setSelectedTripForMap(null);
-      }
+      setSelectedTripForMap((prev) => (prev?.id === id ? null : prev));
     }
     return success;
-  };
+  }, []);
 
-  const toggleTripVisibility = async (id: string) => {
+  const toggleTripVisibility = useCallback(async (id: string) => {
     const updated = await tripRepository.toggleVisibility(id);
     setSavedTrips((prev) => prev.map((t) => (t.id === id ? updated : t)));
-  };
+  }, []);
 
-  const viewTripOnMap = (trip: FishingTrip) => {
+  const viewTripOnMap = useCallback((trip: FishingTrip) => {
     setSelectedTripForMap(trip);
     setIsNavigating(false);
-  };
+  }, []);
 
-  const clearSelectedTrip = () => {
+  const clearSelectedTrip = useCallback(() => {
     setSelectedTripForMap(null);
-  };
+  }, []);
 
-  const exitNavigation = () => {
+  const exitNavigation = useCallback(() => {
     if (isTracking && (activePoints.length > 1 || distanceCoveredNm > 0.01)) {
       finishTracking();
     } else {
@@ -446,49 +444,89 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
       setElapsedSeconds(0);
       lastLocationRef.current = null;
     }
-  };
+  }, [isTracking, activePoints.length, distanceCoveredNm, finishTracking]);
+
+  const value = useMemo(
+    () => ({
+      isTracking,
+      isPaused,
+      isNavigating,
+      elapsedSeconds,
+      distanceNm: Number(distanceCoveredNm.toFixed(2)),
+      distanceToTargetNm,
+      currentSpeedKnots,
+      avgSpeedKnots,
+      maxSpeedKnots,
+      activePoints,
+      targetSpot,
+      targetBearing,
+      userCompassHeading,
+      relativeSteerAngle,
+      steeringTurn,
+      steeringInstruction,
+      savedTrips,
+      showSaveModal,
+      pendingTripSummary,
+      startNavigation,
+      startTripRecording,
+      stopTripRecording,
+      toggleTripRecording,
+      startTracking,
+      pauseTracking,
+      resumeTracking,
+      finishTracking,
+      saveTrip,
+      discardTrip,
+      closeSaveModal,
+      deleteTrip,
+      toggleTripVisibility,
+      viewTripOnMap,
+      exitNavigation,
+      selectedTripForMap,
+      clearSelectedTrip,
+    }),
+    [
+      isTracking,
+      isPaused,
+      isNavigating,
+      elapsedSeconds,
+      distanceCoveredNm,
+      distanceToTargetNm,
+      currentSpeedKnots,
+      avgSpeedKnots,
+      maxSpeedKnots,
+      activePoints,
+      targetSpot,
+      targetBearing,
+      userCompassHeading,
+      relativeSteerAngle,
+      steeringTurn,
+      steeringInstruction,
+      savedTrips,
+      showSaveModal,
+      pendingTripSummary,
+      startNavigation,
+      startTripRecording,
+      stopTripRecording,
+      toggleTripRecording,
+      startTracking,
+      pauseTracking,
+      resumeTracking,
+      finishTracking,
+      saveTrip,
+      discardTrip,
+      closeSaveModal,
+      deleteTrip,
+      toggleTripVisibility,
+      viewTripOnMap,
+      exitNavigation,
+      selectedTripForMap,
+      clearSelectedTrip,
+    ]
+  );
 
   return (
-    <TripContext.Provider
-      value={{
-        isTracking,
-        isPaused,
-        isNavigating,
-        elapsedSeconds,
-        distanceNm: Number(distanceCoveredNm.toFixed(2)),
-        distanceToTargetNm,
-        currentSpeedKnots,
-        avgSpeedKnots,
-        maxSpeedKnots,
-        activePoints,
-        targetSpot,
-        targetBearing,
-        userCompassHeading,
-        relativeSteerAngle,
-        steeringTurn,
-        steeringInstruction,
-        savedTrips,
-        showSaveModal,
-        pendingTripSummary,
-        startNavigation,
-        startTripRecording,
-        stopTripRecording,
-        toggleTripRecording,
-        startTracking,
-        pauseTracking,
-        resumeTracking,
-        finishTracking,
-        saveTrip,
-        discardTrip,
-        closeSaveModal,
-        deleteTrip,
-        toggleTripVisibility,
-        viewTripOnMap,
-        exitNavigation,
-        selectedTripForMap,
-        clearSelectedTrip,
-      }}
-    >
+    <TripContext.Provider value={value}>
       {children}
     </TripContext.Provider>
   );

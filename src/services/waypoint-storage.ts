@@ -1,4 +1,5 @@
 import { FISHING_SPOTS, FishingSpot } from '@/constants/fishing-spots';
+import { persistentStorage } from './persistent-storage';
 
 /**
  * Interface for Waypoint Data Repository.
@@ -19,55 +20,88 @@ export interface IWaypointRepository {
   resetToDefaults(): Promise<FishingSpot[]>;
 }
 
-/** In-memory storage cache */
-let memoryWaypoints: FishingSpot[] = [...FISHING_SPOTS];
+const WAYPOINTS_STORAGE_KEY = 'fishnav_waypoints';
+let memoryWaypoints: FishingSpot[] | null = null;
+
+async function ensureWaypointsLoaded(): Promise<FishingSpot[]> {
+  if (memoryWaypoints !== null) {
+    return memoryWaypoints;
+  }
+
+  try {
+    const saved = await persistentStorage.getJSON<FishingSpot[] | null>(WAYPOINTS_STORAGE_KEY, null);
+    if (Array.isArray(saved) && saved.length > 0) {
+      memoryWaypoints = saved;
+      return memoryWaypoints;
+    }
+  } catch (err) {
+    console.warn('[WaypointStorage] Failed to read stored waypoints:', err);
+  }
+
+  memoryWaypoints = [...FISHING_SPOTS];
+  void persistentStorage.setJSON(WAYPOINTS_STORAGE_KEY, memoryWaypoints);
+  return memoryWaypoints;
+}
 
 /**
  * Local storage implementation.
- * Keeps data synchronized in memory and ready for persistence.
+ * Keeps data synchronized in memory and persistently stored for 100% offline usage.
  */
 class LocalWaypointRepository implements IWaypointRepository {
   async getAll(): Promise<FishingSpot[]> {
-    // In future: Replace with `const { data } = await supabase.from('waypoints').select('*')`
-    return [...memoryWaypoints];
+    const spots = await ensureWaypointsLoaded();
+    return [...spots];
   }
 
   async getById(id: string): Promise<FishingSpot | null> {
-    const spot = memoryWaypoints.find((s) => s.id === id);
+    const spots = await ensureWaypointsLoaded();
+    const spot = spots.find((s) => s.id === id);
     return spot ? { ...spot } : null;
   }
 
   async create(newSpotData: Omit<FishingSpot, 'id'>): Promise<FishingSpot> {
+    const spots = await ensureWaypointsLoaded();
     const created: FishingSpot = {
       ...newSpotData,
       id: `wp_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
     };
-    memoryWaypoints = [created, ...memoryWaypoints];
+    memoryWaypoints = [created, ...spots];
+    await persistentStorage.setJSON(WAYPOINTS_STORAGE_KEY, memoryWaypoints);
     return created;
   }
 
   async update(id: string, updates: Partial<FishingSpot>): Promise<FishingSpot> {
-    const index = memoryWaypoints.findIndex((s) => s.id === id);
+    const spots = await ensureWaypointsLoaded();
+    const index = spots.findIndex((s) => s.id === id);
     if (index === -1) {
       throw new Error(`Waypoint with ID "${id}" not found.`);
     }
 
     const updated: FishingSpot = {
-      ...memoryWaypoints[index],
+      ...spots[index],
       ...updates,
     };
-    memoryWaypoints[index] = updated;
+    const nextList = [...spots];
+    nextList[index] = updated;
+    memoryWaypoints = nextList;
+    await persistentStorage.setJSON(WAYPOINTS_STORAGE_KEY, memoryWaypoints);
     return updated;
   }
 
   async delete(id: string): Promise<boolean> {
-    const initialLen = memoryWaypoints.length;
-    memoryWaypoints = memoryWaypoints.filter((s) => s.id !== id);
-    return memoryWaypoints.length < initialLen;
+    const spots = await ensureWaypointsLoaded();
+    const initialLen = spots.length;
+    memoryWaypoints = spots.filter((s) => s.id !== id);
+    const didDelete = memoryWaypoints.length < initialLen;
+    if (didDelete) {
+      await persistentStorage.setJSON(WAYPOINTS_STORAGE_KEY, memoryWaypoints);
+    }
+    return didDelete;
   }
 
   async toggleFavorite(id: string): Promise<FishingSpot> {
-    const spot = memoryWaypoints.find((s) => s.id === id);
+    const spots = await ensureWaypointsLoaded();
+    const spot = spots.find((s) => s.id === id);
     if (!spot) throw new Error(`Waypoint "${id}" not found.`);
     const updated = { ...spot, favorite: !spot.favorite };
     return this.update(id, updated);
@@ -75,6 +109,7 @@ class LocalWaypointRepository implements IWaypointRepository {
 
   async resetToDefaults(): Promise<FishingSpot[]> {
     memoryWaypoints = [...FISHING_SPOTS];
+    await persistentStorage.setJSON(WAYPOINTS_STORAGE_KEY, memoryWaypoints);
     return [...memoryWaypoints];
   }
 }

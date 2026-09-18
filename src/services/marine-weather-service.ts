@@ -10,6 +10,7 @@
  */
 
 import { findNearestGujaratPort, NearestPortResult } from '@/constants/gujarat-ports';
+import { persistentStorage } from './persistent-storage';
 
 export type MarineConditions = {
   waveHeightM: number; // e.g. 1.2
@@ -515,9 +516,7 @@ export async function fetchLiveMarineForecast(
  */
 async function saveToStorage(payload: CachedMarinePayload): Promise<void> {
   try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    }
+    await persistentStorage.setJSON(STORAGE_KEY, payload);
   } catch (err) {
     console.warn('[MarineWeatherService] Storage save failed:', err);
   }
@@ -526,14 +525,11 @@ async function saveToStorage(payload: CachedMarinePayload): Promise<void> {
 export async function loadFromStorage(): Promise<CachedMarinePayload | null> {
   if (inMemoryCache) return inMemoryCache;
   try {
-    if (typeof localStorage !== 'undefined') {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as CachedMarinePayload;
-        parsed.tides = calculateAstronomicalTides();
-        inMemoryCache = parsed;
-        return parsed;
-      }
+    const saved = await persistentStorage.getJSON<CachedMarinePayload | null>(STORAGE_KEY, null);
+    if (saved) {
+      saved.tides = calculateAstronomicalTides();
+      inMemoryCache = saved;
+      return saved;
     }
   } catch (err) {
     console.warn('[MarineWeatherService] Storage load failed:', err);

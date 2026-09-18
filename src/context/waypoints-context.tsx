@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { FishingSpot } from '@/constants/fishing-spots';
 import { waypointRepository } from '@/services/waypoint-storage';
 
@@ -41,64 +41,80 @@ export function WaypointsProvider({ children }: { children: React.ReactNode }) {
     void refreshWaypoints();
   }, [refreshWaypoints]);
 
-  const addWaypoint = async (spotData: Omit<FishingSpot, 'id'>) => {
+  const addWaypoint = useCallback(async (spotData: Omit<FishingSpot, 'id'>) => {
     const created = await waypointRepository.create(spotData);
     setWaypoints((prev) => [created, ...prev]);
     return created;
-  };
+  }, []);
 
-  const updateWaypoint = async (id: string, updates: Partial<FishingSpot>) => {
+  const updateWaypoint = useCallback(async (id: string, updates: Partial<FishingSpot>) => {
     const updated = await waypointRepository.update(id, updates);
     setWaypoints((prev) => prev.map((s) => (s.id === id ? updated : s)));
-    if (activeNavigationTarget?.id === id) {
-      setActiveNavigationTarget(updated);
-    }
+    setActiveNavigationTarget((prev) => (prev?.id === id ? updated : prev));
     return updated;
-  };
+  }, []);
 
-  const deleteWaypoint = async (id: string) => {
+  const deleteWaypoint = useCallback(async (id: string) => {
     const success = await waypointRepository.delete(id);
     if (success) {
       setWaypoints((prev) => prev.filter((s) => s.id !== id));
-      if (selectedSpotId === id) setSelectedSpotId(null);
-      if (activeNavigationTarget?.id === id) setActiveNavigationTarget(null);
+      setSelectedSpotId((prev) => (prev === id ? null : prev));
+      setActiveNavigationTarget((prev) => (prev?.id === id ? null : prev));
     }
     return success;
-  };
+  }, []);
 
-  const toggleFavorite = async (id: string) => {
+  const toggleFavorite = useCallback(async (id: string) => {
     const updated = await waypointRepository.toggleFavorite(id);
     setWaypoints((prev) => prev.map((s) => (s.id === id ? updated : s)));
     return updated;
-  };
+  }, []);
 
-  const resetWaypoints = async () => {
+  const resetWaypoints = useCallback(async () => {
     const defaults = await waypointRepository.resetToDefaults();
     setWaypoints(defaults);
     setSelectedSpotId(null);
     setActiveNavigationTarget(null);
-  };
+  }, []);
 
-  const selectedSpot = waypoints.find((s) => s.id === selectedSpotId) ?? null;
+  const selectedSpot = useMemo(
+    () => waypoints.find((s) => s.id === selectedSpotId) ?? null,
+    [waypoints, selectedSpotId]
+  );
+
+  const value = useMemo(
+    () => ({
+      waypoints,
+      loading,
+      selectedSpotId,
+      selectedSpot,
+      setSelectedSpotId,
+      activeNavigationTarget,
+      setActiveNavigationTarget,
+      addWaypoint,
+      updateWaypoint,
+      deleteWaypoint,
+      toggleFavorite,
+      resetWaypoints,
+      refreshWaypoints,
+    }),
+    [
+      waypoints,
+      loading,
+      selectedSpotId,
+      selectedSpot,
+      activeNavigationTarget,
+      addWaypoint,
+      updateWaypoint,
+      deleteWaypoint,
+      toggleFavorite,
+      resetWaypoints,
+      refreshWaypoints,
+    ]
+  );
 
   return (
-    <WaypointsContext.Provider
-      value={{
-        waypoints,
-        loading,
-        selectedSpotId,
-        selectedSpot,
-        setSelectedSpotId,
-        activeNavigationTarget,
-        setActiveNavigationTarget,
-        addWaypoint,
-        updateWaypoint,
-        deleteWaypoint,
-        toggleFavorite,
-        resetWaypoints,
-        refreshWaypoints,
-      }}
-    >
+    <WaypointsContext.Provider value={value}>
       {children}
     </WaypointsContext.Provider>
   );

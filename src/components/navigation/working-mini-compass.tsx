@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   Platform,
@@ -24,6 +24,8 @@ const MINI_COMPASS_SIZE = 66;
 type WorkingMiniCompassProps = {
   size?: number;
 };
+
+const TICK_DEGREES = [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330] as const;
 
 export function WorkingMiniCompass({ size = 66 }: WorkingMiniCompassProps) {
   const { heading, magHeading, location } = useUserLocation();
@@ -110,7 +112,7 @@ export function WorkingMiniCompass({ size = 66 }: WorkingMiniCompassProps) {
           />
 
           {/* 30-degree Ticks */}
-          {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => {
+          {TICK_DEGREES.map((deg) => {
             const isCardinal = deg % 90 === 0;
             const length = isCardinal ? 3.5 : 2;
             const rad = (deg * Math.PI) / 180;
@@ -174,6 +176,8 @@ export function WorkingMiniCompass({ size = 66 }: WorkingMiniCompassProps) {
     </View>
   );
 }
+
+export default WorkingMiniCompass;
 
 const styles = StyleSheet.create({
   container: {

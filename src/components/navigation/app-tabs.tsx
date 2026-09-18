@@ -73,9 +73,8 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
   const cutoutHalf = isSmallPhone ? 52 : isTablet ? 68 : 60;
   const cutoutDip = 4;
 
-  // Dynamic SVG Path Data:
-  // Perfectly smooth curve with binnacle cutout for center compass
-  const pathData = `
+  // Dynamic SVG Path Data memoized to avoid string concatenation on re-renders
+  const pathData = React.useMemo(() => `
     M ${radius} ${barTopY}
     H ${center - cutoutHalf}
     C ${center - cutoutHalf * 0.66} ${barTopY}, ${center - cutoutHalf * 0.6} ${cutoutDip}, ${center} ${cutoutDip}
@@ -89,24 +88,25 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
     V ${barTopY + radius}
     Q 0 ${barTopY} ${radius} ${barTopY}
     Z
-  `;
+  `, [radius, barTopY, center, cutoutHalf, cutoutDip, barWidth, totalHeight, bottomRadius]);
 
   // Safe area bottom offset:
-  // - On iOS with home bar: insets.bottom + 4 (floats cleanly above gesture indicator)
-  // - On iPhone SE / no home bar: 12-14px floating margin
-  // - On Android with 3-button nav (insets.bottom ~48): insets.bottom + 4 (above buttons)
-  // - On Android gesture nav: insets.bottom + 4
   const bottomOffset = insets.bottom > 0
     ? insets.bottom + (isTablet ? 8 : 4)
     : (isSmallPhone ? 8 : 14);
 
-  const handleCenterPress = () => {
+  const handleCenterPress = React.useCallback(() => {
     Animated.sequence([
       Animated.timing(scaleAnim, { toValue: 0.92, duration: 80, useNativeDriver: Platform.OS !== 'web' }),
       Animated.spring(scaleAnim, { toValue: 1, friction: 4, tension: 40, useNativeDriver: Platform.OS !== 'web' }),
     ]).start();
     onTabPress('compass');
-  };
+  }, [scaleAnim, onTabPress]);
+
+  const handleWaypoint = React.useCallback(() => onTabPress('waypoint'), [onTabPress]);
+  const handleWeather = React.useCallback(() => onTabPress('weather'), [onTabPress]);
+  const handleCalendar = React.useCallback(() => onTabPress('calendar'), [onTabPress]);
+  const handleSettings = React.useCallback(() => onTabPress('settings'), [onTabPress]);
 
   const activeLabelFontSize = isSmallPhone ? 9.5 : isTablet ? 12 : 11;
   const centerSpacerWidth = isSmallPhone ? 58 : isTablet ? 76 : 68;
@@ -200,7 +200,7 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
           {/* Tab 1: Waypoint */}
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => onTabPress('waypoint')}
+            onPress={handleWaypoint}
             style={styles.tabItem}
             accessibilityRole="button"
             accessibilityLabel="Waypoints"
@@ -223,7 +223,7 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
           {/* Tab 2: Weather */}
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => onTabPress('weather')}
+            onPress={handleWeather}
             style={styles.tabItem}
             accessibilityRole="button"
             accessibilityLabel="Weather"
@@ -249,7 +249,7 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
           {/* Tab 4: Calendar */}
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => onTabPress('calendar')}
+            onPress={handleCalendar}
             style={styles.tabItem}
             accessibilityRole="button"
             accessibilityLabel="Calendar"
@@ -272,7 +272,7 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
           {/* Tab 5: Settings */}
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() => onTabPress('settings')}
+            onPress={handleSettings}
             style={styles.tabItem}
             accessibilityRole="button"
             accessibilityLabel="Settings"

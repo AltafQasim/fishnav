@@ -18,8 +18,12 @@ function sanitizeKey(key: string): string {
   return key.replace(/[^a-zA-Z0-9_-]/g, '_');
 }
 
+function isWeb(): boolean {
+  return Platform.OS === 'web' || (typeof window !== 'undefined' && Boolean(window.localStorage) && !FileSystem.documentDirectory);
+}
+
 function getStorageDirectory(): string | null {
-  if (Platform.OS === 'web' || !FileSystem.documentDirectory) {
+  if (isWeb() || !FileSystem.documentDirectory) {
     return null;
   }
   return `${FileSystem.documentDirectory}${STORAGE_DIR_NAME}/`;
@@ -55,9 +59,9 @@ export const persistentStorage = {
     }
 
     // 2. Web fallback to localStorage
-    if (Platform.OS === 'web' || typeof window !== 'undefined' && window.localStorage && !FileSystem.documentDirectory) {
+    if (isWeb()) {
       try {
-        const val = window.localStorage.getItem(key);
+        const val = typeof window !== 'undefined' && window.localStorage ? window.localStorage.getItem(key) : null;
         if (val !== null) {
           memoryCache.set(key, val);
         }
@@ -103,9 +107,11 @@ export const persistentStorage = {
     memoryCache.set(key, value);
 
     // Web fallback
-    if (Platform.OS === 'web' || typeof window !== 'undefined' && window.localStorage && !FileSystem.documentDirectory) {
+    if (isWeb()) {
       try {
-        window.localStorage.setItem(key, value);
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem(key, value);
+        }
       } catch (err) {
         console.warn(`[PersistentStorage] Web localStorage save failed for "${key}":`, err);
       }
@@ -137,9 +143,11 @@ export const persistentStorage = {
   async removeItem(key: string): Promise<void> {
     memoryCache.delete(key);
 
-    if (Platform.OS === 'web' || typeof window !== 'undefined' && window.localStorage && !FileSystem.documentDirectory) {
+    if (isWeb()) {
       try {
-        window.localStorage.removeItem(key);
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem(key);
+        }
       } catch {}
       return;
     }

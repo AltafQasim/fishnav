@@ -1,5 +1,5 @@
 import * as Location from 'expo-location';
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, AppStateStatus, Linking, Platform } from 'react-native';
 
 export type LocationStatus =
@@ -281,20 +281,35 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   const placeLabel =
     place?.city ?? place?.name ?? (status === 'granted' ? 'Current Location' : null);
 
-  const value: LocationContextType = {
-    status,
-    location,
-    place,
-    placeLabel,
-    heading,
-    magHeading,
-    trueHeading,
-    headingAccuracy,
-    errorMessage,
-    requestPermissionAndLocate,
-    openSettings,
-    refresh: requestPermissionAndLocate,
-  };
+  const value = useMemo<LocationContextType>(
+    () => ({
+      status,
+      location,
+      place,
+      placeLabel,
+      heading,
+      magHeading,
+      trueHeading,
+      headingAccuracy,
+      errorMessage,
+      requestPermissionAndLocate,
+      openSettings,
+      refresh: requestPermissionAndLocate,
+    }),
+    [
+      status,
+      location,
+      place,
+      placeLabel,
+      heading,
+      magHeading,
+      trueHeading,
+      headingAccuracy,
+      errorMessage,
+      requestPermissionAndLocate,
+      openSettings,
+    ]
+  );
 
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;
 }
