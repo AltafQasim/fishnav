@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LogoutConfirmModal } from '@/components/auth/logout-confirm-modal';
 import { GoogleLogoSvg } from '@/components/ui/google-logo-svg';
 import { useAuth } from '@/context/auth-context';
-import { SubscriptionPlan, useSubscription } from '@/context/subscription-context';
+import { useSubscription } from '@/context/subscription-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
 import { useWaypoints } from '@/context/waypoints-context';
@@ -87,13 +87,19 @@ const HARBOR_OPTIONS = [
   'Kochi Harbor, Kerala',
 ];
 
-export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalProps) {
-  const insets = useSafeAreaInsets();
+export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalProps) => {
   const router = useRouter();
-  const { colors, isLight } = useAppTheme();
-  const { captain, logout, updateCaptain } = useAuth();
-  const { waypoints } = useWaypoints();
+  const insets = useSafeAreaInsets();
+  const { theme, colors, isLight } = useAppTheme();
+  const {
+    captain,
+    isAuthenticated,
+    loginWithGoogle,
+    logout,
+    updateCaptain,
+  } = useAuth();
   const { savedTrips } = useTripTracking();
+  const { waypoints } = useWaypoints();
 
   const handleOpenTrips = () => {
     onClose();
@@ -103,25 +109,24 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
   const {
     isPro,
     proPlan,
-    proExpiresAt,
     proDaysRemaining,
+    proHoursRemaining,
     proFormattedExpiry,
     proProgressPercent,
     isExpiringSoon,
-    autoRenew,
     licenseCertificateId,
     invoiceNumber,
     hasReferralBonus,
     bonusProDaysRemaining,
+    bonusProFormattedExpiry,
+    referralCount,
     isTrialActive,
     isTrialExpired,
     trialDaysRemaining,
     trialHoursRemaining,
     trialProgressPercent,
+    trialFormattedExpiry,
     referralDaysEarned,
-    toggleAutoRenew,
-    subscribeToPro,
-    restorePurchases,
     openProModal,
     openReferralModal,
   } = useSubscription();
@@ -131,8 +136,6 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
   const [showVesselEditor, setShowVesselEditor] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
-  const [showPlanChangeModal, setShowPlanChangeModal] = useState(false);
-  const [selectedNewPlan, setSelectedNewPlan] = useState<SubscriptionPlan>('annual');
 
   const planDisplayName = useMemo(() => {
     if (proPlan === 'lifetime') return 'Lifetime Skipper Pass';
@@ -164,8 +167,6 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
   const [editCallSign, setEditCallSign] = useState(captain?.callSign || '');
   const [editHomeHarbor, setEditHomeHarbor] = useState(captain?.homeHarbor || '');
   const [editLicenseNumber, setEditLicenseNumber] = useState(captain?.licenseNumber || '');
-  const [editBoatLength, setEditBoatLength] = useState(captain?.boatLengthM || '24.5');
-  const [editBoatDraft, setEditBoatDraft] = useState(captain?.boatDraftM || '1.8');
   const [editCruiseSpeed, setEditCruiseSpeed] = useState(captain?.cruiseSpeedKnots || '12');
 
   // Custom Photo URL state
@@ -180,8 +181,6 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
       setEditCallSign(captain.callSign || '');
       setEditHomeHarbor(captain.homeHarbor || '');
       setEditLicenseNumber(captain.licenseNumber || '');
-      setEditBoatLength(captain.boatLengthM || '24.5');
-      setEditBoatDraft(captain.boatDraftM || '1.8');
       setEditCruiseSpeed(captain.cruiseSpeedKnots || '12');
     }
   }, [captain, visible]);
@@ -200,8 +199,6 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
       callSign: editCallSign.trim() || 'IND-GJ-8821',
       homeHarbor: editHomeHarbor.trim() || 'Veraval Fishing Port',
       licenseNumber: editLicenseNumber.trim() || 'IND-MF-2026-991',
-      boatLengthM: editBoatLength.trim(),
-      boatDraftM: editBoatDraft.trim(),
       cruiseSpeedKnots: editCruiseSpeed.trim(),
     });
 
@@ -260,12 +257,13 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
   const isPhone = captain?.authProvider === 'phone';
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
+    <>
+      <Modal
+        visible={visible}
+        transparent
+        animationType="slide"
+        onRequestClose={onClose}
+      >
       <View style={styles.backdrop}>
         <Pressable style={styles.backdropTouch} onPress={onClose} />
 
@@ -311,8 +309,13 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
               style={[
                 styles.heroCard,
                 {
-                  backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
-                  borderColor: colors.cardBorder,
+                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
+                  borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
+                  shadowColor: isLight ? '#64748B' : '#00F0FF',
+                  shadowOffset: { width: 0, height: 3 },
+                  shadowOpacity: isLight ? 0.08 : 0.25,
+                  shadowRadius: 10,
+                  elevation: isLight ? 2 : 4,
                 },
               ]}
             >
@@ -338,27 +341,27 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
 
                 {/* Floating Camera Edit Badge */}
                 <Pressable
-                  style={[styles.cameraBadge, { backgroundColor: colors.accent, borderColor: colors.surface }]}
+                  style={[styles.cameraBadge, { backgroundColor: colors.accent, borderColor: isLight ? '#FFFFFF' : colors.surface }]}
                   onPress={() => setShowPhotoPicker(true)}
                   hitSlop={8}
                 >
-                  <Ionicons name="camera" size={14} color="#020B14" />
+                  <Ionicons name="camera" size={14} color="#FFFFFF" />
                 </Pressable>
               </View>
 
               <Text style={[styles.captainName, { color: colors.text }]}>
                 {captain?.name || 'Capt. Vikram Rathore'}
               </Text>
-              <View style={styles.rankBadge}>
-                <Ionicons name="shield-checkmark" size={12} color="#10B981" />
-                <Text style={styles.rankText}>LICENSED MASTER MARINER</Text>
+              <View style={[styles.rankBadge, isLight && { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]}>
+                <Ionicons name="shield-checkmark" size={12} color={isLight ? '#16A34A' : '#10B981'} />
+                <Text style={[styles.rankText, isLight && { color: '#16A34A' }]}>LICENSED MASTER MARINER</Text>
               </View>
               <Text style={[styles.captainContact, { color: colors.textSecondary }]}>
                 {captain?.emailOrPhone || '+91 98765 43210'}
               </Text>
 
               <Pressable
-                style={styles.changePhotoLink}
+                style={[styles.changePhotoLink, isLight && { backgroundColor: '#E0F2FE' }]}
                 onPress={() => setShowPhotoPicker(true)}
               >
                 <Ionicons name="image-outline" size={13} color={colors.accent} />
@@ -372,8 +375,13 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                 style={[
                   styles.statBox,
                   {
-                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
-                    borderColor: colors.cardBorder,
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
+                    borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
+                    shadowColor: isLight ? '#64748B' : 'transparent',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isLight ? 0.06 : 0,
+                    shadowRadius: 6,
+                    elevation: isLight ? 2 : 0,
                   },
                 ]}
               >
@@ -385,13 +393,18 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                 style={[
                   styles.statBox,
                   {
-                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
-                    borderColor: colors.cardBorder,
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
+                    borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
+                    shadowColor: isLight ? '#64748B' : 'transparent',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isLight ? 0.06 : 0,
+                    shadowRadius: 6,
+                    elevation: isLight ? 2 : 0,
                   },
                 ]}
                 onPress={handleOpenTrips}
               >
-                <MaterialCommunityIcons name="map-marker-path" size={18} color="#38BDF8" />
+                <MaterialCommunityIcons name="map-marker-path" size={18} color={isLight ? colors.accent : '#38BDF8'} />
                 <Text style={[styles.statVal, { color: colors.text }]}>{savedTrips.length}</Text>
                 <Text style={[styles.statLbl, { color: colors.textMuted }]}>VOYAGES ›</Text>
               </Pressable>
@@ -399,12 +412,17 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                 style={[
                   styles.statBox,
                   {
-                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
-                    borderColor: colors.cardBorder,
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
+                    borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
+                    shadowColor: isLight ? '#64748B' : 'transparent',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isLight ? 0.06 : 0,
+                    shadowRadius: 6,
+                    elevation: isLight ? 2 : 0,
                   },
                 ]}
               >
-                <Ionicons name="navigate" size={18} color="#10B981" />
+                <Ionicons name="navigate" size={18} color={isLight ? '#16A34A' : '#10B981'} />
                 <Text style={[styles.statVal, { color: colors.text }]}>3D FIX</Text>
                 <Text style={[styles.statLbl, { color: colors.textMuted }]}>GPS LOCK</Text>
               </View>
@@ -465,356 +483,511 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
               </View>
             </View>
 
-            {isPro ? (
-              <View
-                style={[
-                  styles.proLicenseCard,
-                  {
-                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.85)',
-                    borderColor: isLight ? '#FDE68A' : 'rgba(245, 158, 11, 0.35)',
-                  },
-                ]}
-              >
-                {/* Top Gold Stripe */}
-                <LinearGradient
-                  colors={['#F59E0B', '#D97706', '#B45309']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.proCardTopStripe}
-                />
+            {/* Pro Plan Card: Same Modern HUD Console As Settings */}
+            <View
+              style={[
+                styles.proCardContainer,
+                {
+                  backgroundColor: isLight ? '#FFFFFF' : colors.card,
+                  borderColor: isPro
+                    ? isExpiringSoon
+                      ? '#EF4444'
+                      : isLight
+                        ? '#FDE68A'
+                        : 'rgba(245, 158, 11, 0.35)'
+                    : hasReferralBonus
+                      ? isLight
+                        ? '#BBF7D0'
+                        : 'rgba(34, 197, 94, 0.35)'
+                      : isTrialExpired
+                        ? '#EF4444'
+                        : isLight
+                          ? '#BAE6FD'
+                          : colors.accent,
+                  shadowColor: isPro ? '#F59E0B' : '#00F0FF',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: isLight ? 0.08 : 0.25,
+                  shadowRadius: 10,
+                  elevation: 4,
+                },
+              ]}
+            >
+              {/* Top Stripe */}
+              <LinearGradient
+                colors={
+                  isPro
+                    ? ['#F59E0B', '#FBBF24']
+                    : hasReferralBonus
+                      ? ['#22C55E', '#4ADE80']
+                      : ['#00F0FF', '#38BDF8']
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.cardTopStripe}
+              />
 
-                <View style={styles.proLicenseContent}>
-                  {/* Plan Header */}
-                  <View style={styles.proPlanHeaderRow}>
+              {/* Membership Row */}
+              <View style={styles.proMembershipRow}>
+                <View
+                  style={[
+                    styles.proIconBox,
+                    {
+                      backgroundColor: isPro
+                        ? isLight
+                          ? '#FEF3C7'
+                          : 'rgba(245, 158, 11, 0.15)'
+                        : hasReferralBonus
+                          ? isLight
+                            ? '#DCFCE7'
+                            : 'rgba(34, 197, 94, 0.15)'
+                          : isTrialExpired
+                            ? isLight
+                              ? '#FEE2E2'
+                              : 'rgba(239, 68, 68, 0.15)'
+                            : isLight
+                              ? '#E0F2FE'
+                              : 'rgba(0, 240, 255, 0.15)',
+                      borderColor: isPro
+                        ? '#F59E0B'
+                        : hasReferralBonus
+                          ? '#22C55E'
+                          : isTrialExpired
+                            ? '#EF4444'
+                            : colors.accent,
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={
+                      isPro
+                        ? proPlan === 'lifetime'
+                          ? 'shield-crown'
+                          : 'crown'
+                        : hasReferralBonus
+                          ? 'gift'
+                          : isTrialExpired
+                            ? 'alert-octagon'
+                            : 'compass-outline'
+                    }
+                    size={22}
+                    color={
+                      isPro
+                        ? '#F59E0B'
+                        : hasReferralBonus
+                          ? '#22C55E'
+                          : isTrialExpired
+                            ? '#EF4444'
+                            : colors.accent
+                    }
+                  />
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <View style={styles.planTitleBadgeRow}>
+                    <Text style={[styles.proMembershipTitle, { color: colors.text }]}>
+                      {isPro
+                        ? planDisplayName
+                        : hasReferralBonus
+                          ? 'Captain Referral Pass'
+                          : isTrialExpired
+                            ? 'Evaluation Trial Ended'
+                            : '3-Day Free Vessel Trial'}
+                    </Text>
+
                     <View
                       style={[
-                        styles.proPlanIconWrap,
+                        styles.statusPill,
                         {
-                          backgroundColor: isLight ? '#FEF3C7' : 'rgba(245, 158, 11, 0.15)',
-                          borderColor: '#F59E0B',
+                          backgroundColor: isPro
+                            ? isExpiringSoon
+                              ? 'rgba(239, 68, 68, 0.15)'
+                              : 'rgba(16, 185, 129, 0.15)'
+                            : hasReferralBonus
+                              ? 'rgba(34, 197, 94, 0.15)'
+                              : isTrialExpired
+                                ? 'rgba(239, 68, 68, 0.15)'
+                                : 'rgba(0, 240, 255, 0.15)',
+                          borderColor: isPro
+                            ? isExpiringSoon
+                              ? '#EF4444'
+                              : '#10B981'
+                            : hasReferralBonus
+                              ? '#22C55E'
+                              : isTrialExpired
+                                ? '#EF4444'
+                                : colors.accent,
                         },
                       ]}
                     >
-                      <MaterialCommunityIcons name="shield-crown" size={24} color="#F59E0B" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.proPlanName, { color: colors.text }]}>
-                        {planDisplayName}
-                      </Text>
-                      <Text style={[styles.proPlanPrice, { color: '#F59E0B' }]}>
-                        {planCostDisplay}
-                      </Text>
-                    </View>
-                    <View style={styles.verifiedChip}>
-                      <Ionicons name="checkmark-circle" size={13} color="#10B981" />
-                      <Text style={styles.verifiedChipText}>ACTIVE</Text>
-                    </View>
-                  </View>
-
-                  {/* Expiration & Renewal Row */}
-                  <View
-                    style={[
-                      styles.renewalInfoBox,
-                      {
-                        backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.25)',
-                        borderColor: isExpiringSoon ? '#EF4444' : colors.cardBorder,
-                      },
-                    ]}
-                  >
-                    <View style={styles.renewalRowItem}>
-                      <Ionicons name="calendar-outline" size={14} color={isExpiringSoon ? '#EF4444' : colors.textSecondary} />
-                      <Text style={[styles.renewalLabel, { color: colors.textSecondary }]}>Expiration Date:</Text>
-                      <Text style={[styles.renewalValue, { color: isExpiringSoon ? '#EF4444' : colors.text, fontWeight: '800' }]}>
-                        {proPlan === 'lifetime' ? 'Perpetual Lifetime ♾️' : proFormattedExpiry}
-                      </Text>
-                    </View>
-
-                    {proPlan !== 'lifetime' && (
-                      <>
-                        <View style={styles.renewalRowItem}>
-                          <Ionicons name="hourglass-outline" size={14} color={isExpiringSoon ? '#EF4444' : '#F59E0B'} />
-                          <Text style={[styles.renewalLabel, { color: colors.textSecondary }]}>Time Remaining:</Text>
-                          <Text
-                            style={[
-                              styles.renewalValue,
-                              { color: isExpiringSoon ? '#EF4444' : '#F59E0B', fontWeight: '800' },
-                            ]}
-                          >
-                            {proDaysRemaining} Days Left {isExpiringSoon ? '(EXPIRING SOON ⚠️)' : ''}
-                          </Text>
-                        </View>
-
-                        <View style={styles.renewalRowItem}>
-                          <Ionicons
-                            name={autoRenew ? 'refresh-circle' : 'pause-circle'}
-                            size={15}
-                            color={autoRenew ? '#10B981' : '#F59E0B'}
-                          />
-                          <Text style={[styles.renewalLabel, { color: colors.textSecondary }]}>Auto-Renew:</Text>
-                          <Text
-                            style={[
-                              styles.renewalValue,
-                              { color: autoRenew ? '#10B981' : '#F59E0B', fontWeight: '700' },
-                            ]}
-                          >
-                            {autoRenew ? 'ACTIVE (Auto-Renews)' : 'PAUSED'}
-                          </Text>
-                        </View>
-                      </>
-                    )}
-                  </View>
-
-                  {/* Official Certificate ID with 1-Tap Copy */}
-                  <View
-                    style={[
-                      styles.certKeyBox,
-                      {
-                        backgroundColor: isLight ? '#FEF3C7' : 'rgba(245, 158, 11, 0.08)',
-                        borderColor: isLight ? '#FDE68A' : 'rgba(245, 158, 11, 0.25)',
-                      },
-                    ]}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.certKeyLabel}>OFFICIAL MARITIME CERTIFICATE ID</Text>
-                      <Text style={[styles.certKeyValue, { color: colors.text }]}>{licenseCertificateId}</Text>
-                    </View>
-                    <Pressable
-                      style={[styles.copyCertBtn, { backgroundColor: isLight ? '#FFFFFF' : 'rgba(245, 158, 11, 0.2)' }]}
-                      onPress={handleCopyLicenseKey}
-                      hitSlop={8}
-                    >
-                      <Ionicons name="copy-outline" size={14} color="#F59E0B" />
-                      <Text style={styles.copyCertBtnText}>COPY</Text>
-                    </Pressable>
-                  </View>
-
-                  {/* Unlocked Capabilities Grid (4 Pills) */}
-                  <View style={styles.unlockedGrid}>
-                    <View style={[styles.unlockedItem, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
-                      <Ionicons name="cloud-offline" size={13} color="#10B981" />
-                      <Text style={[styles.unlockedText, { color: colors.text }]}>Offline Charts</Text>
-                    </View>
-                    <View style={[styles.unlockedItem, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
-                      <Ionicons name="fish" size={13} color="#00F0FF" />
-                      <Text style={[styles.unlockedText, { color: colors.text }]}>AI Hotspots</Text>
-                    </View>
-                    <View style={[styles.unlockedItem, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
-                      <Ionicons name="radio" size={13} color="#F59E0B" />
-                      <Text style={[styles.unlockedText, { color: colors.text }]}>AIS Radar</Text>
-                    </View>
-                    <View style={[styles.unlockedItem, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
-                      <Ionicons name="location" size={13} color="#A855F7" />
-                      <Text style={[styles.unlockedText, { color: colors.text }]}>Waypoints Sync</Text>
-                    </View>
-                  </View>
-
-                  {/* Quick Action Buttons for Subscription Management */}
-                  <View style={styles.proActionBtnGrid}>
-                    {/* Change / Switch Plan */}
-                    <Pressable
-                      style={[styles.proManageBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
-                      onPress={() => setShowPlanChangeModal(true)}
-                    >
-                      <MaterialCommunityIcons name="swap-horizontal" size={15} color={colors.accent} />
-                      <Text style={[styles.proManageBtnText, { color: colors.text }]}>Change Plan</Text>
-                    </Pressable>
-
-                    {/* Auto-Renew Toggle */}
-                    {proPlan !== 'lifetime' && (
-                      <Pressable
-                        style={[styles.proManageBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
-                        onPress={toggleAutoRenew}
+                      <Text
+                        style={[
+                          styles.statusPillText,
+                          {
+                            color: isPro
+                              ? isExpiringSoon
+                                ? '#EF4444'
+                                : '#10B981'
+                              : hasReferralBonus
+                                ? '#22C55E'
+                                : isTrialExpired
+                                  ? '#EF4444'
+                                  : colors.accent,
+                          },
+                        ]}
                       >
-                        <Ionicons
-                          name={autoRenew ? 'pause-outline' : 'play-outline'}
-                          size={15}
-                          color={autoRenew ? '#F59E0B' : '#10B981'}
-                        />
-                        <Text style={[styles.proManageBtnText, { color: colors.text }]}>
-                          {autoRenew ? 'Pause Renewal' : 'Resume Renewal'}
-                        </Text>
-                      </Pressable>
-                    )}
-
-                    {/* Tax Invoice & Receipt */}
-                    <Pressable
-                      style={[styles.proManageBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
-                      onPress={() => setShowReceiptModal(true)}
-                    >
-                      <Ionicons name="receipt-outline" size={14} color={colors.textSecondary} />
-                      <Text style={[styles.proManageBtnText, { color: colors.text }]}>Tax Invoice</Text>
-                    </Pressable>
-
-                    {/* Restore Purchases */}
-                    <Pressable
-                      style={[styles.proManageBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
-                      onPress={restorePurchases}
-                    >
-                      <Ionicons name="sync-outline" size={14} color={colors.textSecondary} />
-                      <Text style={[styles.proManageBtnText, { color: colors.text }]}>Restore</Text>
-                    </Pressable>
-                  </View>
-
-                  {/* Referral Bonus Bar if active */}
-                  {referralDaysEarned > 0 && (
-                    <View style={styles.refBonusRow}>
-                      <Ionicons name="gift" size={13} color="#22C55E" />
-                      <Text style={styles.refBonusText}>
-                        +{referralDaysEarned} Days Free added from Captain Invites
+                        {isPro
+                          ? isExpiringSoon
+                            ? 'EXPIRING SOON'
+                            : 'ACTIVE'
+                          : hasReferralBonus
+                            ? 'REFERRAL PASS'
+                            : isTrialExpired
+                              ? 'EXPIRED'
+                              : 'ACTIVE TRIAL'}
                       </Text>
                     </View>
-                  )}
+                  </View>
+
+                  <Text style={[styles.proMembershipSub, { color: colors.textSecondary }]}>
+                    {isPro
+                      ? proPlan === 'lifetime'
+                        ? 'Perpetual master license. High-res bathymetry & AIS radar unlocked forever.'
+                        : 'Official vessel license active with full offshore bathymetry & AIS radar.'
+                      : hasReferralBonus
+                        ? 'Unlocked via Captain referral invitations. Zero recurring charges.'
+                        : isTrialExpired
+                          ? 'Free trial has ended. Upgrade to continue high-res navigation.'
+                          : 'Unrestricted Pro evaluation pass. All features active.'}
+                  </Text>
                 </View>
               </View>
-            ) : hasReferralBonus ? (
+
+              {/* ⚡ Glowing Expiry & Countdown HUD Console */}
               <View
                 style={[
-                  styles.trialProfileCard,
+                  styles.expiryHudConsole,
                   {
-                    backgroundColor: isLight ? '#F0FDF4' : 'rgba(34, 197, 94, 0.08)',
-                    borderColor: isLight ? '#BBF7D0' : 'rgba(34, 197, 94, 0.35)',
+                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(2, 12, 23, 0.85)',
+                    borderColor: isPro
+                      ? isExpiringSoon
+                        ? '#EF4444'
+                        : isLight
+                          ? '#FDE68A'
+                          : 'rgba(245, 158, 11, 0.35)'
+                      : hasReferralBonus
+                        ? 'rgba(34, 197, 94, 0.3)'
+                        : isTrialExpired
+                          ? 'rgba(239, 68, 68, 0.35)'
+                          : isLight
+                            ? '#E0F2FE'
+                            : 'rgba(0, 240, 255, 0.25)',
                   },
                 ]}
               >
-                <View style={styles.trialCardHeader}>
-                  <Ionicons name="gift" size={22} color="#22C55E" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.trialCardTitle, { color: '#22C55E' }]}>
-                      {bonusProDaysRemaining}-Day Referral Bonus Active
-                    </Text>
-                    <Text style={[styles.trialCardSub, { color: colors.textSecondary }]}>
-                      You have full offshore access to bathymetric charts, AI fishing zones, and AIS radar via referral bonus. No active paid subscription charge.
-                    </Text>
-                  </View>
-                </View>
+                {isPro ? (
+                  proPlan === 'lifetime' ? (
+                    // Lifetime View
+                    <View style={styles.hudLifetimeWrap}>
+                      <View style={styles.hudLifetimeLeft}>
+                        <Text style={[styles.hudHugeInfinity, { color: '#F59E0B' }]}>♾️</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.hudHeadline, { color: colors.text }]}>
+                            PERPETUAL LIFETIME ACCESS
+                          </Text>
+                          <Text style={[styles.hudSubtitle, { color: colors.textSecondary }]}>
+                            Never expires • All bathymetry, radar & offline charts guaranteed
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ) : (
+                    // Annual or Quarterly Pro View
+                    <View>
+                      <View style={styles.hudTopRow}>
+                        <View style={styles.hudCountdownBox}>
+                          <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
+                            TIME REMAINING
+                          </Text>
+                          <View style={styles.hudDaysRow}>
+                            <Text
+                              style={[
+                                styles.hudBigNumber,
+                                { color: isExpiringSoon ? '#EF4444' : '#F59E0B' },
+                              ]}
+                            >
+                              {proDaysRemaining}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.hudBigUnit,
+                                { color: isExpiringSoon ? '#EF4444' : '#F59E0B' },
+                              ]}
+                            >
+                              {proDaysRemaining === 1 ? 'DAY' : 'DAYS'} LEFT
+                            </Text>
+                          </View>
+                        </View>
 
-                <View style={styles.unlockedGrid}>
-                  <View style={[styles.unlockedItem, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
-                    <Ionicons name="cloud-offline" size={13} color="#10B981" />
-                    <Text style={[styles.unlockedText, { color: colors.text }]}>Offline Charts</Text>
-                  </View>
-                  <View style={[styles.unlockedItem, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
-                    <Ionicons name="fish" size={13} color="#00F0FF" />
-                    <Text style={[styles.unlockedText, { color: colors.text }]}>AI Hotspots</Text>
-                  </View>
-                  <View style={[styles.unlockedItem, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
-                    <Ionicons name="radio" size={13} color="#F59E0B" />
-                    <Text style={[styles.unlockedText, { color: colors.text }]}>AIS Radar</Text>
-                  </View>
-                </View>
+                        <View style={styles.hudDateInfoBox}>
+                          <View style={[styles.hudDatePill, { backgroundColor: isLight ? '#FFFFFF' : 'rgba(0, 0, 0, 0.25)', borderColor: isLight ? '#E2E8F0' : 'transparent', borderWidth: isLight ? 1 : 0 }]}>
+                            <Ionicons name="calendar" size={13} color={isExpiringSoon ? '#EF4444' : '#F59E0B'} />
+                            <Text style={[styles.hudDateText, { color: colors.text }]}>
+                              Expires: <Text style={{ fontWeight: '800' }}>{proFormattedExpiry}</Text>
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
 
-                <View style={styles.trialActionRow}>
-                  <Pressable
-                    style={styles.upgradeCtaBtn}
-                    onPress={() => {
-                      onClose();
-                      openProModal('profile_bonus_card');
-                    }}
-                  >
-                    <LinearGradient
-                      colors={['#00F0FF', '#0284C7']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.upgradeCtaGrad}
-                    >
-                      <MaterialCommunityIcons name="crown" size={17} color="#020B14" />
-                      <Text style={styles.upgradeCtaText}>UPGRADE TO PERMANENT PRO</Text>
-                    </LinearGradient>
-                  </Pressable>
-
-                  <Pressable
-                    style={[styles.referralCtaBtn, { borderColor: '#22C55E', backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}
-                    onPress={() => {
-                      onClose();
-                      openReferralModal();
-                    }}
-                  >
-                    <Ionicons name="people" size={14} color="#22C55E" />
-                    <Text style={[styles.referralCtaText, { color: '#22C55E' }]}>Invite More (+10d)</Text>
-                  </Pressable>
-                </View>
-              </View>
-            ) : (
-              <View
-                style={[
-                  styles.trialProfileCard,
-                  {
-                    backgroundColor: isTrialExpired
-                      ? isLight ? '#FEF2F2' : 'rgba(239, 68, 68, 0.1)'
-                      : isLight ? '#EFF6FF' : 'rgba(0, 240, 255, 0.08)',
-                    borderColor: isTrialExpired ? '#EF4444' : colors.accent,
-                  },
-                ]}
-              >
-                <View style={styles.trialCardHeader}>
-                  <Ionicons
-                    name={isTrialExpired ? 'alert-circle' : 'flash'}
-                    size={20}
-                    color={isTrialExpired ? '#EF4444' : colors.accent}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={[
-                        styles.trialCardTitle,
-                        { color: isTrialExpired ? '#EF4444' : colors.accent },
-                      ]}
-                    >
-                      {isTrialExpired ? '3-Day Free Trial Expired' : '3-Day Free Trial Active'}
-                    </Text>
-                    <Text style={[styles.trialCardSub, { color: colors.textSecondary }]}>
-                      {isTrialExpired
-                        ? 'Upgrade to Pro to unlock unlimited bathymetry, AIS radar and secret waypoints.'
-                        : `${trialHoursRemaining} hours remaining (${trialDaysRemaining} days) of full access.`}
-                    </Text>
+                      {/* Visual Expiry Timeline Progress Bar */}
+                      <View style={styles.hudProgressWrap}>
+                        <View style={[styles.hudProgressTrack, { backgroundColor: isLight ? '#E2E8F0' : 'rgba(255, 255, 255, 0.1)' }]}>
+                          <View
+                            style={[
+                              styles.hudProgressFill,
+                              {
+                                width: `${Math.max(5, 100 - proProgressPercent)}%`,
+                                backgroundColor: isExpiringSoon ? '#EF4444' : '#F59E0B',
+                              },
+                            ]}
+                          />
+                        </View>
+                        <View style={styles.hudProgressLabels}>
+                          <Text style={[styles.hudProgressLabelText, { color: colors.textMuted }]}>
+                            Cycle: {proPlan === 'quarterly' ? '90 Days' : '365 Days'}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.hudProgressLabelText,
+                              { color: isExpiringSoon ? '#EF4444' : '#F59E0B', fontWeight: '700' },
+                            ]}
+                          >
+                            {proDaysRemaining} days remaining ({Math.max(1, 100 - proProgressPercent)}%)
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  )
+                ) : hasReferralBonus ? (
+                  // Referral Bonus View
+                  <View>
+                    <View style={styles.hudTopRow}>
+                      <View style={styles.hudCountdownBox}>
+                        <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
+                          REFERRAL PASS REMAINING
+                        </Text>
+                        <View style={styles.hudDaysRow}>
+                          <Text style={[styles.hudBigNumber, { color: '#22C55E' }]}>
+                            {bonusProDaysRemaining}
+                          </Text>
+                          <Text style={[styles.hudBigUnit, { color: '#22C55E' }]}>
+                            {bonusProDaysRemaining === 1 ? 'DAY' : 'DAYS'} FREE
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.hudDateInfoBox}>
+                        <View style={[styles.hudDatePill, { backgroundColor: isLight ? '#FFFFFF' : 'rgba(0, 0, 0, 0.25)', borderColor: isLight ? '#BBF7D0' : 'transparent', borderWidth: isLight ? 1 : 0 }]}>
+                          <Ionicons name="gift" size={13} color="#22C55E" />
+                          <Text style={[styles.hudDateText, { color: colors.text }]}>
+                            Valid Until: <Text style={{ fontWeight: '800' }}>{bonusProFormattedExpiry}</Text>
+                          </Text>
+                        </View>
+                        <Text style={[styles.hudSubInfo, { color: colors.textSecondary }]}>
+                          +{referralDaysEarned}d earned from crew invites
+                        </Text>
+                      </View>
+                    </View>
                   </View>
-                </View>
-
-                {!isTrialExpired && (
-                  <View style={styles.trialBarBg}>
-                    <View style={[styles.trialBarFill, { width: `${trialProgressPercent}%`, backgroundColor: colors.accent }]} />
+                ) : (
+                  // Free Trial or Expired View
+                  <View>
+                    <View style={styles.hudTopRow}>
+                      <View style={styles.hudCountdownBox}>
+                        <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
+                          {isTrialExpired ? 'TRIAL STATUS' : 'FREE EVALUATION PERIOD'}
+                        </Text>
+                        <View style={styles.hudDaysRow}>
+                          <Text
+                            style={[
+                              styles.hudBigNumber,
+                              { color: isTrialExpired ? '#EF4444' : colors.accent },
+                            ]}
+                          >
+                            {isTrialExpired ? '0h' : `${trialHoursRemaining}h`}
+                          </Text>
+                          <Text
+                            style={[
+                              styles.hudBigUnit,
+                              { color: isTrialExpired ? '#EF4444' : colors.accent },
+                            ]}
+                          >
+                            {isTrialExpired ? 'EXPIRED' : `LEFT (${trialDaysRemaining}d)`}
+                          </Text>
+                        </View>
+                      </View>
+                      <View style={styles.hudDateInfoBox}>
+                        <View style={[styles.hudDatePill, { backgroundColor: isLight ? '#FFFFFF' : 'rgba(0, 0, 0, 0.25)', borderColor: isLight ? '#E2E8F0' : 'transparent', borderWidth: isLight ? 1 : 0 }]}>
+                          <Ionicons
+                            name={isTrialExpired ? 'alert-circle' : 'time'}
+                            size={13}
+                            color={isTrialExpired ? '#EF4444' : colors.accent}
+                          />
+                          <Text style={[styles.hudDateText, { color: colors.text }]}>
+                            {isTrialExpired ? 'Trial Ended' : `Trial Ends: ${trialFormattedExpiry}`}
+                          </Text>
+                        </View>
+                        <Text style={[styles.hudSubInfo, { color: colors.textSecondary }]}>
+                          {isTrialExpired
+                            ? 'Offshore charts locked'
+                            : 'Upgrade anytime for permanent access'}
+                        </Text>
+                      </View>
+                    </View>
+                    {!isTrialExpired && (
+                      <View style={styles.hudProgressWrap}>
+                        <View style={[styles.hudProgressTrack, { backgroundColor: isLight ? '#E2E8F0' : 'rgba(255, 255, 255, 0.1)' }]}>
+                          <View
+                            style={[
+                              styles.hudProgressFill,
+                              {
+                                width: `${Math.max(5, 100 - trialProgressPercent)}%`,
+                                backgroundColor: colors.accent,
+                              },
+                            ]}
+                          />
+                        </View>
+                        <View style={styles.hudProgressLabels}>
+                          <Text style={[styles.hudProgressLabelText, { color: colors.textMuted }]}>
+                            72 Hours Free Evaluation
+                          </Text>
+                          <Text style={[styles.hudProgressLabelText, { color: colors.accent, fontWeight: '700' }]}>
+                            {trialHoursRemaining} hours left
+                          </Text>
+                        </View>
+                      </View>
+                    )}
                   </View>
                 )}
 
+                {/* License Certificate & Copy Bar */}
+                <View style={[styles.hudCertRow, { borderTopColor: isLight ? '#E2E8F0' : colors.divider }]}>
+                  <View style={styles.hudCertLeft}>
+                    <MaterialCommunityIcons name="certificate" size={14} color="#F59E0B" />
+                    <Text style={[styles.hudCertLabel, { color: isLight ? '#64748B' : colors.textMuted }]}>
+                      LICENSE ID:
+                    </Text>
+                    <Text style={[styles.hudCertValue, { color: colors.text }]}>
+                      {licenseCertificateId}
+                    </Text>
+                  </View>
+                  <Pressable style={styles.hudCopyBtn} onPress={handleCopyLicenseKey} hitSlop={8}>
+                    <Ionicons name="copy-outline" size={12} color={colors.accent} />
+                    <Text style={[styles.hudCopyBtnText, { color: colors.accent }]}>COPY</Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* ⚠️ Expiring Soon Urgent Alert Bar */}
+              {isExpiringSoon && (
+                <View style={styles.expiringSoonAlertBox}>
+                  <Ionicons name="warning" size={18} color="#EF4444" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.expiringSoonAlertTitle}>
+                      LICENSE EXPIRING SOON! ({proDaysRemaining} Days Left)
+                    </Text>
+                    <Text style={styles.expiringSoonAlertDesc}>
+                      Your vessel license will expire on {proFormattedExpiry}. Renew now to avoid offshore chart blackout & radar shutdown.
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Unlocked Capabilities Grid (4 Pills) */}
+              <View style={styles.unlockedGrid}>
+                <View style={[styles.unlockedItem, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#E2E8F0' : colors.chipBorder }]}>
+                  <Ionicons name="cloud-offline" size={13} color={isLight ? '#16A34A' : '#10B981'} />
+                  <Text style={[styles.unlockedText, { color: colors.text }]}>Offline Charts</Text>
+                </View>
+                <View style={[styles.unlockedItem, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#E2E8F0' : colors.chipBorder }]}>
+                  <Ionicons name="fish" size={13} color={isLight ? colors.accent : '#00F0FF'} />
+                  <Text style={[styles.unlockedText, { color: colors.text }]}>AI Hotspots</Text>
+                </View>
+                <View style={[styles.unlockedItem, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#E2E8F0' : colors.chipBorder }]}>
+                  <Ionicons name="radio" size={13} color={isLight ? '#D97706' : '#F59E0B'} />
+                  <Text style={[styles.unlockedText, { color: colors.text }]}>AIS Radar</Text>
+                </View>
+                <View style={[styles.unlockedItem, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#E2E8F0' : colors.chipBorder }]}>
+                  <Ionicons name="location" size={13} color={isLight ? '#9333EA' : '#A855F7'} />
+                  <Text style={[styles.unlockedText, { color: colors.text }]}>Waypoints Sync</Text>
+                </View>
+              </View>
+
+              {/* Quick Action Buttons for Subscription Management */}
+              {isPro ? (
+                <View style={styles.proActionBtnGrid}>
+                  <Pressable
+                    style={[styles.proManageBtn, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#CBD5E1' : colors.chipBorder }]}
+                    onPress={() => setShowReceiptModal(true)}
+                  >
+                    <Ionicons name="receipt-outline" size={14} color={isLight ? colors.accent : colors.textSecondary} />
+                    <Text style={[styles.proManageBtnText, { color: colors.text }]}>Tax Invoice</Text>
+                  </Pressable>
+                </View>
+              ) : (
                 <View style={styles.trialActionRow}>
                   <Pressable
                     style={styles.upgradeCtaBtn}
                     onPress={() => {
                       onClose();
-                      openProModal('profile_trial_card');
+                      openProModal('profile_card');
                     }}
                   >
                     <LinearGradient
-                      colors={['#00F0FF', '#0284C7']}
+                      colors={isLight ? ['#0284C7', '#0369A1'] : ['#00F0FF', '#0284C7']}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                       style={styles.upgradeCtaGrad}
                     >
-                      <MaterialCommunityIcons name="crown" size={17} color="#020B14" />
-                      <Text style={styles.upgradeCtaText}>UPGRADE TO PRO LICENSE</Text>
+                      <MaterialCommunityIcons name="crown" size={17} color="#FFFFFF" />
+                      <Text style={[styles.upgradeCtaText, { color: '#FFFFFF' }]}>UPGRADE TO FISHNAV PRO</Text>
                     </LinearGradient>
                   </Pressable>
 
                   <Pressable
-                    style={[styles.referralCtaBtn, { borderColor: '#22C55E', backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}
+                    style={[styles.referralCtaBtn, { borderColor: isLight ? '#16A34A' : '#22C55E', backgroundColor: isLight ? '#DCFCE7' : 'rgba(34, 197, 94, 0.1)' }]}
                     onPress={() => {
                       onClose();
                       openReferralModal();
                     }}
                   >
-                    <Ionicons name="people" size={14} color="#22C55E" />
-                    <Text style={[styles.referralCtaText, { color: '#22C55E' }]}>Get +10d Free</Text>
+                    <Ionicons name="people" size={14} color={isLight ? '#16A34A' : '#22C55E'} />
+                    <Text style={[styles.referralCtaText, { color: isLight ? '#16A34A' : '#22C55E' }]}>Invite (+10d)</Text>
                   </Pressable>
                 </View>
-              </View>
-            )}
+              )}
+
+              {/* Referral Bonus Bar if active */}
+              {referralDaysEarned > 0 && (
+                <View style={[styles.refBonusRow, isLight && { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
+                  <Ionicons name="gift" size={13} color={isLight ? '#16A34A' : '#22C55E'} />
+                  <Text style={[styles.refBonusText, isLight && { color: '#166534' }]}>
+                    +{referralDaysEarned} Days Free added from Captain Invites
+                  </Text>
+                </View>
+              )}
+            </View>
 
             {/* 🚀 TRIPS & ROUTES LOGBOOK SHORTCUT */}
             <Pressable
               style={[
                 styles.tripsShortcutCard,
                 {
-                  backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
-                  borderColor: colors.cardBorder,
+                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
+                  borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
+                  shadowColor: isLight ? '#64748B' : '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: isLight ? 0.06 : 0.2,
+                  shadowRadius: 8,
+                  elevation: isLight ? 2 : 0,
                 },
               ]}
               onPress={handleOpenTrips}
@@ -837,8 +1010,8 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                     style={[
                       styles.tripsBadge,
                       {
-                        backgroundColor: colors.chipBg,
-                        borderColor: colors.chipBorder,
+                        backgroundColor: isLight ? '#E0F2FE' : colors.chipBg,
+                        borderColor: isLight ? '#BAE6FD' : colors.chipBorder,
                       },
                     ]}
                   >
@@ -862,7 +1035,7 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
               </View>
 
               <Pressable
-                style={[styles.editSpecsBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+                style={[styles.editSpecsBtn, { backgroundColor: isLight ? '#E0F2FE' : colors.chipBg, borderColor: isLight ? '#BAE6FD' : colors.chipBorder }]}
                 onPress={() => setShowVesselEditor(true)}
               >
                 <Ionicons name="create-outline" size={14} color={colors.accent} />
@@ -874,47 +1047,46 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
               style={[
                 styles.infoCard,
                 {
-                  backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
-                  borderColor: colors.cardBorder,
+                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
+                  borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
+                  shadowColor: isLight ? '#64748B' : '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: isLight ? 0.06 : 0.2,
+                  shadowRadius: 8,
+                  elevation: isLight ? 2 : 0,
                 },
               ]}
             >
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Vessel Name</Text>
-                <Text style={[styles.infoValue, { color: colors.accent }]}>
+                <Text style={[styles.infoValue, { color: colors.accent, fontWeight: '800' }]}>
                   {captain?.vesselName || 'Sea Hunter II'}
                 </Text>
               </View>
-              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+              <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Call Sign / Reg No</Text>
-                <Text style={[styles.infoValue, { color: colors.accent }]}>
+                <Text style={[styles.infoValue, { color: colors.accent, fontWeight: '800' }]}>
                   {captain?.callSign || 'IND-GJ-8821'}
                 </Text>
               </View>
-              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+              <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Vessel Class</Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>{captain?.vesselType || 'Deep Sea Trawler (42ft)'}</Text>
               </View>
-              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+              <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Home Harbor</Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>{captain?.homeHarbor || 'Veraval Fishing Port'}</Text>
               </View>
-              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Length & Draft</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>
-                  {captain?.boatLengthM || '24.5'}m • Draft {captain?.boatDraftM || '1.8'}m
-                </Text>
-              </View>
-              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+
+              <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Cruising Speed</Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>{captain?.cruiseSpeedKnots || '12'} knots</Text>
               </View>
-              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+              <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Maritime License</Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>{captain?.licenseNumber || 'IND-MF-2026-991'}</Text>
@@ -931,8 +1103,13 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
               style={[
                 styles.infoCard,
                 {
-                  backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
-                  borderColor: colors.cardBorder,
+                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
+                  borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
+                  shadowColor: isLight ? '#64748B' : '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: isLight ? 0.06 : 0.2,
+                  shadowRadius: 8,
+                  elevation: isLight ? 2 : 0,
                 },
               ]}
             >
@@ -944,12 +1121,12 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                       <GoogleLogoSvg size={18} />
                     </View>
                   ) : isPhone ? (
-                    <View style={[styles.providerIconBox, { backgroundColor: colors.chipBg }]}>
+                    <View style={[styles.providerIconBox, { backgroundColor: isLight ? '#E0F2FE' : colors.chipBg }]}>
                       <Ionicons name="call" size={16} color={colors.accent} />
                     </View>
                   ) : (
-                    <View style={[styles.providerIconBox, { backgroundColor: 'rgba(251, 191, 36, 0.2)' }]}>
-                      <Ionicons name="flash" size={16} color="#FBBF24" />
+                    <View style={[styles.providerIconBox, { backgroundColor: isLight ? '#FEF3C7' : 'rgba(251, 191, 36, 0.2)' }]}>
+                      <Ionicons name="flash" size={16} color={isLight ? '#D97706' : '#FBBF24'} />
                     </View>
                   )}
                   <View>
@@ -966,22 +1143,22 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                   </View>
                 </View>
 
-                <View style={styles.activePill}>
+                <View style={[styles.activePill, isLight && { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]}>
                   <View style={styles.greenPulse} />
-                  <Text style={styles.activeText}>VERIFIED</Text>
+                  <Text style={[styles.activeText, isLight && { color: '#16A34A' }]}>VERIFIED</Text>
                 </View>
               </View>
 
-              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+              <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
 
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Account Identifier</Text>
-                <Text style={[styles.infoValue, { color: colors.accent }]}>
+                <Text style={[styles.infoValue, { color: colors.accent, fontWeight: '700' }]}>
                   {captain?.emailOrPhone || '+91 98765 43210'}
                 </Text>
               </View>
 
-              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+              <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
 
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Session Started</Text>
@@ -990,13 +1167,13 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                 </Text>
               </View>
 
-              <View style={[styles.divider, { backgroundColor: colors.divider }]} />
+              <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
 
               <View style={styles.infoRow}>
                 <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Account Security</Text>
                 <View style={styles.securityBadge}>
                   <Ionicons name="shield-checkmark-outline" size={13} color="#10B981" />
-                  <Text style={styles.securityText}>256-Bit Marine Key</Text>
+                  <Text style={[styles.securityText, { color: isLight ? '#16A34A' : '#10B981' }]}>256-Bit Marine Key</Text>
                 </View>
               </View>
             </View>
@@ -1034,11 +1211,12 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
               onPress={handleLogout}
             >
               <Ionicons name="log-out-outline" size={18} color="#EF4444" />
-              <Text style={styles.logoutText}>SIGN OUT / SWITCH ACCOUNT</Text>
+              <Text style={[styles.logoutText, isLight && { color: '#DC2626' }]}>SIGN OUT / SWITCH ACCOUNT</Text>
             </Pressable>
           </ScrollView>
         </View>
       </View>
+    </Modal>
 
       {/* 🟢 MODAL A: PROFILE PHOTO SELECTOR */}
       <Modal
@@ -1090,13 +1268,13 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                 style={[
                   styles.uploadBtn,
                   {
-                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
-                    borderColor: colors.cardBorder,
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
+                    borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
                   },
                 ]}
                 onPress={handlePickDeviceImage}
               >
-                <View style={[styles.uploadIconWrap, { backgroundColor: colors.chipBg }]}>
+                <View style={[styles.uploadIconWrap, { backgroundColor: isLight ? '#E0F2FE' : colors.chipBg }]}>
                   <Ionicons name="cloud-upload" size={22} color={colors.accent} />
                 </View>
                 <View style={styles.uploadTextWrap}>
@@ -1121,10 +1299,10 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                       style={[
                         styles.presetCard,
                         {
-                          backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.75)',
-                          borderColor: isSelected ? colors.accent : colors.divider,
+                          backgroundColor: isLight ? (isSelected ? '#E0F2FE' : '#FFFFFF') : (isSelected ? colors.chipBg : 'rgba(10, 31, 53, 0.75)'),
+                          borderColor: isSelected ? colors.accent : (isLight ? '#E2E8F0' : colors.divider),
                         },
-                        isSelected && { backgroundColor: colors.chipBg, borderWidth: 1.5 },
+                        isSelected && { borderWidth: 1.5 },
                       ]}
                       onPress={() => {
                         updateCaptain({ avatarUrl: item.url });
@@ -1161,8 +1339,8 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                   style={[
                     styles.urlTextInput,
                     {
-                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
-                      borderColor: colors.cardBorder,
+                      backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.35)',
+                      borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
                       color: colors.text,
                     },
                   ]}
@@ -1245,8 +1423,8 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                   style={[
                     styles.editInputWrap,
                     {
-                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
-                      borderColor: colors.cardBorder,
+                      backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.35)',
+                      borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
                     },
                   ]}
                 >
@@ -1270,12 +1448,12 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                   style={[
                     styles.editInputWrap,
                     {
-                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
-                      borderColor: colors.cardBorder,
+                      backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.35)',
+                      borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
                     },
                   ]}
                 >
-                  <MaterialCommunityIcons name="radio-handheld" size={18} color="#38BDF8" style={styles.editIcon} />
+                  <MaterialCommunityIcons name="radio-handheld" size={18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
                   <TextInput
                     style={[styles.editTextInput, { color: colors.text }]}
                     placeholder="e.g. IND-GJ-8821"
@@ -1293,12 +1471,12 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                   style={[
                     styles.editInputWrap,
                     {
-                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
-                      borderColor: colors.cardBorder,
+                      backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.35)',
+                      borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
                     },
                   ]}
                 >
-                  <Ionicons name="person" size={18} color="#38BDF8" style={styles.editIcon} />
+                  <Ionicons name="person" size={18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
                   <TextInput
                     style={[styles.editTextInput, { color: colors.text }]}
                     placeholder="e.g. Capt. Vikram Rathore"
@@ -1316,12 +1494,12 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                   style={[
                     styles.editInputWrap,
                     {
-                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
-                      borderColor: colors.cardBorder,
+                      backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.35)',
+                      borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
                     },
                   ]}
                 >
-                  <Ionicons name="construct-outline" size={18} color="#38BDF8" style={styles.editIcon} />
+                  <Ionicons name="construct-outline" size={18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
                   <TextInput
                     style={[styles.editTextInput, { color: colors.text }]}
                     placeholder="e.g. Deep Sea Trawler (42ft)"
@@ -1337,13 +1515,13 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                       style={[
                         styles.chip,
                         {
-                          backgroundColor: isLight ? '#F1F5F9' : 'rgba(255, 255, 255, 0.06)',
-                          borderColor: colors.divider,
+                          backgroundColor: isLight ? '#E0F2FE' : 'rgba(255, 255, 255, 0.06)',
+                          borderColor: isLight ? '#BAE6FD' : colors.divider,
                         },
                       ]}
                       onPress={() => setEditVesselType(chip)}
                     >
-                      <Text style={[styles.chipText, { color: colors.textSecondary }]}>{chip.split(' ')[0]}</Text>
+                      <Text style={[styles.chipText, { color: isLight ? colors.accent : '#38BDF8' }]}>{chip.split(' ')[0]}</Text>
                     </Pressable>
                   ))}
                 </View>
@@ -1358,12 +1536,12 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                   style={[
                     styles.editInputWrap,
                     {
-                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
-                      borderColor: colors.cardBorder,
+                      backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.35)',
+                      borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
                     },
                   ]}
                 >
-                  <Ionicons name="anchor" size={18} color="#38BDF8" style={styles.editIcon} />
+                  <Ionicons name="anchor" size={18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
                   <TextInput
                     style={[styles.editTextInput, { color: colors.text }]}
                     placeholder="e.g. Veraval Fishing Port"
@@ -1379,70 +1557,36 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                       style={[
                         styles.chip,
                         {
-                          backgroundColor: isLight ? '#F1F5F9' : 'rgba(255, 255, 255, 0.06)',
-                          borderColor: colors.divider,
+                          backgroundColor: isLight ? '#E0F2FE' : 'rgba(255, 255, 255, 0.06)',
+                          borderColor: isLight ? '#BAE6FD' : colors.divider,
                         },
                       ]}
                       onPress={() => setEditHomeHarbor(chip)}
                     >
-                      <Text style={[styles.chipText, { color: colors.textSecondary }]}>{chip.split(' ')[0]}</Text>
+                      <Text style={[styles.chipText, { color: isLight ? colors.accent : '#38BDF8' }]}>{chip.split(' ')[0]}</Text>
                     </Pressable>
                   ))}
                 </View>
               </View>
 
-              {/* 6. Technical Specs (Length, Draft, Speed) */}
-              <View style={styles.tripletRow}>
-                <View style={styles.tripletCol}>
-                  <Text style={[styles.editLabel, { color: colors.textSecondary }]}>LENGTH (M)</Text>
+              {/* 6. Cruising Speed */}
+              <View style={styles.editField}>
+                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>
+                  CRUISING SPEED (KNOTS)
+                </Text>
+                <View
+                  style={[
+                    styles.editInputWrap,
+                    {
+                      backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.35)',
+                      borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
+                    },
+                  ]}
+                >
+                  <Ionicons name="speedometer-outline" size={18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
                   <TextInput
-                    style={[
-                      styles.tripletInput,
-                      {
-                        backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
-                        borderColor: colors.cardBorder,
-                        color: colors.text,
-                      },
-                    ]}
-                    placeholder="24.5"
-                    placeholderTextColor={colors.textMuted}
-                    value={editBoatLength}
-                    onChangeText={setEditBoatLength}
-                    keyboardType="decimal-pad"
-                  />
-                </View>
-
-                <View style={styles.tripletCol}>
-                  <Text style={[styles.editLabel, { color: colors.textSecondary }]}>DRAFT (M)</Text>
-                  <TextInput
-                    style={[
-                      styles.tripletInput,
-                      {
-                        backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
-                        borderColor: colors.cardBorder,
-                        color: colors.text,
-                      },
-                    ]}
-                    placeholder="1.8"
-                    placeholderTextColor={colors.textMuted}
-                    value={editBoatDraft}
-                    onChangeText={setEditBoatDraft}
-                    keyboardType="decimal-pad"
-                  />
-                </View>
-
-                <View style={styles.tripletCol}>
-                  <Text style={[styles.editLabel, { color: colors.textSecondary }]}>SPEED (KTS)</Text>
-                  <TextInput
-                    style={[
-                      styles.tripletInput,
-                      {
-                        backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
-                        borderColor: colors.cardBorder,
-                        color: colors.text,
-                      },
-                    ]}
-                    placeholder="12"
+                    style={[styles.editTextInput, { color: colors.text }]}
+                    placeholder="e.g. 12"
                     placeholderTextColor={colors.textMuted}
                     value={editCruiseSpeed}
                     onChangeText={setEditCruiseSpeed}
@@ -1460,12 +1604,12 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                   style={[
                     styles.editInputWrap,
                     {
-                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
-                      borderColor: colors.cardBorder,
+                      backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.35)',
+                      borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
                     },
                   ]}
                 >
-                  <Ionicons name="document-text-outline" size={18} color="#38BDF8" style={styles.editIcon} />
+                  <Ionicons name="document-text-outline" size={18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
                   <TextInput
                     style={[styles.editTextInput, { color: colors.text }]}
                     placeholder="e.g. IND-MF-2026-991"
@@ -1479,7 +1623,7 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
               {/* Save Specifications Button */}
               <Pressable style={styles.saveBtn} onPress={handleSaveVesselSpecs}>
                 <LinearGradient
-                  colors={colors.accentGradient || ['#0284C7', '#00F0FF']}
+                  colors={isLight ? ['#0284C7', '#0369A1'] : ['#00F0FF', '#0284C7']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.saveGradient}
@@ -1507,6 +1651,8 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
               {
                 backgroundColor: isLight ? '#FFFFFF' : '#031422',
                 borderColor: isLight ? '#E2E8F0' : 'rgba(0, 240, 255, 0.3)',
+                shadowColor: isLight ? '#64748B' : '#00F0FF',
+                shadowOpacity: isLight ? 0.12 : 0.25,
               },
             ]}
           >
@@ -1519,7 +1665,7 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
                 </View>
               </View>
               <Pressable
-                style={[styles.receiptCloseBtn, { backgroundColor: colors.chipBg }]}
+                style={[styles.receiptCloseBtn, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg }]}
                 onPress={() => setShowReceiptModal(false)}
                 hitSlop={8}
               >
@@ -1527,7 +1673,7 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
               </Pressable>
             </View>
 
-            <View style={[styles.receiptDivider, { backgroundColor: colors.divider }]} />
+            <View style={[styles.receiptDivider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
 
             <View style={styles.receiptBody}>
               <View style={styles.receiptRow}>
@@ -1551,18 +1697,18 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
               <View style={styles.receiptRow}>
                 <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>Billing Period:</Text>
                 <Text style={[styles.receiptValue, { color: colors.text }]}>
-                  {proPlan === 'lifetime' ? 'Perpetual Lifetime' : proExpiresAt || '1 Year Active'}
+                  {proPlan === 'lifetime' ? 'Perpetual Lifetime' : proFormattedExpiry || '1 Year Active'}
                 </Text>
               </View>
               <View style={styles.receiptRow}>
                 <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>Payment Status:</Text>
-                <View style={styles.paidBadge}>
-                  <Ionicons name="checkmark-circle" size={13} color="#10B981" />
-                  <Text style={styles.paidBadgeText}>PAID & VERIFIED</Text>
+                <View style={[styles.paidBadge, isLight && { backgroundColor: '#DCFCE7' }]}>
+                  <Ionicons name="checkmark-circle" size={13} color={isLight ? '#16A34A' : '#10B981'} />
+                  <Text style={[styles.paidBadgeText, isLight && { color: '#16A34A' }]}>PAID & VERIFIED</Text>
                 </View>
               </View>
 
-              <View style={[styles.receiptDivider, { backgroundColor: colors.divider }]} />
+              <View style={[styles.receiptDivider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
 
               <View style={styles.receiptRow}>
                 <Text style={[styles.receiptTotalLabel, { color: colors.text }]}>Total Amount Paid:</Text>
@@ -1580,151 +1726,13 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
               onPress={() => setShowReceiptModal(false)}
             >
               <LinearGradient
-                colors={colors.accentGradient || ['#0284C7', '#00F0FF']}
+                colors={isLight ? ['#0284C7', '#0369A1'] : ['#00F0FF', '#0284C7']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.receiptDoneGrad}
               >
-                <Ionicons name="checkmark" size={18} color="#020B14" />
+                <Ionicons name="checkmark" size={18} color="#FFFFFF" />
                 <Text style={styles.receiptDoneText}>CLOSE RECEIPT</Text>
-              </LinearGradient>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {/* 🔄 MODAL E: SWITCH / CHANGE PRO PLAN */}
-      <Modal
-        visible={showPlanChangeModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowPlanChangeModal(false)}
-      >
-        <View style={styles.subModalOverlay}>
-          <Pressable style={styles.subModalTouch} onPress={() => setShowPlanChangeModal(false)} />
-          <View
-            style={[
-              styles.changePlanCard,
-              {
-                backgroundColor: isLight ? '#FFFFFF' : '#031422',
-                borderColor: isLight ? '#E2E8F0' : 'rgba(0, 240, 255, 0.3)',
-              },
-            ]}
-          >
-            <View style={styles.receiptTopRow}>
-              <View style={styles.receiptLogoRow}>
-                <MaterialCommunityIcons name="swap-horizontal" size={24} color={colors.accent} />
-                <View>
-                  <Text style={[styles.receiptBrand, { color: colors.text }]}>Change License Plan</Text>
-                  <Text style={[styles.receiptSub, { color: colors.textMuted }]}>
-                    Switch between annual, quarterly or lifetime
-                  </Text>
-                </View>
-              </View>
-              <Pressable
-                style={[styles.receiptCloseBtn, { backgroundColor: colors.chipBg }]}
-                onPress={() => setShowPlanChangeModal(false)}
-                hitSlop={8}
-              >
-                <Ionicons name="close" size={18} color={colors.textSecondary} />
-              </Pressable>
-            </View>
-
-            <View style={styles.changePlanList}>
-              {/* Option 1: Annual */}
-              <Pressable
-                style={[
-                  styles.changePlanOption,
-                  selectedNewPlan === 'annual' && styles.changePlanOptionActive,
-                  {
-                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.6)',
-                    borderColor: selectedNewPlan === 'annual' ? '#00F0FF' : colors.cardBorder,
-                  },
-                ]}
-                onPress={() => setSelectedNewPlan('annual')}
-              >
-                <View style={styles.changePlanRadio}>
-                  {selectedNewPlan === 'annual' && <View style={styles.changePlanRadioDot} />}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.changePlanTitle, { color: colors.text }]}>Annual Master Mariner</Text>
-                  <Text style={[styles.changePlanSub, { color: colors.textSecondary }]}>₹1,499 / Year (Save 50%)</Text>
-                </View>
-                {proPlan === 'annual' && (
-                  <View style={styles.currentPlanPill}>
-                    <Text style={styles.currentPlanPillText}>CURRENT</Text>
-                  </View>
-                )}
-              </Pressable>
-
-              {/* Option 2: Quarterly */}
-              <Pressable
-                style={[
-                  styles.changePlanOption,
-                  selectedNewPlan === 'quarterly' && styles.changePlanOptionActive,
-                  {
-                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.6)',
-                    borderColor: selectedNewPlan === 'quarterly' ? '#00F0FF' : colors.cardBorder,
-                  },
-                ]}
-                onPress={() => setSelectedNewPlan('quarterly')}
-              >
-                <View style={styles.changePlanRadio}>
-                  {selectedNewPlan === 'quarterly' && <View style={styles.changePlanRadioDot} />}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.changePlanTitle, { color: colors.text }]}>Quarterly Voyager</Text>
-                  <Text style={[styles.changePlanSub, { color: colors.textSecondary }]}>₹499 / 3 Months (Seasonal)</Text>
-                </View>
-                {proPlan === 'quarterly' && (
-                  <View style={styles.currentPlanPill}>
-                    <Text style={styles.currentPlanPillText}>CURRENT</Text>
-                  </View>
-                )}
-              </Pressable>
-
-              {/* Option 3: Lifetime */}
-              <Pressable
-                style={[
-                  styles.changePlanOption,
-                  selectedNewPlan === 'lifetime' && styles.changePlanOptionActive,
-                  {
-                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(10, 31, 53, 0.6)',
-                    borderColor: selectedNewPlan === 'lifetime' ? '#00F0FF' : colors.cardBorder,
-                  },
-                ]}
-                onPress={() => setSelectedNewPlan('lifetime')}
-              >
-                <View style={styles.changePlanRadio}>
-                  {selectedNewPlan === 'lifetime' && <View style={styles.changePlanRadioDot} />}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.changePlanTitle, { color: colors.text }]}>Lifetime Skipper Pass</Text>
-                  <Text style={[styles.changePlanSub, { color: '#F59E0B' }]}>₹3,999 • One-Time Permanent</Text>
-                </View>
-                {proPlan === 'lifetime' && (
-                  <View style={styles.currentPlanPill}>
-                    <Text style={styles.currentPlanPillText}>CURRENT</Text>
-                  </View>
-                )}
-              </Pressable>
-            </View>
-
-            <Pressable
-              style={styles.receiptDoneBtn}
-              onPress={() => {
-                subscribeToPro(selectedNewPlan);
-                setShowPlanChangeModal(false);
-              }}
-            >
-              <LinearGradient
-                colors={colors.accentGradient || ['#0284C7', '#00F0FF']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.receiptDoneGrad}
-              >
-                <MaterialCommunityIcons name="check" size={18} color="#020B14" />
-                <Text style={styles.receiptDoneText}>CONFIRM & SWITCH PLAN</Text>
               </LinearGradient>
             </Pressable>
           </View>
@@ -1741,9 +1749,9 @@ export function CaptainProfileModal({ visible, onClose }: CaptainProfileModalPro
           logout();
         }}
       />
-    </Modal>
+    </>
   );
-}
+};
 
 const styles = StyleSheet.create({
   backdrop: {
@@ -2374,26 +2382,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
-  tripletRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  tripletCol: {
-    flex: 1,
-    gap: 6,
-  },
-  tripletInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.25)',
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
   saveBtn: {
     borderRadius: 14,
     overflow: 'hidden',
@@ -2412,13 +2400,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   saveText: {
-    color: '#020B14',
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '900',
     letterSpacing: 0.8,
   },
 
-  // 👑 PRO MEMBERSHIP & LICENSE STYLES
+  // 👑 PRO MEMBERSHIP & LICENSE HUD STYLES (Identical to Settings HUD Console)
   statusBadgePill: {
     paddingHorizontal: 9,
     paddingVertical: 3,
@@ -2430,120 +2418,215 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 0.5,
   },
-  proLicenseCard: {
-    borderRadius: 20,
+  proCardContainer: {
+    borderRadius: 18,
     borderWidth: 1.5,
     overflow: 'hidden',
-    marginBottom: 4,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  proCardTopStripe: {
-    height: 4,
-    width: '100%',
-  },
-  proLicenseContent: {
     padding: 16,
     gap: 12,
+    marginBottom: 4,
   },
-  proPlanHeaderRow: {
+  cardTopStripe: {
+    height: 4,
+    marginTop: -16,
+    marginHorizontal: -16,
+    marginBottom: 2,
+  },
+  proMembershipRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  proPlanIconWrap: {
+  proIconBox: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 12,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  proPlanName: {
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
-  proPlanPrice: {
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  verifiedChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    borderColor: '#10B981',
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  verifiedChipText: {
-    color: '#10B981',
-    fontSize: 10,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  renewalInfoBox: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 10,
-    gap: 6,
-  },
-  renewalRowItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  renewalLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  renewalValue: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  certKeyBox: {
+  planTitleBadgeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    gap: 10,
-  },
-  certKeyLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#D97706',
-    letterSpacing: 0.6,
+    gap: 6,
     marginBottom: 2,
   },
-  certKeyValue: {
-    fontSize: 13,
+  proMembershipTitle: {
+    fontSize: 14,
     fontWeight: '800',
-    letterSpacing: 0.8,
+    flex: 1,
   },
-  copyCertBtn: {
+  statusPill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+  },
+  statusPillText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  proMembershipSub: {
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  expiryHudConsole: {
+    borderRadius: 12,
+    borderWidth: 1.5,
+    padding: 12,
+    marginVertical: 4,
+  },
+  hudLifetimeWrap: {
+    paddingVertical: 4,
+  },
+  hudLifetimeLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.4)',
+    gap: 10,
   },
-  copyCertBtnText: {
-    color: '#F59E0B',
-    fontSize: 10,
+  hudHugeInfinity: {
+    fontSize: 32,
+  },
+  hudHeadline: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  hudSubtitle: {
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  hudTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  hudCountdownBox: {
+    flex: 1,
+  },
+  hudSmallLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 2,
+  },
+  hudDaysRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 5,
+  },
+  hudBigNumber: {
+    fontSize: 26,
     fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  hudBigUnit: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  hudDateInfoBox: {
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  hudDatePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  hudDateText: {
+    fontSize: 11,
+  },
+  hudSubInfo: {
+    fontSize: 10,
+  },
+  hudProgressWrap: {
+    marginBottom: 8,
+  },
+  hudProgressTrack: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  hudProgressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  hudProgressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  hudProgressLabelText: {
+    fontSize: 10,
+  },
+  hudCertRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    paddingTop: 8,
+    marginTop: 4,
+  },
+  hudCertLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  hudCertLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  hudCertValue: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  hudCopyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: 'rgba(0, 240, 255, 0.1)',
+  },
+  hudCopyBtnText: {
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  expiringSoonAlertBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderColor: '#EF4444',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginVertical: 6,
+  },
+  expiringSoonAlertTitle: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  expiringSoonAlertDesc: {
+    color: '#FCA5A5',
+    fontSize: 10,
+    marginTop: 2,
+    lineHeight: 14,
   },
   unlockedGrid: {
     flexDirection: 'row',
@@ -2582,55 +2665,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
   },
-  refBonusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(34, 197, 94, 0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(34, 197, 94, 0.25)',
-  },
-  refBonusText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#22C55E',
-  },
-
-  // Trial Card In Profile
-  trialProfileCard: {
-    borderRadius: 18,
-    borderWidth: 1.5,
-    padding: 16,
-    gap: 12,
-    marginBottom: 4,
-  },
-  trialCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  trialCardTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  trialCardSub: {
-    fontSize: 12,
-    lineHeight: 16,
-    marginTop: 2,
-  },
-  trialBarBg: {
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(0, 240, 255, 0.15)',
-    overflow: 'hidden',
-  },
-  trialBarFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
   trialActionRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2649,7 +2683,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   upgradeCtaText: {
-    color: '#020B14',
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 0.5,
@@ -2666,6 +2700,22 @@ const styles = StyleSheet.create({
   referralCtaText: {
     fontSize: 12,
     fontWeight: '700',
+  },
+  refBonusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.25)',
+  },
+  refBonusText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#22C55E',
   },
 
   // Sub-modal Shared Styles
@@ -2776,71 +2826,10 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   receiptDoneText: {
-    color: '#020B14',
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 0.6,
   },
 
-  // Change Plan Card
-  changePlanCard: {
-    width: '100%',
-    maxWidth: 440,
-    borderRadius: 22,
-    borderWidth: 1.5,
-    padding: 20,
-    gap: 14,
-    shadowColor: '#00F0FF',
-    shadowOpacity: 0.25,
-    shadowRadius: 18,
-    elevation: 20,
-  },
-  changePlanList: {
-    gap: 10,
-  },
-  changePlanOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 1.5,
-  },
-  changePlanOptionActive: {
-    borderColor: '#00F0FF',
-  },
-  changePlanRadio: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 2,
-    borderColor: '#00F0FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  changePlanRadioDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#00F0FF',
-  },
-  changePlanTitle: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  changePlanSub: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  currentPlanPill: {
-    backgroundColor: 'rgba(0, 240, 255, 0.15)',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  currentPlanPillText: {
-    color: '#00F0FF',
-    fontSize: 9,
-    fontWeight: '900',
-  },
 });

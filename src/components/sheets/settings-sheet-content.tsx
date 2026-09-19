@@ -49,8 +49,6 @@ export function SettingsSheetContent() {
     isExpiringSoon,
     isProExpired,
     planDisplayName,
-    autoRenew,
-    toggleAutoRenew,
     licenseCertificateId,
     hasReferralBonus,
     bonusProDaysRemaining,
@@ -137,7 +135,6 @@ export function SettingsSheetContent() {
     startDownload,
     cancelDownload,
     refreshOfflineStatus,
-    clearAllTiles,
   } = useOfflineDownload();
 
   const [showAllRegions, setShowAllRegions] = useState(false);
@@ -186,24 +183,6 @@ export function SettingsSheetContent() {
     const lng = location?.longitude ?? 70.3667;
     const region = offlineTileManager.createCurrentAreaRegion(lat, lng);
     handleDownloadRegion(region);
-  };
-
-  const handleClearCache = () => {
-    Alert.alert(
-      'Clear Offline Charts',
-      'Are you sure you want to remove all downloaded offline map tiles? They can be re-downloaded at any time.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear All',
-          style: 'destructive',
-          onPress: async () => {
-            await clearAllTiles();
-            Alert.alert('Cleared', 'All offline map tiles have been cleared.');
-          },
-        },
-      ]
-    );
   };
 
   const handleExportGpx = () => {
@@ -478,33 +457,6 @@ export function SettingsSheetContent() {
                           Expires: <Text style={{ fontWeight: '800' }}>{proFormattedExpiry}</Text>
                         </Text>
                       </View>
-                      <Pressable
-                        style={[
-                          styles.autoRenewPill,
-                          {
-                            backgroundColor: autoRenew
-                              ? 'rgba(16, 185, 129, 0.12)'
-                              : 'rgba(245, 158, 11, 0.12)',
-                            borderColor: autoRenew ? '#10B981' : '#F59E0B',
-                          },
-                        ]}
-                        onPress={toggleAutoRenew}
-                        hitSlop={6}
-                      >
-                        <Ionicons
-                          name={autoRenew ? 'refresh-circle' : 'pause-circle'}
-                          size={13}
-                          color={autoRenew ? '#10B981' : '#F59E0B'}
-                        />
-                        <Text
-                          style={[
-                            styles.autoRenewText,
-                            { color: autoRenew ? '#10B981' : '#F59E0B' },
-                          ]}
-                        >
-                          Auto-Renew: {autoRenew ? 'ON' : 'PAUSED'}
-                        </Text>
-                      </Pressable>
                     </View>
                   </View>
 
@@ -1102,13 +1054,6 @@ export function SettingsSheetContent() {
                   : ' (No maps saved)'}
               </Text>
             </View>
-
-            {storageUsageMb > 0 && (
-              <Pressable style={styles.clearCacheBtn} onPress={handleClearCache}>
-                <Ionicons name="trash-outline" size={14} color="#EF4444" style={{ marginRight: 4 }} />
-                <Text style={styles.clearCacheBtnText}>Clear</Text>
-              </Pressable>
-            )}
           </View>
         </View>
       </View>
@@ -2052,19 +1997,6 @@ const styles = StyleSheet.create({
   storageStatsText: {
     fontSize: 11,
   },
-  clearCacheBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-  },
-  clearCacheBtnText: {
-    color: '#EF4444',
-    fontSize: 11,
-    fontWeight: '700',
-  },
   nearbyHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2344,19 +2276,6 @@ const styles = StyleSheet.create({
   },
   hudSubInfo: {
     fontSize: 10,
-  },
-  autoRenewPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 7,
-    paddingVertical: 2.5,
-    borderRadius: 5,
-    borderWidth: 1,
-  },
-  autoRenewText: {
-    fontSize: 10,
-    fontWeight: '700',
   },
   hudProgressWrap: {
     marginBottom: 8,

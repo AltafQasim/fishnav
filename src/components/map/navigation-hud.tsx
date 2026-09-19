@@ -2,6 +2,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { MapColors } from '@/constants/map-theme';
 import { useAppTheme } from '@/context/theme-context';
 import { UserLocation } from '@/hooks/use-user-location';
 

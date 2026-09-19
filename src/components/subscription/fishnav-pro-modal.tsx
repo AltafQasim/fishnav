@@ -47,10 +47,7 @@ export function FishNavProModal() {
     proProgressPercent,
     isExpiringSoon,
     planDisplayName,
-    autoRenew,
     licenseCertificateId,
-    toggleAutoRenew,
-    restorePurchases,
     hasReferralBonus,
     bonusProDaysRemaining,
     bonusProFormattedExpiry,
@@ -277,28 +274,6 @@ export function FishNavProModal() {
                 <Text style={[styles.trialDesc, { color: colors.textSecondary, marginTop: 4 }]}>
                   License ID: {licenseCertificateId}
                 </Text>
-
-                {proPlan !== 'lifetime' && (
-                  <Pressable
-                    style={[
-                      styles.proToggleRenewBtn,
-                      {
-                        backgroundColor: isLight ? '#FFFFFF' : 'rgba(0, 0, 0, 0.35)',
-                        borderColor: colors.cardBorder,
-                      },
-                    ]}
-                    onPress={toggleAutoRenew}
-                  >
-                    <Ionicons
-                      name={autoRenew ? 'refresh-circle' : 'pause-circle'}
-                      size={16}
-                      color={autoRenew ? '#10B981' : '#F59E0B'}
-                    />
-                    <Text style={[styles.proToggleRenewText, { color: colors.text }]}>
-                      Auto-Renewal: {autoRenew ? 'ACTIVE (Renews automatically)' : 'PAUSED'}
-                    </Text>
-                  </Pressable>
-                )}
               </View>
             ) : hasReferralBonus ? (
               <View
@@ -571,7 +546,7 @@ export function FishNavProModal() {
               <View style={styles.guaranteeRow}>
                 <Ionicons name="shield-checkmark" size={13} color="#22C55E" />
                 <Text style={[styles.guaranteeText, { color: colors.textSecondary }]}>
-                  Secure Marine License • Cancel Anytime • 100% Offline
+                  Secure Marine License • Instant Activation • 100% Offline
                 </Text>
               </View>
             </View>
@@ -886,20 +861,6 @@ const styles = StyleSheet.create({
   guaranteeText: {
     fontSize: 10,
     fontWeight: '600',
-  },
-  proToggleRenewBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginTop: 4,
-  },
-  proToggleRenewText: {
-    fontSize: 12,
-    fontWeight: '700',
   },
   modalLifetimeRow: {
     flexDirection: 'row',

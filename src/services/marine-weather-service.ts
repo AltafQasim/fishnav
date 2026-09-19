@@ -27,6 +27,7 @@ export type MarineConditions = {
   visibilityNm: number; // e.g. 10
   tidalCurrentKnots: number; // e.g. 0.8
   precipitationMm: number; // e.g. 14.5 mm/h
+  relativeHumidity?: number; // e.g. 78%
   weatherCode: number;
   weatherDesc: string; // e.g. "Heavy Rain & Squall"
   nearestPort: NearestPortResult;
@@ -47,6 +48,16 @@ export type HourlyMarineForecast = {
   wave: string; // "1.2m"
   rain: string; // "4.2mm"
   icon: string; // MaterialCommunityIcons name
+  tempNum?: number;
+  windNum?: number;
+  gustsNum?: number;
+  waveNum?: number;
+  rainNum?: number;
+  pressureNum?: number;
+  visibilityNum?: number;
+  currentNum?: number;
+  periodNum?: number;
+  humidityNum?: number;
 };
 
 export type AstronomicalTidePoint = {
@@ -335,6 +346,7 @@ export function getBaselineMarineData(lat: number = 20.902, lon: number = 70.366
       visibilityNm: 9.5,
       tidalCurrentKnots: 0.8,
       precipitationMm,
+      relativeHumidity: 74,
       weatherCode,
       weatherDesc: getWeatherDescription(weatherCode),
       nearestPort,
@@ -348,16 +360,16 @@ export function getBaselineMarineData(lat: number = 20.902, lon: number = 70.366
       ),
     },
     hourly: [
-      { time: 'Now', isoTime: new Date().toISOString(), temp: '28°', wind: '14 kts', wave: '1.3m', rain: '0.0mm', icon: 'weather-partly-cloudy' },
-      { time: '16:00', isoTime: '', temp: '29°', wind: '15 kts', wave: '1.3m', rain: '0.0mm', icon: 'weather-partly-cloudy' },
-      { time: '18:00', isoTime: '', temp: '28°', wind: '13 kts', wave: '1.2m', rain: '0.2mm', icon: 'weather-sunset' },
-      { time: '20:00', isoTime: '', temp: '27°', wind: '12 kts', wave: '1.1m', rain: '0.5mm', icon: 'weather-rainy' },
-      { time: '22:00', isoTime: '', temp: '26°', wind: '14 kts', wave: '1.2m', rain: '1.5mm', icon: 'weather-pouring' },
-      { time: '00:00', isoTime: '', temp: '25°', wind: '16 kts', wave: '1.3m', rain: '3.0mm', icon: 'weather-lightning' },
-      { time: 'Tomorrow 03:00', isoTime: '', temp: '25°', wind: '18 kts', wave: '1.4m', rain: '4.5mm', icon: 'weather-lightning' },
-      { time: 'Tomorrow 06:00', isoTime: '', temp: '26°', wind: '15 kts', wave: '1.3m', rain: '2.0mm', icon: 'weather-rainy' },
-      { time: 'Tomorrow 09:00', isoTime: '', temp: '28°', wind: '14 kts', wave: '1.2m', rain: '0.8mm', icon: 'weather-partly-cloudy' },
-      { time: 'Tomorrow 12:00', isoTime: '', temp: '30°', wind: '13 kts', wave: '1.1m', rain: '0.0mm', icon: 'weather-sunny' },
+      { time: 'Now', isoTime: new Date().toISOString(), temp: '28°', wind: '14 kts', wave: '1.3m', rain: '0.0mm', icon: 'weather-partly-cloudy', tempNum: 28, windNum: 14, gustsNum: 20, waveNum: 1.3, rainNum: 0.0, pressureNum: 1012, visibilityNum: 9.5, currentNum: 0.8, periodNum: 7.2, humidityNum: 74 },
+      { time: '16:00', isoTime: '', temp: '29°', wind: '15 kts', wave: '1.3m', rain: '0.0mm', icon: 'weather-partly-cloudy', tempNum: 29, windNum: 15, gustsNum: 22, waveNum: 1.3, rainNum: 0.0, pressureNum: 1011, visibilityNum: 9.8, currentNum: 1.2, periodNum: 7.0, humidityNum: 72 },
+      { time: '18:00', isoTime: '', temp: '28°', wind: '13 kts', wave: '1.2m', rain: '0.2mm', icon: 'weather-sunset', tempNum: 28, windNum: 13, gustsNum: 18, waveNum: 1.2, rainNum: 0.2, pressureNum: 1011, visibilityNum: 9.2, currentNum: 1.4, periodNum: 6.8, humidityNum: 76 },
+      { time: '20:00', isoTime: '', temp: '27°', wind: '12 kts', wave: '1.1m', rain: '0.5mm', icon: 'weather-rainy', tempNum: 27, windNum: 12, gustsNum: 17, waveNum: 1.1, rainNum: 0.5, pressureNum: 1010, visibilityNum: 8.5, currentNum: 0.9, periodNum: 6.5, humidityNum: 80 },
+      { time: '22:00', isoTime: '', temp: '26°', wind: '14 kts', wave: '1.2m', rain: '1.5mm', icon: 'weather-pouring', tempNum: 26, windNum: 14, gustsNum: 21, waveNum: 1.2, rainNum: 1.5, pressureNum: 1009, visibilityNum: 7.2, currentNum: 0.5, periodNum: 6.8, humidityNum: 84 },
+      { time: '00:00', isoTime: '', temp: '25°', wind: '16 kts', wave: '1.3m', rain: '3.0mm', icon: 'weather-lightning', tempNum: 25, windNum: 16, gustsNum: 24, waveNum: 1.3, rainNum: 3.0, pressureNum: 1008, visibilityNum: 5.8, currentNum: 1.1, periodNum: 7.1, humidityNum: 88 },
+      { time: 'Tomorrow 03:00', isoTime: '', temp: '25°', wind: '18 kts', wave: '1.4m', rain: '4.5mm', icon: 'weather-lightning', tempNum: 25, windNum: 18, gustsNum: 27, waveNum: 1.4, rainNum: 4.5, pressureNum: 1007, visibilityNum: 4.5, currentNum: 1.6, periodNum: 7.4, humidityNum: 91 },
+      { time: 'Tomorrow 06:00', isoTime: '', temp: '26°', wind: '15 kts', wave: '1.3m', rain: '2.0mm', icon: 'weather-rainy', tempNum: 26, windNum: 15, gustsNum: 22, waveNum: 1.3, rainNum: 2.0, pressureNum: 1009, visibilityNum: 6.0, currentNum: 1.3, periodNum: 7.2, humidityNum: 85 },
+      { time: 'Tomorrow 09:00', isoTime: '', temp: '28°', wind: '14 kts', wave: '1.2m', rain: '0.8mm', icon: 'weather-partly-cloudy', tempNum: 28, windNum: 14, gustsNum: 19, waveNum: 1.2, rainNum: 0.8, pressureNum: 1011, visibilityNum: 8.8, currentNum: 0.7, periodNum: 6.9, humidityNum: 77 },
+      { time: 'Tomorrow 12:00', isoTime: '', temp: '30°', wind: '13 kts', wave: '1.1m', rain: '0.0mm', icon: 'weather-sunny', tempNum: 30, windNum: 13, gustsNum: 17, waveNum: 1.1, rainNum: 0.0, pressureNum: 1012, visibilityNum: 10.0, currentNum: 0.9, periodNum: 6.6, humidityNum: 70 },
     ],
     tides,
   };
@@ -377,7 +389,7 @@ export async function fetchLiveMarineForecast(
   const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_direction,wave_period&wind_speed_unit=kn&forecast_days=3`;
 
   // Atmospheric API: rain, precipitation, weather_code, wind speed & gusts, pressure
-  const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code,surface_pressure,wind_speed_10m,wind_gusts_10m,wind_direction_10m&hourly=temperature_2m,surface_pressure,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code,precipitation,rain,visibility&wind_speed_unit=kn&forecast_days=3`;
+  const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code,surface_pressure,wind_speed_10m,wind_gusts_10m,wind_direction_10m&hourly=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code,precipitation,rain,visibility&wind_speed_unit=kn&forecast_days=3`;
 
   const [marineRes, atmosRes] = await Promise.all([
     fetch(marineUrl, { headers: { Accept: 'application/json' } }),
@@ -423,6 +435,7 @@ export async function fetchLiveMarineForecast(
 
   const currentVisibilityM = atmosHourly.visibility?.[currentIndex] ?? 18000;
   const currentVisibilityNm = Number((currentVisibilityM / 1852).toFixed(1));
+  const currentRelativeHumidity = Math.round(atmosCurrent?.relative_humidity_2m ?? atmosHourly.relative_humidity_2m?.[currentIndex] ?? 74);
 
   // Critical Safety Advisory
   const safetyAdvisory = evaluateSafetyAdvisory(
@@ -457,9 +470,15 @@ export async function fetchLiveMarineForecast(
 
     const temp = Math.round(atmosHourly.temperature_2m?.[idx] ?? 28);
     const wind = Math.round(atmosHourly.wind_speed_10m?.[idx] ?? 12);
+    const gusts = Math.round(atmosHourly.wind_gusts_10m?.[idx] ?? Math.round(wind * 1.35));
     const wave = Number((marineHourly.wave_height?.[idx] ?? 1.1).toFixed(1));
     const rain = Number((atmosHourly.precipitation?.[idx] ?? 0).toFixed(1));
+    const pressure = Math.round(atmosHourly.surface_pressure?.[idx] ?? 1012);
     const code = atmosHourly.weather_code?.[idx] ?? 1;
+    const visibility = Number(((atmosHourly.visibility?.[idx] ?? 18000) / 1852).toFixed(1));
+    const current = Number((0.6 + 0.8 * Math.abs(Math.sin((hourNum / 12.42) * 2 * Math.PI))).toFixed(1));
+    const period = Number((marineHourly.wave_period?.[idx] ?? 7.0).toFixed(1));
+    const humidity = Math.round(atmosHourly.relative_humidity_2m?.[idx] ?? 74);
 
     hourlyCards.push({
       time: dayPrefix,
@@ -469,6 +488,16 @@ export async function fetchLiveMarineForecast(
       wave: `${wave}m`,
       rain: `${rain}mm`,
       icon: weatherCodeToIcon(code, hourNum),
+      tempNum: temp,
+      windNum: wind,
+      gustsNum: gusts,
+      waveNum: wave,
+      rainNum: rain,
+      pressureNum: pressure,
+      visibilityNum: visibility,
+      currentNum: current,
+      periodNum: period,
+      humidityNum: humidity,
     });
   }
 
@@ -496,6 +525,7 @@ export async function fetchLiveMarineForecast(
       visibilityNm: currentVisibilityNm,
       tidalCurrentKnots: 0.8,
       precipitationMm: currentPrecipitation,
+      relativeHumidity: currentRelativeHumidity,
       weatherCode: currentWeatherCode,
       weatherDesc: getWeatherDescription(currentWeatherCode),
       nearestPort,

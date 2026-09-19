@@ -29,7 +29,7 @@ import { CalendarSheetContent } from '@/components/sheets/calendar-sheet-content
 import { CompassSheetContent } from '@/components/sheets/compass-sheet-content';
 import { SettingsSheetContent } from '@/components/sheets/settings-sheet-content';
 import { WaypointsSheetContent } from '@/components/sheets/waypoints-sheet-content';
-import { WeatherSheetContent } from '@/components/sheets/weather-sheet-content';
+import { WeatherSheetContent } from '@/components/sheets/marine-weather-sheet';
 import { SlidingSheetContainer } from '@/components/ui/sliding-sheet-container';
 import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';

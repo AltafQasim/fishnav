@@ -114,7 +114,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const [proPlan, setProPlan] = useState<SubscriptionPlan | null>(null);
   const [proExpiresAt, setProExpiresAt] = useState<string | null>(null);
   const [proExpiresAtMs, setProExpiresAtMs] = useState<number | null>(null);
-  const [autoRenew, setAutoRenew] = useState(true);
+  const [autoRenew, setAutoRenew] = useState(false);
 
   // 2. Trial Timestamp State
   const [trialStartDate, setTrialStartDate] = useState<number>(() => Date.now());
@@ -235,7 +235,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       newCount: number,
       newDays: number,
       newBonusExpiry: number | null,
-      newAutoRenew: boolean = true,
+      newAutoRenew: boolean = false,
       newExpiresAtMs?: number | null,
       newExpiresAtStr?: string | null
     ) => {
@@ -369,16 +369,16 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
 
       setIsPro(true);
       setProPlan(plan);
-      setAutoRenew(true);
+      setAutoRenew(false);
       setProExpiresAt(expiresStr);
       setProExpiresAtMs(expiryMs);
 
-      persistState(true, plan, trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, true, expiryMs, expiresStr);
+      persistState(true, plan, trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, false, expiryMs, expiresStr);
       setIsProModalVisible(false);
 
       Alert.alert(
         '👑 Welcome to FishNav Pro!',
-        `Your ${plan.toUpperCase()} marine navigation license is now active.\n\n📅 Valid Through: ${expiresStr}${plan !== 'lifetime' ? ' (Auto-renews)' : ''}\n⚓ Certificate ID: ${licenseCertificateId}`
+        `Your ${plan.toUpperCase()} marine navigation license is now active.\n\n📅 Valid Through: ${expiresStr}\n⚓ Certificate ID: ${licenseCertificateId}`
       );
     },
     [trialStartDate, referralCount, referralDaysEarned, bonusProExpiry, licenseCertificateId, persistState]
@@ -500,8 +500,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     setProExpiresAt(null);
     setProExpiresAtMs(null);
     setBonusProExpiry(null);
-    setAutoRenew(true);
-    persistState(false, null, nowTs, referralCount, referralDaysEarned, null, true, null, null);
+    setAutoRenew(false);
+    persistState(false, null, nowTs, referralCount, referralDaysEarned, null, false, null, null);
     Alert.alert('Trial Reset', '3-Day Free Trial has been reset back to Day 1 (72 hours remaining).');
   }, [referralCount, referralDaysEarned, persistState]);
 
@@ -513,8 +513,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     setProExpiresAt(null);
     setProExpiresAtMs(null);
     setBonusProExpiry(null);
-    setAutoRenew(true);
-    persistState(false, null, fourDaysAgo, referralCount, referralDaysEarned, null, true, null, null);
+    setAutoRenew(false);
+    persistState(false, null, fourDaysAgo, referralCount, referralDaysEarned, null, false, null, null);
     Alert.alert('Trial Expired', 'Trial simulated as expired (> 72 hours passed). Pro modal is now locked on screen.');
   }, [referralCount, referralDaysEarned, persistState]);
 
