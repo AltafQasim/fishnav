@@ -16,9 +16,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapColors } from '@/constants/map-theme';
 import { useAuth } from '@/context/auth-context';
+import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
 import { useWaypoints } from '@/context/waypoints-context';
+import { LanguageDropdown } from '@/components/ui/language-dropdown';
 
 type MoreOptionsModalProps = {
   visible: boolean;
@@ -41,16 +43,17 @@ export function MoreOptionsModal({
   const { waypoints } = useWaypoints();
   const { savedTrips } = useTripTracking();
   const { colors, activeTheme } = useAppTheme();
+  const { t } = useLanguage();
   const isLight = activeTheme === 'light';
 
   const handleSosCall = () => {
     Alert.alert(
-      '🚨 Maritime Distress Call',
-      'Indian Coast Guard Maritime Search & Rescue Hotline: 1554\n\nAre you sure you want to dial emergency rescue?',
+      t('hub.sos_alert_title', '🚨 Maritime Distress Call'),
+      t('hub.sos_alert_body', 'Indian Coast Guard Maritime Search & Rescue Hotline: 1554\n\nAre you sure you want to dial emergency rescue?'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('btn.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: 'Call 1554 (Coast Guard)',
+          text: t('hub.sos_call_btn', 'Call 1554 (Coast Guard)'),
           style: 'destructive',
           onPress: () => {
             Linking.openURL('tel:1554').catch(() => {
@@ -97,9 +100,9 @@ export function MoreOptionsModal({
                 <MaterialCommunityIcons name="apps" size={22} color={colors.accent} />
               </View>
               <View>
-                <Text style={[styles.title, { color: colors.text }]}>Marine Command Hub</Text>
+                <Text style={[styles.title, { color: colors.text }]}>{t('hub.title', 'Marine Command Hub')}</Text>
                 <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                  {captain?.vesselName || 'Sea Hunter II'} • Quick Access & Tools
+                  {captain?.vesselName || 'Sea Hunter II'} • {t('hub.subtitle', 'Quick Access & Tools')}
                 </Text>
               </View>
             </View>
@@ -128,22 +131,28 @@ export function MoreOptionsModal({
               ]}>
               <View style={styles.metricItem}>
                 <Text style={[styles.metricVal, { color: colors.accent }]}>{waypoints.length}</Text>
-                <Text style={[styles.metricLabel, { color: colors.textMuted }]}>WAYPOINTS</Text>
+                <Text style={[styles.metricLabel, { color: colors.textMuted }]}>{t('hub.waypoints', 'WAYPOINTS')}</Text>
               </View>
               <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
               <View style={styles.metricItem}>
                 <Text style={[styles.metricVal, { color: colors.accent }]}>{savedTrips.length}</Text>
-                <Text style={[styles.metricLabel, { color: colors.textMuted }]}>VOYAGES</Text>
+                <Text style={[styles.metricLabel, { color: colors.textMuted }]}>{t('hub.voyages', 'VOYAGES')}</Text>
               </View>
               <View style={[styles.metricDivider, { backgroundColor: colors.border }]} />
               <View style={styles.metricItem}>
                 <Text style={[styles.metricVal, { color: colors.accent }]}>100%</Text>
-                <Text style={[styles.metricLabel, { color: colors.textMuted }]}>OFFLINE</Text>
+                <Text style={[styles.metricLabel, { color: colors.textMuted }]}>{t('hub.offline', 'OFFLINE')}</Text>
               </View>
             </View>
 
+            {/* Section: Language Dropdown Selector */}
+            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>{t('hub.language_title', 'APP LANGUAGE')}</Text>
+            <View style={{ marginBottom: 12 }}>
+              <LanguageDropdown compact />
+            </View>
+
             {/* Section: Primary Marine Tools */}
-            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>PRIMARY NAVIGATION TOOLS</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>{t('hub.primary_tools', 'PRIMARY NAVIGATION TOOLS')}</Text>
             <View style={styles.grid}>
               <Pressable
                 style={[
@@ -161,8 +170,8 @@ export function MoreOptionsModal({
                 <View style={[styles.gridIcon, { backgroundColor: 'rgba(0, 240, 255, 0.15)' }]}>
                   <MaterialCommunityIcons name="map-marker-path" size={22} color="#00F0FF" />
                 </View>
-                <Text style={[styles.gridTitle, { color: colors.text }]}>Trips Logbook</Text>
-                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Recorded voyage tracks</Text>
+                <Text style={[styles.gridTitle, { color: colors.text }]}>{t('hub.trips_log', 'Trips Logbook')}</Text>
+                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{t('hub.trips_log_desc', 'Recorded voyage tracks')}</Text>
               </Pressable>
 
               <Pressable
@@ -181,8 +190,8 @@ export function MoreOptionsModal({
                 <View style={[styles.gridIcon, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
                   <Ionicons name="partly-sunny" size={22} color="#38BDF8" />
                 </View>
-                <Text style={[styles.gridTitle, { color: colors.text }]}>Weather & Tides</Text>
-                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Wind, swell & tides</Text>
+                <Text style={[styles.gridTitle, { color: colors.text }]}>{t('hub.weather_radar', 'Weather & Tides')}</Text>
+                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{t('hub.weather_radar_desc', 'Wind, swell & tides')}</Text>
               </Pressable>
 
               <Pressable
@@ -201,8 +210,8 @@ export function MoreOptionsModal({
                 <View style={[styles.gridIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
                   <MaterialCommunityIcons name="compass" size={22} color="#10B981" />
                 </View>
-                <Text style={[styles.gridTitle, { color: colors.text }]}>Marine Compass</Text>
-                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Gyro lubber line</Text>
+                <Text style={[styles.gridTitle, { color: colors.text }]}>{t('hub.compass', 'Marine Compass')}</Text>
+                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{t('hub.compass_desc', 'Gyro lubber line')}</Text>
               </Pressable>
 
               <Pressable
@@ -221,8 +230,8 @@ export function MoreOptionsModal({
                 <View style={[styles.gridIcon, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
                   <Ionicons name="moon" size={22} color="#F59E0B" />
                 </View>
-                <Text style={[styles.gridTitle, { color: colors.text }]}>Solunar Calendar</Text>
-                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Fish feeding activity</Text>
+                <Text style={[styles.gridTitle, { color: colors.text }]}>{t('hub.solunar', 'Solunar Calendar')}</Text>
+                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{t('hub.solunar_desc', 'Fish feeding activity')}</Text>
               </Pressable>
 
               <Pressable
@@ -241,8 +250,8 @@ export function MoreOptionsModal({
                 <View style={[styles.gridIcon, { backgroundColor: 'rgba(139, 92, 246, 0.15)' }]}>
                   <Ionicons name="location" size={22} color="#A78BFA" />
                 </View>
-                <Text style={[styles.gridTitle, { color: colors.text }]}>Fishing Spots</Text>
-                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Ghol, Tuna & reefs</Text>
+                <Text style={[styles.gridTitle, { color: colors.text }]}>{t('hub.spots', 'Fishing Spots')}</Text>
+                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{t('hub.spots_desc', 'Ghol, Tuna & reefs')}</Text>
               </Pressable>
 
               <Pressable
@@ -261,13 +270,13 @@ export function MoreOptionsModal({
                 <View style={[styles.gridIcon, { backgroundColor: 'rgba(148, 163, 184, 0.15)' }]}>
                   <Ionicons name="settings-sharp" size={22} color={isLight ? '#64748B' : '#CBD5E1'} />
                 </View>
-                <Text style={[styles.gridTitle, { color: colors.text }]}>Vessel Profile</Text>
-                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>Alarms & telemetry</Text>
+                <Text style={[styles.gridTitle, { color: colors.text }]}>{t('hub.settings', 'Vessel Profile')}</Text>
+                <Text style={[styles.gridSub, { color: colors.textSecondary }]}>{t('hub.settings_desc', 'Alarms & telemetry')}</Text>
               </Pressable>
             </View>
 
             {/* Section: Chart Actions */}
-            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>CHART ACTIONS</Text>
+            <Text style={[styles.sectionHeader, { color: colors.textMuted }]}>{t('map.layers.subtitle', 'CHART ACTIONS')}</Text>
             <View
               style={[
                 styles.actionsList,
@@ -292,8 +301,8 @@ export function MoreOptionsModal({
                     <Ionicons name="navigate-circle" size={20} color={colors.accent} />
                   </View>
                   <View style={styles.actionTextWrap}>
-                    <Text style={[styles.actionTitle, { color: colors.text }]}>Go to GPS Coordinates</Text>
-                    <Text style={[styles.actionSub, { color: colors.textSecondary }]}>Enter decimal or nautical coordinates</Text>
+                    <Text style={[styles.actionTitle, { color: colors.text }]}>{t('hub.coords', 'Go to GPS Coordinates')}</Text>
+                    <Text style={[styles.actionSub, { color: colors.textSecondary }]}>{t('hub.coords_desc', 'Enter decimal or nautical coordinates')}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
                 </Pressable>
@@ -315,8 +324,8 @@ export function MoreOptionsModal({
                     <Ionicons name="layers" size={20} color="#38BDF8" />
                   </View>
                   <View style={styles.actionTextWrap}>
-                    <Text style={[styles.actionTitle, { color: colors.text }]}>Map Layers & Nautical Details</Text>
-                    <Text style={[styles.actionSub, { color: colors.textSecondary }]}>Satellite, bathymetric contours, seamarks</Text>
+                    <Text style={[styles.actionTitle, { color: colors.text }]}>{t('hub.layers', 'Map Layers & Nautical Details')}</Text>
+                    <Text style={[styles.actionSub, { color: colors.textSecondary }]}>{t('hub.layers_desc', 'Satellite, bathymetric contours, seamarks')}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
                 </Pressable>
@@ -343,9 +352,9 @@ export function MoreOptionsModal({
                 <Ionicons name="warning" size={22} color="#EF4444" />
               </View>
               <View style={styles.sosTextWrap}>
-                <Text style={styles.sosTitle}>EMERGENCY COAST GUARD SOS</Text>
+                <Text style={styles.sosTitle}>{t('hub.sos_title', 'EMERGENCY COAST GUARD SOS')}</Text>
                 <Text style={[styles.sosSub, { color: isLight ? '#DC2626' : '#FCA5A5' }]}>
-                  Toll-free 24x7 Marine Rescue: 1554
+                  {t('hub.sos_desc', 'Toll-free 24x7 Marine Rescue: 1554')}
                 </Text>
               </View>
               <Ionicons name="call" size={18} color="#EF4444" />

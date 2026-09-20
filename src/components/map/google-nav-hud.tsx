@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NavigationCompassRose } from '@/components/compass/navigation-compass-rose';
+import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
 import { etaFromNm, formatNm } from '@/utils/geo';
@@ -43,6 +44,7 @@ export function GoogleNavHud({
 }: GoogleNavHudProps) {
   const insets = useSafeAreaInsets();
   const { colors, isLight } = useAppTheme();
+  const { t } = useLanguage();
   const [showFullCompass, setShowFullCompass] = useState(false);
 
   const {
@@ -63,6 +65,20 @@ export function GoogleNavHud({
     resumeTracking,
     exitNavigation,
   } = useTripTracking();
+
+  const getLocalizedSteer = (instr: string) => {
+    const upper = (instr || '').toUpperCase();
+    if (upper.includes('HOLD COURSE') || upper.includes('ON COURSE')) {
+      return t('hud.hold_course', 'HOLD COURSE');
+    }
+    if (upper.includes('PORT')) {
+      return t('hud.steer_port', 'STEER PORT (LEFT)');
+    }
+    if (upper.includes('STARBOARD')) {
+      return t('hud.steer_starboard', 'STEER STARBOARD (RIGHT)');
+    }
+    return instr;
+  };
 
   // Format elapsed time as HH:MM:SS
   const formatTime = (totalSec: number) => {
@@ -102,9 +118,9 @@ export function GoogleNavHud({
           {/* Full Compass Header */}
           <View style={[styles.fullCompassHeader, { borderBottomColor: colors.divider }]}>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.fullCompassPreTitle, { color: colors.accent }]}>MARINE STEERING COCKPIT</Text>
+              <Text style={[styles.fullCompassPreTitle, { color: colors.accent }]}>{t('hud.steering_cockpit', 'MARINE STEERING COCKPIT')}</Text>
               <Text style={[styles.fullCompassTitle, { color: colors.text }]} numberOfLines={1}>
-                {targetSpot ? `🎯 ${targetSpot.name}` : 'Free Navigation'}
+                {targetSpot ? `🎯 ${targetSpot.name}` : t('hud.free_nav', 'Free Navigation')}
               </Text>
             </View>
             <Pressable
@@ -119,7 +135,7 @@ export function GoogleNavHud({
               hitSlop={8}
             >
               <Ionicons name="map" size={16} color={colors.accent} />
-              <Text style={[styles.closeFullCompassText, { color: colors.accent }]}>VIEW MAP</Text>
+              <Text style={[styles.closeFullCompassText, { color: colors.accent }]}>{t('btn.view', 'VIEW MAP')}</Text>
             </Pressable>
           </View>
 
@@ -151,7 +167,7 @@ export function GoogleNavHud({
                 ]}
               >
                 <Text style={[styles.fullSteerBadgeText, isLight && !isOnCourse && { color: colors.accent }]}>
-                  {steeringInstruction.toUpperCase()}
+                  {getLocalizedSteer(steeringInstruction)}
                 </Text>
               </View>
             </View>
@@ -168,7 +184,7 @@ export function GoogleNavHud({
                 },
               ]}
             >
-              <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>TARGET BEARING</Text>
+              <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>{t('hud.bearing', 'TARGET BEARING')}</Text>
               <Text style={[styles.fullTelemVal, { color: colors.text }]}>
                 {targetBearing != null
                   ? `${Math.round(targetBearing)}° ${getCardinal(targetBearing)}`
@@ -184,7 +200,7 @@ export function GoogleNavHud({
                 },
               ]}
             >
-              <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>DISTANCE</Text>
+              <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>{t('cockpit.distance', 'DISTANCE')}</Text>
               <Text style={[styles.fullTelemVal, { color: colors.text }]}>{formatNm(remainingDist)}</Text>
             </View>
             <View
@@ -196,7 +212,7 @@ export function GoogleNavHud({
                 },
               ]}
             >
-              <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>BOAT SPEED</Text>
+              <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>{t('cockpit.speed', 'BOAT SPEED')}</Text>
               <Text style={[styles.fullTelemVal, { color: colors.text }]}>
                 {currentSpeedKnots.toFixed(1)} <Text style={[styles.unitSmall, { color: colors.accent }]}>kts</Text>
               </Text>
@@ -210,7 +226,7 @@ export function GoogleNavHud({
                 },
               ]}
             >
-              <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>EST. ARRIVAL</Text>
+              <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>{t('cockpit.eta', 'EST. ARRIVAL')}</Text>
               <Text style={[styles.fullTelemVal, { color: colors.text }]}>{etaText}</Text>
             </View>
           </View>
@@ -225,7 +241,7 @@ export function GoogleNavHud({
               >
                 <View style={[styles.recDot, isPaused && styles.recDotPaused]} />
                 <Text style={styles.recText}>
-                  {isPaused ? 'REC PAUSED • RESUME' : `REC ${formatTime(elapsedSeconds)} • STOP`}
+                  {isPaused ? `REC ${t('btn.pause', 'PAUSED')} • ${t('btn.resume', 'RESUME')}` : `REC ${formatTime(elapsedSeconds)} • ${t('btn.stop', 'STOP')}`}
                 </Text>
               </Pressable>
             ) : (
@@ -240,14 +256,14 @@ export function GoogleNavHud({
                 onPress={startTripRecording}
               >
                 <Ionicons name="radio-button-on" size={14} color={colors.accent} />
-                <Text style={[styles.startRecordText, { color: colors.accent }]}>RECORD TRIP</Text>
+                <Text style={[styles.startRecordText, { color: colors.accent }]}>{t('hud.record_trip', 'RECORD TRIP')}</Text>
               </Pressable>
             )}
 
             {/* Red End Navigation Button */}
             <Pressable style={styles.fullExitBtn} onPress={exitNavigation}>
               <Ionicons name="close-circle-outline" size={18} color="#EF4444" />
-              <Text style={styles.fullExitText}>END NAVIGATION</Text>
+              <Text style={styles.fullExitText}>{t('hud.exit_nav', 'END NAVIGATION')}</Text>
             </Pressable>
           </View>
         </View>
@@ -285,7 +301,7 @@ export function GoogleNavHud({
           >
             <View style={styles.steerHeaderRow}>
               <Text style={styles.primaryInstruction} numberOfLines={1}>
-                {steeringInstruction}
+                {getLocalizedSteer(steeringInstruction)}
               </Text>
               <View style={styles.expandCompassIcon}>
                 <Ionicons name="expand-outline" size={14} color="#00F0FF" />
@@ -293,8 +309,8 @@ export function GoogleNavHud({
             </View>
             <Text style={styles.secondarySub} numberOfLines={1}>
               {targetSpot
-                ? `Destination: ${targetSpot.name} ${targetSpot.depthM ? `(${targetSpot.depthM}m)` : ''}`
-                : `Navigating Course • Live Heading ${userCompassHeading}°`}
+                ? `${t('cockpit.navigating_to', 'NAVIGATING TO')}: ${targetSpot.name} ${targetSpot.depthM ? `(${targetSpot.depthM}m)` : ''}`
+                : `${t('hud.free_nav', 'Navigating Course')} • ${String(userCompassHeading)}°`}
             </Text>
           </Pressable>
 

@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SubscriptionPlan, useSubscription } from '@/context/subscription-context';
+import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 
 const PRO_FEATURES = [
@@ -36,6 +37,7 @@ const PRO_FEATURES = [
 export function FishNavProModal() {
   const insets = useSafeAreaInsets();
   const { colors, isLight } = useAppTheme();
+  const { t } = useLanguage();
   const { width: windowWidth } = useWindowDimensions();
   const {
     isPro,
@@ -63,6 +65,24 @@ export function FishNavProModal() {
     subscribeToPro,
     openReferralModal,
   } = useSubscription();
+
+  const proFeatures = [
+    {
+      icon: 'cloud-offline' as const,
+      title: t('pro.feat_offline_title', '100% Offline Coastal Marine Charts'),
+      desc: t('pro.feat_offline_desc', 'Download high-density bathymetric tiles for zero-connectivity offshore voyages.'),
+    },
+    {
+      icon: 'location' as const,
+      title: t('pro.feat_waypoints_title', 'Unlimited Secret Waypoints & Drift Watch'),
+      desc: t('pro.feat_waypoints_desc', 'Store 1,000+ fishing spots, custom reefs, and automatic anchor drag alerts.'),
+    },
+    {
+      icon: 'radio' as const,
+      title: t('pro.feat_sos_title', 'Emergency SOS & Coast Guard Priority'),
+      desc: t('pro.feat_sos_desc', 'Direct Coast Guard SAR channel coordinates & instant position broadcast.'),
+    },
+  ];
 
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan>(proPlan || 'annual');
 
@@ -154,22 +174,22 @@ export function FishNavProModal() {
               </View>
 
               <View style={styles.proPillBadge}>
-                <Text style={styles.proPillBadgeText}>MARITIME MASTER LICENSE</Text>
+                <Text style={styles.proPillBadgeText}>{t('pro.master_license', 'MARITIME MASTER LICENSE')}</Text>
               </View>
 
               <Text style={[styles.mainTitle, { color: colors.text }]}>
                 {isPro
-                  ? 'FishNav Pro Console Active'
+                  ? t('pro.console_active', 'FishNav Pro Console Active')
                   : hasReferralBonus
-                    ? 'Referral Bonus Pass Active'
-                    : 'FishNav Pro Console'}
+                    ? t('pro.referral_pass_active', 'Referral Bonus Pass Active')
+                    : t('pro.title', 'FishNav Pro Console')}
               </Text>
               <Text style={[styles.mainSubtitle, { color: colors.textSecondary }]}>
                 {isPro
-                  ? 'Your vessel navigation license is active. Full bathymetry, AIS radar and AI hotspots are permanently unlocked.'
+                  ? t('pro.active_desc', 'Your vessel navigation license is active. Full bathymetry, AIS radar and AI hotspots are permanently unlocked.')
                   : hasReferralBonus
-                    ? `You have ${bonusProDaysRemaining} days of complimentary Pro access unlocked via Captain Referral. Upgrade anytime for perpetual access.`
-                    : 'Unlock full-spectrum marine bathymetry, AI fishing hotspots, and real-time AIS ship collision radar.'}
+                    ? t('pro.referral_active_desc', `You have complimentary Pro access unlocked via Captain Referral. Upgrade anytime for perpetual access.`)
+                    : t('pro.subtitle', 'Unlock full-spectrum marine bathymetry, AI fishing hotspots, and real-time AIS ship collision radar.')}
               </Text>
             </View>
 
@@ -197,12 +217,12 @@ export function FishNavProModal() {
                     ]}
                   >
                     {proPlan === 'lifetime'
-                      ? 'LIFETIME SKIPPER LICENSE ACTIVE'
+                      ? t('pro.lifetime_active', 'LIFETIME SKIPPER LICENSE ACTIVE')
                       : isExpiringSoon
-                        ? `LICENSE EXPIRING SOON (${proDaysRemaining}D LEFT)`
+                        ? `${t('pro.expiring_soon', 'LICENSE EXPIRING SOON')} (${proDaysRemaining}D)`
                         : proPlan === 'quarterly'
-                          ? `QUARTERLY VOYAGER (${proDaysRemaining}D LEFT)`
-                          : `ANNUAL MASTER MARINER (${proDaysRemaining}D LEFT)`}
+                          ? `${t('pro.quarterly_title', 'Quarterly Voyager').toUpperCase()} (${proDaysRemaining}D)`
+                          : `${t('pro.annual_title', 'Annual Master Mariner').toUpperCase()} (${proDaysRemaining}D)`}
                   </Text>
                 </View>
 
@@ -212,10 +232,10 @@ export function FishNavProModal() {
                     <Text style={{ fontSize: 24 }}>♾️</Text>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.modalCountdownTitle, { color: colors.text }]}>
-                        PERPETUAL MARINE ACCESS
+                        {t('pro.perpetual_access', 'PERPETUAL MARINE ACCESS')}
                       </Text>
                       <Text style={[styles.trialDesc, { color: colors.textSecondary }]}>
-                        No expiration date • All future bathymetric charts & AIS radar updates included.
+                        {t('pro.perpetual_desc', 'No expiration date • All future bathymetric charts & AIS radar updates included.')}
                       </Text>
                     </View>
                   </View>
@@ -224,7 +244,7 @@ export function FishNavProModal() {
                     <View style={styles.modalCountdownHero}>
                       <View>
                         <Text style={[styles.modalCountdownSub, { color: colors.textSecondary }]}>
-                          TIME REMAINING
+                          {t('pro.time_remaining', 'TIME REMAINING')}
                         </Text>
                         <Text
                           style={[
@@ -232,13 +252,13 @@ export function FishNavProModal() {
                             { color: isExpiringSoon ? '#EF4444' : '#F59E0B' },
                           ]}
                         >
-                          {proDaysRemaining} <Text style={styles.modalCountdownUnit}>DAYS LEFT</Text>
+                          {proDaysRemaining} <Text style={styles.modalCountdownUnit}>{t('pro.days_left', 'DAYS LEFT')}</Text>
                         </Text>
                       </View>
                       <View style={styles.modalExpiryDatePill}>
                         <Ionicons name="calendar" size={13} color={isExpiringSoon ? '#EF4444' : '#F59E0B'} />
                         <Text style={[styles.modalExpiryDateText, { color: colors.text }]}>
-                          Valid Until: <Text style={{ fontWeight: '800' }}>{proFormattedExpiry}</Text>
+                          {t('pro.valid_until', 'Valid Until:')} <Text style={{ fontWeight: '800' }}>{proFormattedExpiry}</Text>
                         </Text>
                       </View>
                     </View>
@@ -257,7 +277,7 @@ export function FishNavProModal() {
                     </View>
                     <View style={styles.modalProgressLabels}>
                       <Text style={[styles.modalProgressLabelText, { color: colors.textMuted }]}>
-                        {proPlan === 'quarterly' ? '90-Day Cycle' : '1-Year License Cycle'}
+                        {proPlan === 'quarterly' ? t('pro.cycle_90', '90-Day Cycle') : t('pro.cycle_365', '1-Year License Cycle')}
                       </Text>
                       <Text
                         style={[
@@ -265,14 +285,14 @@ export function FishNavProModal() {
                           { color: isExpiringSoon ? '#EF4444' : '#F59E0B', fontWeight: '700' },
                         ]}
                       >
-                        {proDaysRemaining} days remaining ({Math.max(1, 100 - proProgressPercent)}%)
+                        {proDaysRemaining} {t('settings.days_remaining', 'days remaining')} ({Math.max(1, 100 - proProgressPercent)}%)
                       </Text>
                     </View>
                   </View>
                 )}
 
                 <Text style={[styles.trialDesc, { color: colors.textSecondary, marginTop: 4 }]}>
-                  License ID: {licenseCertificateId}
+                  {t('settings.license_id', 'LICENSE ID:')} {licenseCertificateId}
                 </Text>
               </View>
             ) : hasReferralBonus ? (
@@ -288,12 +308,12 @@ export function FishNavProModal() {
                 <View style={styles.trialHeaderRow}>
                   <MaterialCommunityIcons name="gift-open" size={20} color="#22C55E" />
                   <Text style={[styles.trialTitle, { color: '#22C55E' }]}>
-                    REFERRAL PASS ACTIVE • {bonusProDaysRemaining} DAYS FREE
+                    {t('settings.status_referral_pass', 'REFERRAL PASS')} • {bonusProDaysRemaining} {t('settings.days_free', 'DAYS FREE')}
                   </Text>
                 </View>
 
                 <Text style={[styles.trialDesc, { color: colors.textSecondary }]}>
-                  Complimentary Pro access earned via Captain Referral. Enjoy all offshore features with zero recurring charges.
+                  {t('pro.referral_active_desc', 'Complimentary Pro access earned via Captain Referral. Enjoy all offshore features with zero recurring charges.')}
                 </Text>
               </View>
             ) : (
@@ -321,15 +341,15 @@ export function FishNavProModal() {
                     ]}
                   >
                     {isTrialExpired
-                      ? '3-DAY FREE TRIAL EXPIRED'
-                      : `3-DAY TRIAL ACTIVE • ${trialDaysRemaining} DAYS LEFT`}
+                      ? t('settings.trial_ended', '3-DAY FREE TRIAL EXPIRED')
+                      : `${t('settings.status_active_trial', '3-DAY TRIAL ACTIVE')} • ${trialDaysRemaining} ${t('pro.days_left', 'DAYS LEFT')}`}
                   </Text>
                 </View>
 
                 <Text style={[styles.trialDesc, { color: colors.textSecondary }]}>
                   {isTrialExpired
-                    ? 'Your 72-hour trial has ended. Upgrade to Pro to continue full offshore navigation & bathymetry.'
-                    : `You have ${trialHoursRemaining} hours left of unrestricted access on your vessel terminal.`}
+                    ? t('settings.trial_ended_desc', 'Your 72-hour trial has ended. Upgrade to Pro to continue full offshore navigation & bathymetry.')
+                    : `${trialHoursRemaining} ${t('weather.hours_left', 'hours left')}`}
                 </Text>
 
                 {/* Countdown Progress Bar */}
@@ -363,13 +383,13 @@ export function FishNavProModal() {
               </View>
               <View style={styles.referralTextCol}>
                 <View style={styles.referralHeaderRow}>
-                  <Text style={[styles.referralTitle, { color: colors.text }]}>Want 10 Days Pro Free?</Text>
+                  <Text style={[styles.referralTitle, { color: colors.text }]}>{t('pro.referral_banner_title', 'Want 10 Days Pro Free?')}</Text>
                   <View style={styles.freeBadge}>
-                    <Text style={styles.freeBadgeText}>+10 DAYS FREE</Text>
+                    <Text style={styles.freeBadgeText}>+10 {t('pro.days_left', 'DAYS FREE').toUpperCase()}</Text>
                   </View>
                 </View>
                 <Text style={[styles.referralDesc, { color: colors.textSecondary }]}>
-                  Invite fellow boat captains with your link. Earn 10 days of free Pro access for each friend!
+                  {t('pro.referral_banner_sub', 'Invite fellow boat captains with your link. Earn 10 days of free Pro access for each friend!')}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#22C55E" />
@@ -378,10 +398,10 @@ export function FishNavProModal() {
             {/* Features Showcase Matrix */}
             <View style={styles.featuresSection}>
               <Text style={[styles.featuresHeading, { color: colors.textSecondary }]}>
-                ALL PRO MARITIME CAPABILITIES INCLUDED
+                {t('pro.features_heading', 'ALL PRO MARITIME CAPABILITIES INCLUDED')}
               </Text>
               <View style={styles.featuresList}>
-                {PRO_FEATURES.map((feat, idx) => (
+                {proFeatures.map((feat, idx) => (
                   <View key={idx} style={styles.featureItem}>
                     <View
                       style={[
@@ -407,10 +427,10 @@ export function FishNavProModal() {
             <View style={styles.plansSection}>
               <Text style={[styles.featuresHeading, { color: colors.textSecondary }]}>
                 {isPro
-                  ? 'SWITCH OR EXTEND VESSEL LICENSE'
+                  ? t('pro.switch_extend', 'SWITCH OR EXTEND VESSEL LICENSE')
                   : hasReferralBonus
-                    ? 'UPGRADE TO PERMANENT VESSEL LICENSE'
-                    : 'CHOOSE VESSEL MEMBERSHIP'}
+                    ? t('pro.switch_extend', 'UPGRADE TO PERMANENT VESSEL LICENSE')
+                    : t('pro.choose_membership', 'CHOOSE VESSEL MEMBERSHIP')}
               </Text>
 
               {/* Plan 1: Annual (Best Value) */}
@@ -426,7 +446,7 @@ export function FishNavProModal() {
                 onPress={() => setSelectedPlan('annual')}
               >
                 <View style={styles.saveBadge}>
-                  <Text style={styles.saveBadgeText}>BEST VALUE • SAVE 50%</Text>
+                  <Text style={styles.saveBadgeText}>{t('pro.best_value', 'BEST VALUE • SAVE 50%')}</Text>
                 </View>
 
                 <View style={styles.planHeaderRow}>
@@ -434,12 +454,12 @@ export function FishNavProModal() {
                     {selectedPlan === 'annual' && <View style={styles.planRadioDot} />}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.planTitle, { color: colors.text }]}>Annual Master Mariner</Text>
-                    <Text style={[styles.planPeriod, { color: colors.textSecondary }]}>Full 12 Months Access</Text>
+                    <Text style={[styles.planTitle, { color: colors.text }]}>{t('pro.annual_title', 'Annual Master Mariner')}</Text>
+                    <Text style={[styles.planPeriod, { color: colors.textSecondary }]}>{t('pro.annual_period', 'Full 12 Months Access')}</Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={[styles.planPrice, { color: colors.text }]}>₹1,499</Text>
-                    <Text style={[styles.planSubPrice, { color: colors.accent }]}>₹125/month</Text>
+                    <Text style={[styles.planSubPrice, { color: colors.accent }]}>₹125/{t('pro.month', 'month')}</Text>
                   </View>
                 </View>
               </Pressable>
@@ -461,12 +481,12 @@ export function FishNavProModal() {
                     {selectedPlan === 'quarterly' && <View style={styles.planRadioDot} />}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.planTitle, { color: colors.text }]}>Quarterly Voyager</Text>
-                    <Text style={[styles.planPeriod, { color: colors.textSecondary }]}>3 Months Seasonal Fishing</Text>
+                    <Text style={[styles.planTitle, { color: colors.text }]}>{t('pro.quarterly_title', 'Quarterly Voyager')}</Text>
+                    <Text style={[styles.planPeriod, { color: colors.textSecondary }]}>{t('pro.quarterly_period', '3 Months Seasonal Fishing')}</Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={[styles.planPrice, { color: colors.text }]}>₹499</Text>
-                    <Text style={[styles.planSubPrice, { color: colors.textSecondary }]}>₹166/month</Text>
+                    <Text style={[styles.planSubPrice, { color: colors.textSecondary }]}>₹166/{t('pro.month', 'month')}</Text>
                   </View>
                 </View>
               </Pressable>
@@ -488,12 +508,12 @@ export function FishNavProModal() {
                     {selectedPlan === 'lifetime' && <View style={styles.planRadioDot} />}
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.planTitle, { color: colors.text }]}>Lifetime Skipper Pass</Text>
-                    <Text style={[styles.planPeriod, { color: colors.textSecondary }]}>One-Time Permanent License</Text>
+                    <Text style={[styles.planTitle, { color: colors.text }]}>{t('pro.lifetime_title', 'Lifetime Skipper Pass')}</Text>
+                    <Text style={[styles.planPeriod, { color: colors.textSecondary }]}>{t('pro.lifetime_period', 'One-Time Permanent License')}</Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={[styles.planPrice, { color: colors.text }]}>₹3,999</Text>
-                    <Text style={[styles.planSubPrice, { color: '#F59E0B' }]}>Forever</Text>
+                    <Text style={[styles.planSubPrice, { color: '#F59E0B' }]}>{t('pro.forever', 'Forever')}</Text>
                   </View>
                 </View>
               </Pressable>
@@ -521,11 +541,11 @@ export function FishNavProModal() {
                 <Text style={styles.upgradeBtnText}>
                   {isPro
                     ? selectedPlan === proPlan
-                      ? 'PRO LICENSE ACTIVE • DONE'
-                      : `SWITCH TO ${selectedPlan.toUpperCase()} PLAN`
+                      ? t('pro.license_active', 'PRO LICENSE ACTIVE • DONE')
+                      : `${t('pro.switch_extend', 'SWITCH TO').toUpperCase()} ${selectedPlan.toUpperCase()}`
                     : hasReferralBonus
-                      ? `ACTIVATE PERMANENT ${selectedPlan.toUpperCase()} PRO`
-                      : 'UPGRADE TO FISHNAV PRO'}
+                      ? `${t('pro.upgrade_btn', 'ACTIVATE').toUpperCase()} ${selectedPlan.toUpperCase()}`
+                      : t('pro.upgrade_btn', 'UPGRADE TO FISHNAV PRO')}
                 </Text>
               </LinearGradient>
             </Pressable>
@@ -535,8 +555,8 @@ export function FishNavProModal() {
               <Pressable style={styles.dismissTrialBtn} onPress={closeProModal}>
                 <Text style={[styles.dismissTrialText, { color: colors.textSecondary }]}>
                   {hasReferralBonus
-                    ? `Continue with Referral Bonus (${bonusProDaysRemaining} days left)`
-                    : `Continue Free Trial (${trialDaysRemaining} days left)`}
+                    ? `${t('btn.resume', 'Continue')} (${bonusProDaysRemaining} ${t('pro.days_left', 'days left')})`
+                    : `${t('btn.resume', 'Continue')} (${trialDaysRemaining} ${t('pro.days_left', 'days left')})`}
                 </Text>
               </Pressable>
             )}
@@ -546,7 +566,7 @@ export function FishNavProModal() {
               <View style={styles.guaranteeRow}>
                 <Ionicons name="shield-checkmark" size={13} color="#22C55E" />
                 <Text style={[styles.guaranteeText, { color: colors.textSecondary }]}>
-                  Secure Marine License • Instant Activation • 100% Offline
+                  {t('pro.guarantee', 'Secure Marine License • Instant Activation • 100% Offline')}
                 </Text>
               </View>
             </View>

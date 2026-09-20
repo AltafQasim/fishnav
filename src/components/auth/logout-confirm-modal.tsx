@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/context/auth-context';
+import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
 import { useWaypoints } from '@/context/waypoints-context';
@@ -27,6 +28,7 @@ export type LogoutConfirmModalProps = {
 export function LogoutConfirmModal({ visible, onClose, onConfirm }: LogoutConfirmModalProps) {
   const insets = useSafeAreaInsets();
   const { colors, isLight } = useAppTheme();
+  const { t } = useLanguage();
   const { captain } = useAuth();
   const { waypoints } = useWaypoints();
   const { savedTrips } = useTripTracking();
@@ -198,10 +200,10 @@ export function LogoutConfirmModal({ visible, onClose, onConfirm }: LogoutConfir
             </View>
 
             <Text style={[styles.titleText, { color: colors.text }]}>
-              Sign Out, Captain?
+              {t('auth.logout_title', 'Sign Out, Captain?')}
             </Text>
             <Text style={[styles.subtitleText, { color: colors.textSecondary }]}>
-              You are disconnecting your active marine terminal session.
+              {t('auth.logout_sub', 'You are disconnecting your active marine terminal session.')}
             </Text>
           </View>
 
@@ -243,7 +245,7 @@ export function LogoutConfirmModal({ visible, onClose, onConfirm }: LogoutConfir
                   Offline Data 100% Safe
                 </Text>
                 <Text style={[styles.checkDesc, { color: colors.textSecondary }]}>
-                  {spotCount} saved fishing spots and {tripCount} voyage logs will remain safely stored on this device.
+                  {t('auth.safe_return', 'All saved waypoints, offline charts, and recorded voyages are securely preserved.')}
                 </Text>
               </View>
             </View>
@@ -276,7 +278,7 @@ export function LogoutConfirmModal({ visible, onClose, onConfirm }: LogoutConfir
             >
               <Ionicons name="boat" size={18} color="#020B14" />
               <View style={styles.btnTextGroup}>
-                <Text style={styles.primaryStayBtnText}>Stay On Board</Text>
+                <Text style={styles.primaryStayBtnText}>{t('auth.cancel', 'Stay On Board')}</Text>
                 <Text style={styles.primaryStayBtnSub}>Keep charts & navigation active</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#020B14" />
@@ -304,7 +306,7 @@ export function LogoutConfirmModal({ visible, onClose, onConfirm }: LogoutConfir
               ) : (
                 <View style={styles.departingRow}>
                   <Ionicons name="log-out-outline" size={18} color="#EF4444" />
-                  <Text style={styles.destructiveSignOutText}>Sign Out & Lock Console</Text>
+                  <Text style={styles.destructiveSignOutText}>{t('auth.confirm_logout', 'Sign Out & Lock Console')}</Text>
                 </View>
               )}
             </Pressable>

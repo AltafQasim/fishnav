@@ -13,6 +13,7 @@ import Svg, {
 } from 'react-native-svg';
 
 import { MapColors } from '@/constants/map-theme';
+import { useLanguage } from '@/context/language-context';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CHART_WIDTH = Math.min(SCREEN_WIDTH - 48, 380);
@@ -34,6 +35,7 @@ export const DEMO_SOLUNAR_PERIODS: SolunarPeriod[] = [
 ];
 
 export function SolunarChart() {
+  const { t } = useLanguage();
   const plotW = CHART_WIDTH - PADDING_X * 2;
   const plotH = CHART_HEIGHT - 36;
 
@@ -77,12 +79,12 @@ export function SolunarChart() {
         {/* Header */}
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.cardTitle}>24-Hour Solunar Feeding Activity</Text>
-            <Text style={styles.cardSub}>Moon transit & tidal alignment activity score</Text>
+            <Text style={styles.cardTitle}>{t('calendar.solunar_title', '24-Hour Solunar Feeding Activity')}</Text>
+            <Text style={styles.cardSub}>{t('calendar.solunar_subtitle', 'Moon transit & tidal alignment activity score')}</Text>
           </View>
           <View style={styles.ratingBadge}>
             <Ionicons name="star" size={13} color="#F59E0B" />
-            <Text style={styles.ratingText}>92% EXCELLENT</Text>
+            <Text style={styles.ratingText}>92% {t('calendar.rating_excellent', 'EXCELLENT')}</Text>
           </View>
         </View>
 
@@ -156,7 +158,7 @@ export function SolunarChart() {
               <View key={i} style={styles.periodItem}>
                 <View style={styles.periodTop}>
                   <Text style={[styles.periodType, isMajor && styles.periodTypeMajor]}>
-                    {period.type} Period
+                    {isMajor ? t('calendar.major_feed', 'Major Period') : t('calendar.minor_feed', 'Minor Period')}
                   </Text>
                   <View style={styles.stars}>
                     {Array.from({ length: period.rating }).map((_, s) => (

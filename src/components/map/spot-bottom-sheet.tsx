@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SlidingSheetContainer } from '@/components/ui/sliding-sheet-container';
 import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
+import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import { formatLatitude, formatLongitude } from '@/hooks/use-user-location';
 import { toDms } from '@/utils/geo';
@@ -50,10 +51,11 @@ export function SpotBottomSheet({
 }: SpotBottomSheetProps) {
   const insets = useSafeAreaInsets();
   const { colors, isLight } = useAppTheme();
+  const { t } = useLanguage();
 
   const lat = spot?.latitude ?? 0;
   const lng = spot?.longitude ?? 0;
-  const name = spot?.name ?? 'Fishing Spot';
+  const name = spot?.name ?? t('spot.regular', 'Fishing Spot');
   const depthM = spot ? `${spot.depthM} m` : 'Depth ~55 m';
 
   const isSheetOpen = isOpen !== undefined ? isOpen : spot !== null;
@@ -73,13 +75,13 @@ export function SpotBottomSheet({
     if (isFavorite) {
       return (
         <View style={styles.badgeYellow}>
-          <Text style={styles.badgeYellowText}>FAVORITE SPOT</Text>
+          <Text style={styles.badgeYellowText}>{t('spot.favorite', 'FAVORITE SPOT')}</Text>
         </View>
       );
     }
     return (
       <View style={[styles.badgeCyan, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
-        <Text style={[styles.badgeCyanText, { color: colors.accent }]}>FISHING SPOT</Text>
+        <Text style={[styles.badgeCyanText, { color: colors.accent }]}>{t('spot.regular', 'FISHING SPOT')}</Text>
       </View>
     );
   };
@@ -107,7 +109,7 @@ export function SpotBottomSheet({
           onPress={onGoTo}
         >
           <Ionicons name="navigate" size={22} color={isLight ? '#FFFFFF' : '#020B14'} />
-          <Text style={[styles.goText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>GO TO SPOT</Text>
+          <Text style={[styles.goText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>{t('spot.start_nav', 'START NAVIGATION')}</Text>
         </Pressable>
 
         {/* 2. Nautical Stats Grid (Distance, Bearing, ETA, Depth) */}
@@ -120,22 +122,22 @@ export function SpotBottomSheet({
                 color={colors.accent}
               />
             }
-            label="Distance"
+            label={t('cockpit.distance', 'Distance')}
             value={distanceLabel}
           />
           <Stat
             icon={<Ionicons name="compass-outline" size={18} color={colors.accent} />}
-            label="Bearing"
+            label={t('hud.bearing', 'Bearing')}
             value={bearingLabel}
           />
           <Stat
             icon={<Ionicons name="time-outline" size={18} color={colors.accent} />}
-            label="ETA (12kt)"
+            label={t('cockpit.eta', 'ETA (12kt)')}
             value={etaLabel}
           />
           <Stat
             icon={<MaterialCommunityIcons name="waves" size={18} color={colors.accent} />}
-            label="Depth"
+            label={t('spot.depth', 'Depth')}
             value={depthM}
           />
         </View>
@@ -170,7 +172,7 @@ export function SpotBottomSheet({
               color={isFavorite ? MapColors.yellow : colors.text}
             />
             <Text style={[styles.quickActionText, { color: colors.text }]}>
-              {isFavorite ? 'Saved' : 'Favorite'}
+              {isFavorite ? t('spot.saved', 'Saved') : t('spot.save', 'Favorite')}
             </Text>
           </Pressable>
 
@@ -179,13 +181,13 @@ export function SpotBottomSheet({
             onPress={handleShare}
           >
             <Ionicons name="share-social-outline" size={18} color={colors.text} />
-            <Text style={[styles.quickActionText, { color: colors.text }]}>Share Spot</Text>
+            <Text style={[styles.quickActionText, { color: colors.text }]}>{t('spot.share', 'Share Spot')}</Text>
           </Pressable>
         </View>
 
         {/* 5. Full Coordinates & Waypoint Details Card */}
         <View style={[styles.geoCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-          <Text style={[styles.geoCardTitle, { color: colors.textSecondary }]}>GPS COORDINATES & DETAILS</Text>
+          <Text style={[styles.geoCardTitle, { color: colors.textSecondary }]}>{t('hub.coords', 'GPS COORDINATES & DETAILS')}</Text>
           <View style={styles.geoRow}>
             <Text style={[styles.geoLabel, { color: colors.textSecondary }]}>DMS Format</Text>
             <Text style={[styles.geoVal, { color: colors.text }]}>

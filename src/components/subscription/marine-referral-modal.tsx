@@ -14,11 +14,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useSubscription } from '@/context/subscription-context';
+import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 
 export function MarineReferralModal() {
   const insets = useSafeAreaInsets();
   const { colors, isLight } = useAppTheme();
+  const { t } = useLanguage();
   const { width: windowWidth } = useWindowDimensions();
   const {
     isReferralModalVisible,
@@ -128,15 +130,15 @@ export function MarineReferralModal() {
 
               <View style={[styles.badgePill, { backgroundColor: 'rgba(0, 240, 255, 0.15)', borderColor: colors.accent }]}>
                 <Ionicons name="people" size={13} color={colors.accent} />
-                <Text style={[styles.badgePillText, { color: colors.accent }]}>FLEET REFERRAL PROGRAM</Text>
+                <Text style={[styles.badgePillText, { color: colors.accent }]}>{t('referral.badge', 'FLEET REFERRAL PROGRAM')}</Text>
               </View>
 
               <Text style={[styles.title, { color: colors.text }]}>
-                Invite Crew, Earn 10 Days Pro Free
+                {t('referral.title', 'Invite Crew, Earn 10 Days Pro Free')}
               </Text>
 
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                Share your unique Captain link. For every fellow boat owner or fisherman who joins, you receive 10 days of full FishNav Pro access!
+                {t('referral.subtitle', 'Share your unique Captain link. For every fellow boat owner or fisherman who joins, you receive 10 days of full FishNav Pro access!')}
               </Text>
             </View>
 
@@ -155,9 +157,9 @@ export function MarineReferralModal() {
                   <Text style={styles.stepNumText}>1</Text>
                 </View>
                 <View style={styles.stepTextCol}>
-                  <Text style={[styles.stepHeading, { color: colors.text }]}>Share Your Captain Code</Text>
+                  <Text style={[styles.stepHeading, { color: colors.text }]}>{t('referral.step1_title', 'Share Your Captain Code')}</Text>
                   <Text style={[styles.stepSub, { color: colors.textSecondary }]}>
-                    Send your referral link or code via WhatsApp or SMS.
+                    {t('referral.step1_desc', 'Send your referral link or code via WhatsApp or SMS.')}
                   </Text>
                 </View>
               </View>
@@ -167,9 +169,9 @@ export function MarineReferralModal() {
                   <Text style={styles.stepNumText}>2</Text>
                 </View>
                 <View style={styles.stepTextCol}>
-                  <Text style={[styles.stepHeading, { color: colors.text }]}>Friend Gets 3-Day Free Trial</Text>
+                  <Text style={[styles.stepHeading, { color: colors.text }]}>{t('referral.step2_title', 'Friend Gets 3-Day Free Trial')}</Text>
                   <Text style={[styles.stepSub, { color: colors.textSecondary }]}>
-                    They download FishNav Pro & immediately enjoy full charts.
+                    {t('referral.step2_desc', 'They download FishNav Pro & immediately enjoy full charts.')}
                   </Text>
                 </View>
               </View>
@@ -179,9 +181,9 @@ export function MarineReferralModal() {
                   <Ionicons name="checkmark" size={13} color="#FFFFFF" />
                 </View>
                 <View style={styles.stepTextCol}>
-                  <Text style={[styles.stepHeading, { color: '#22C55E' }]}>You Get +10 Days Free Pro</Text>
+                  <Text style={[styles.stepHeading, { color: '#22C55E' }]}>{t('referral.step3_title', 'You Get +10 Days Free Pro')}</Text>
                   <Text style={[styles.stepSub, { color: colors.textSecondary }]}>
-                    10 days of unlimited bathymetry & AIS radar unlocked.
+                    {t('referral.step3_desc', '10 days of unlimited bathymetry & AIS radar unlocked.')}
                   </Text>
                 </View>
               </View>
@@ -197,7 +199,7 @@ export function MarineReferralModal() {
                 },
               ]}
             >
-              <Text style={[styles.codeLabel, { color: colors.textSecondary }]}>YOUR CAPTAIN REFERRAL CODE</Text>
+              <Text style={[styles.codeLabel, { color: colors.textSecondary }]}>{t('referral.code_label', 'YOUR CAPTAIN REFERRAL CODE')}</Text>
 
               <View style={styles.codeRow}>
                 <Text style={[styles.codeDisplay, { color: colors.accent }]}>{referralCode}</Text>
@@ -211,7 +213,7 @@ export function MarineReferralModal() {
                     color={copied ? '#FFFFFF' : '#020B14'}
                   />
                   <Text style={[styles.copyBtnText, copied && { color: '#FFFFFF' }]}>
-                    {copied ? 'Copied!' : 'Copy'}
+                    {copied ? t('referral.copied', 'Copied!') : t('referral.copy', 'Copy')}
                   </Text>
                 </Pressable>
               </View>
@@ -232,7 +234,7 @@ export function MarineReferralModal() {
                 style={styles.shareGradient}
               >
                 <Ionicons name="share-social" size={18} color="#020B14" />
-                <Text style={styles.shareBtnText}>SHARE INVITATION LINK</Text>
+                <Text style={styles.shareBtnText}>{t('referral.share_btn', 'SHARE INVITATION LINK')}</Text>
               </LinearGradient>
             </Pressable>
 
@@ -248,7 +250,7 @@ export function MarineReferralModal() {
                 ]}
               >
                 <Text style={[styles.statVal, { color: colors.text }]}>{referralCount}</Text>
-                <Text style={[styles.statLbl, { color: colors.textSecondary }]}>FRIENDS REFERRED</Text>
+                <Text style={[styles.statLbl, { color: colors.textSecondary }]}>{t('tab.trips', 'CREW').toUpperCase()}</Text>
               </View>
 
               <View
@@ -263,7 +265,7 @@ export function MarineReferralModal() {
                 <Text style={[styles.statVal, { color: '#22C55E' }]}>
                   +{referralDaysEarned || (referralMonthsEarned ? referralMonthsEarned * 10 : 0)}d
                 </Text>
-                <Text style={[styles.statLbl, { color: colors.textSecondary }]}>FREE PRO EARNED</Text>
+                <Text style={[styles.statLbl, { color: colors.textSecondary }]}>{t('pro.title', 'PRO EARNED').toUpperCase()}</Text>
               </View>
 
               <View
@@ -278,7 +280,7 @@ export function MarineReferralModal() {
                 <Text style={[styles.statVal, { color: colors.accent }]}>
                   {bonusProDaysRemaining > 0 ? `${bonusProDaysRemaining}d` : '0d'}
                 </Text>
-                <Text style={[styles.statLbl, { color: colors.textSecondary }]}>BONUS DAYS LEFT</Text>
+                <Text style={[styles.statLbl, { color: colors.textSecondary }]}>{t('pro.days_left', 'BONUS DAYS LEFT').toUpperCase()}</Text>
               </View>
             </View>
           </ScrollView>

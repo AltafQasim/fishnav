@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
 import { formatNm } from '@/utils/geo';
@@ -25,6 +26,7 @@ export function SaveTripModal() {
     resumeTracking,
   } = useTripTracking();
 
+  const { t } = useLanguage();
   const [tripName, setTripName] = useState('');
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -80,8 +82,8 @@ export function SaveTripModal() {
               <MaterialCommunityIcons name="sail-boat" size={26} color={colors.accent} />
             </View>
             <View style={styles.headerTitles}>
-              <Text style={[styles.title, { color: colors.text }]}>Voyage Completed!</Text>
-              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Save this track to your Trips Logbook</Text>
+              <Text style={[styles.title, { color: colors.text }]}>{t('trips.save_title', 'Voyage Completed!')}</Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{t('trips.subtitle', 'Save this track to your Trips Logbook')}</Text>
             </View>
             <Pressable onPress={handleResume} hitSlop={10} style={styles.closeBtn}>
               <Ionicons name="close" size={22} color={colors.textMuted} />
@@ -92,7 +94,7 @@ export function SaveTripModal() {
           <View style={[styles.metricsGrid, { backgroundColor: colors.chipBg, borderColor: colors.divider }]}>
             <View style={styles.metricItem}>
               <Text style={[styles.metricValue, { color: colors.text }]}>{formatNm(pendingTripSummary.distanceNm)}</Text>
-              <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>DISTANCE</Text>
+              <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>{t('trips.distance', 'DISTANCE')}</Text>
             </View>
 
             <View style={[styles.gridDivider, { backgroundColor: colors.divider }]} />
@@ -101,7 +103,7 @@ export function SaveTripModal() {
               <Text style={[styles.metricValue, { color: colors.text }]}>
                 {formatDuration(pendingTripSummary.durationSeconds)}
               </Text>
-              <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>DURATION</Text>
+              <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>{t('trips.duration', 'DURATION')}</Text>
             </View>
 
             <View style={[styles.gridDivider, { backgroundColor: colors.divider }]} />
@@ -111,13 +113,13 @@ export function SaveTripModal() {
                 {pendingTripSummary.avgSpeedKnots}{' '}
                 <Text style={[styles.metricUnit, { color: colors.textSecondary }]}>kts</Text>
               </Text>
-              <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>AVG SPEED</Text>
+              <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>{t('trips.avg_speed', 'AVG SPEED')}</Text>
             </View>
           </View>
 
           {/* Form Fields */}
           <View style={styles.formGroup}>
-            <Text style={[styles.inputLabel, { color: colors.text }]}>Trip Name</Text>
+            <Text style={[styles.inputLabel, { color: colors.text }]}>{t('trips.trip_name', 'Trip Name')}</Text>
             <TextInput
               style={[
                 styles.textInput,
@@ -136,7 +138,7 @@ export function SaveTripModal() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={[styles.inputLabel, { color: colors.text }]}>Trip Notes & Catch Details (Optional)</Text>
+            <Text style={[styles.inputLabel, { color: colors.text }]}>{t('trips.notes', 'Trip Notes & Catch Details (Optional)')}</Text>
             <TextInput
               style={[
                 styles.textInput,
@@ -165,13 +167,13 @@ export function SaveTripModal() {
             >
               <Ionicons name="save-outline" size={18} color={isLight ? '#FFFFFF' : '#020B14'} />
               <Text style={[styles.saveBtnText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>
-                {isSaving ? 'SAVING...' : 'SAVE TO LOGBOOK'}
+                {isSaving ? t('btn.save', 'SAVING...') : t('trips.save_btn', 'SAVE TO LOGBOOK')}
               </Text>
             </Pressable>
 
             <Pressable style={[styles.btn, styles.discardBtn]} onPress={discardTrip}>
               <Ionicons name="trash-outline" size={16} color="#EF4444" />
-              <Text style={styles.discardBtnText}>DISCARD</Text>
+              <Text style={styles.discardBtnText}>{t('btn.discard', 'DISCARD')}</Text>
             </Pressable>
           </View>
         </View>

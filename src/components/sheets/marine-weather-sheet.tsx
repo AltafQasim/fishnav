@@ -15,11 +15,13 @@ import {
   WeatherMetricType,
 } from '@/components/weather/marine-animated-weather-chart';
 import { TideChart } from '@/components/weather/tide-chart';
+import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useMarineWeather } from '@/hooks/use-marine-weather';
 
 export function WeatherSheetContent() {
   const { colors, isLight } = useAppTheme();
+  const { t } = useLanguage();
   const {
     conditions,
     hourly,
@@ -37,6 +39,38 @@ export function WeatherSheetContent() {
 
   const isWarning = conditions.safetyAdvisory.status === 'WARNING';
   const isCaution = conditions.safetyAdvisory.status === 'CAUTION';
+
+  const localizedAdvisoryTitle = useMemo(() => {
+    if (isWarning) return t('weather.advisory_warning', conditions.safetyAdvisory.title);
+    if (isCaution) return t('weather.advisory_caution', conditions.safetyAdvisory.title);
+    return t('weather.advisory_good', conditions.safetyAdvisory.title);
+  }, [isWarning, isCaution, conditions.safetyAdvisory.title, t]);
+
+  const localizedAdvisorySub = useMemo(() => {
+    if (isWarning) {
+      if (conditions.safetyAdvisory.dangerType === 'SQUALL') return t('weather.danger_squall', conditions.safetyAdvisory.subText);
+      if (conditions.safetyAdvisory.dangerType === 'RAIN') return t('weather.danger_rain', conditions.safetyAdvisory.subText);
+      if (conditions.safetyAdvisory.dangerType === 'SWELL') return t('weather.danger_swell', conditions.safetyAdvisory.subText);
+      if (conditions.safetyAdvisory.dangerType === 'WIND') return t('weather.danger_wind', conditions.safetyAdvisory.subText);
+      return t('weather.danger_squall', conditions.safetyAdvisory.subText);
+    }
+    if (isCaution) {
+      return t('weather.caution_sub', conditions.safetyAdvisory.subText);
+    }
+    return t('weather.normal_sub', conditions.safetyAdvisory.subText);
+  }, [isWarning, isCaution, conditions.safetyAdvisory.dangerType, conditions.safetyAdvisory.subText, t]);
+
+  const getLocalizedWeatherDesc = (code: number, fallback: string) => {
+    if (code === 0) return t('weather.desc_clear', fallback);
+    if (code >= 1 && code <= 3) return t('weather.desc_partly_cloudy', fallback);
+    if (code >= 45 && code <= 48) return t('weather.desc_foggy', fallback);
+    if (code >= 51 && code <= 55) return t('weather.desc_drizzle', fallback);
+    if (code >= 61 && code <= 63) return t('weather.desc_rain', fallback);
+    if (code >= 65 && code <= 67) return t('weather.desc_heavy_rain', fallback);
+    if (code >= 80 && code <= 82) return t('weather.desc_rain', fallback);
+    if (code >= 95) return t('weather.desc_thunderstorm', fallback);
+    return fallback;
+  };
 
   const waveSeries = useMemo(
     () => hourly.map((h) => h.waveNum ?? parseFloat(h.wave?.replace('m', '') || '1.2')),
@@ -144,8 +178,8 @@ export function WeatherSheetContent() {
                   ]}
                 >
                   {conditions.nearestPort.isAtPort
-                    ? '⚓ AT HARBOR'
-                    : `${conditions.nearestPort.distanceNm} NM OFFSHORE`}
+                    ? t('weather.at_harbor', '⚓ AT HARBOR')
+                    : `${conditions.nearestPort.distanceNm} NM ${t('weather.offshore', 'OFFSHORE')}`}
                 </Text>
               </View>
             </View>
@@ -204,15 +238,15 @@ export function WeatherSheetContent() {
               ]}
             >
               {syncStatus === 'syncing'
-                ? 'SYNCING HARBOR WEATHER...'
+                ? t('weather.syncing', 'SYNCING HARBOR WEATHER...')
                 : isOffline
-                ? 'OFFLINE • CACHED AT HARBOR'
-                : 'ONLINE • HARBOR LIVE (AUTO-SYNCED)'}
+                ? t('weather.offline_cached', 'OFFLINE • CACHED AT HARBOR')
+                : t('weather.online_live', 'ONLINE • HARBOR LIVE (AUTO-SYNCED)')}
             </Text>
             <Text style={[styles.syncSub, { color: colors.textSecondary }]}>
               {isOffline
-                ? `${lastSyncedText} • Valid for next 48h deep sea`
-                : 'Open-Meteo marine models live • Next 48h pre-cached'}
+                ? `${lastSyncedText} • ${t('weather.cached_48h', 'Valid for next 48h deep sea')}`
+                : t('weather.live_cached', 'Open-Meteo marine models live • Next 48h pre-cached')}
             </Text>
           </View>
         </View>
@@ -293,7 +327,7 @@ export function WeatherSheetContent() {
               ]}
               numberOfLines={1}
             >
-              {conditions.safetyAdvisory.title}
+              {localizedAdvisoryTitle}
             </Text>
             <View
               style={[
@@ -306,7 +340,7 @@ export function WeatherSheetContent() {
               ]}
             >
               <Text style={styles.safetyBadgeText}>
-                {conditions.safetyAdvisory.isFishingSafe ? 'FISHING: SAFE' : 'FISHING: UNSAFE'}
+                {conditions.safetyAdvisory.isFishingSafe ? t('weather.fishing_safe', 'FISHING: SAFE') : t('weather.fishing_unsafe', 'FISHING: UNSAFE')}
               </Text>
             </View>
           </View>
@@ -328,18 +362,18 @@ export function WeatherSheetContent() {
               },
             ]}
           >
-            {conditions.safetyAdvisory.subText}
+            {localizedAdvisorySub}
           </Text>
           {isWarning && (
             <Text style={[styles.gujaratiNotice, { color: isLight ? '#991B1B' : '#FECACA' }]}>
-              ⚠️ ચેતવણી: ભારે વરસાદ, પવન અને દરિયાઈ તોફાનને કારણે માછીમારી જોખમી છે. તાત્કાલિક બંદરે પરત ફરો.
+              {t('weather.warning_notice', '⚠️ Warning: Heavy rain and strong winds make fishing at sea dangerous. Return to harbor immediately.')}
             </Text>
           )}
         </View>
       </View>
 
       {/* 4. Ocean & Sea Conditions Grid (All States with Animated Charts) */}
-      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>OCEAN & SEA CONDITIONS</Text>
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('weather.title', 'OCEAN & SEA CONDITIONS')}</Text>
       <View style={styles.grid}>
         {/* 1. Wave Height */}
         <TouchableOpacity
@@ -355,10 +389,10 @@ export function WeatherSheetContent() {
           ]}
         >
           <View style={styles.cardHeader}>
-            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>WAVE & SWELL</Text>
+            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>{t('weather.waves', 'WAVE & SWELL')}</Text>
             {activeChartMetric === 'wave' && (
               <View style={[styles.activeChartBadge, { backgroundColor: isLight ? '#E0F2FE' : 'rgba(0, 240, 255, 0.15)' }]}>
-                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#0284C7' : '#00F0FF' }]}>ACTIVE</Text>
+                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#0284C7' : '#00F0FF' }]}>{t('weather.active', 'ACTIVE')}</Text>
               </View>
             )}
           </View>
@@ -396,10 +430,10 @@ export function WeatherSheetContent() {
           ]}
         >
           <View style={styles.cardHeader}>
-            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>WIND & GUSTS</Text>
+            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>{t('weather.wind', 'WIND & GUSTS')}</Text>
             {activeChartMetric === 'wind' && (
               <View style={[styles.activeChartBadge, { backgroundColor: isLight ? '#FEF3C7' : 'rgba(245, 158, 11, 0.15)' }]}>
-                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#D97706' : '#F59E0B' }]}>ACTIVE</Text>
+                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#D97706' : '#F59E0B' }]}>{t('weather.active', 'ACTIVE')}</Text>
               </View>
             )}
           </View>
@@ -437,10 +471,10 @@ export function WeatherSheetContent() {
           ]}
         >
           <View style={styles.cardHeader}>
-            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>PRECIPITATION</Text>
+            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>{t('weather.rain', 'PRECIPITATION')}</Text>
             {activeChartMetric === 'rain' && (
               <View style={[styles.activeChartBadge, { backgroundColor: isLight ? '#DBEAFE' : 'rgba(56, 189, 248, 0.15)' }]}>
-                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#2563EB' : '#38BDF8' }]}>ACTIVE</Text>
+                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#2563EB' : '#38BDF8' }]}>{t('weather.active', 'ACTIVE')}</Text>
               </View>
             )}
           </View>
@@ -456,7 +490,7 @@ export function WeatherSheetContent() {
                 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>mm/h</Text>
               </Text>
               <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                {conditions.weatherDesc}
+                {getLocalizedWeatherDesc(conditions.weatherCode, conditions.weatherDesc)}
               </Text>
             </View>
             <MiniWeatherSparkline
@@ -483,10 +517,10 @@ export function WeatherSheetContent() {
           ]}
         >
           <View style={styles.cardHeader}>
-            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>WATER TEMP</Text>
+            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>{t('weather.temp', 'WATER TEMP')}</Text>
             {activeChartMetric === 'temp' && (
               <View style={[styles.activeChartBadge, { backgroundColor: isLight ? '#FFEDD5' : 'rgba(251, 146, 60, 0.15)' }]}>
-                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#EA580C' : '#FB923C' }]}>ACTIVE</Text>
+                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#EA580C' : '#FB923C' }]}>{t('weather.active', 'ACTIVE')}</Text>
               </View>
             )}
           </View>
@@ -497,7 +531,7 @@ export function WeatherSheetContent() {
                 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>°C</Text>
               </Text>
               <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                Marine Surface Water
+                {t('weather.surface_water', 'Marine Surface Water')}
               </Text>
             </View>
             <MiniWeatherSparkline
@@ -524,10 +558,10 @@ export function WeatherSheetContent() {
           ]}
         >
           <View style={styles.cardHeader}>
-            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>BAROMETER</Text>
+            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>{t('weather.pressure', 'BAROMETER')}</Text>
             {activeChartMetric === 'pressure' && (
               <View style={[styles.activeChartBadge, { backgroundColor: isLight ? '#F3E8FF' : 'rgba(168, 85, 247, 0.15)' }]}>
-                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#7C3AED' : '#A855F7' }]}>ACTIVE</Text>
+                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#7C3AED' : '#A855F7' }]}>{t('weather.active', 'ACTIVE')}</Text>
               </View>
             )}
           </View>
@@ -538,7 +572,7 @@ export function WeatherSheetContent() {
                 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>hPa</Text>
               </Text>
               <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                {conditions.surfacePressureHpa < 1005 ? '⚠️ Low (Squall)' : 'Surface Pressure'}
+                {conditions.surfacePressureHpa < 1005 ? t('weather.low_pressure', '⚠️ Low (Squall)') : t('weather.surface_pressure', 'Surface Pressure')}
               </Text>
             </View>
             <MiniWeatherSparkline
@@ -565,10 +599,10 @@ export function WeatherSheetContent() {
           ]}
         >
           <View style={styles.cardHeader}>
-            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>VISIBILITY</Text>
+            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>{t('weather.visibility', 'VISIBILITY')}</Text>
             {activeChartMetric === 'visibility' && (
               <View style={[styles.activeChartBadge, { backgroundColor: isLight ? '#D1FAE5' : 'rgba(16, 185, 129, 0.15)' }]}>
-                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#059669' : '#10B981' }]}>ACTIVE</Text>
+                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#059669' : '#10B981' }]}>{t('weather.active', 'ACTIVE')}</Text>
               </View>
             )}
           </View>
@@ -579,7 +613,7 @@ export function WeatherSheetContent() {
                 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>NM</Text>
               </Text>
               <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                {conditions.visibilityNm >= 8 ? 'Clear Horizon' : 'Marine Mist / Fog'}
+                {conditions.visibilityNm >= 8 ? t('weather.clear_horizon', 'Clear Horizon') : t('weather.fog_mist', 'Marine Mist / Fog')}
               </Text>
             </View>
             <MiniWeatherSparkline
@@ -606,10 +640,10 @@ export function WeatherSheetContent() {
           ]}
         >
           <View style={styles.cardHeader}>
-            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>TIDAL CURRENT</Text>
+            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>{t('weather.tides', 'TIDAL CURRENT')}</Text>
             {activeChartMetric === 'current' && (
               <View style={[styles.activeChartBadge, { backgroundColor: isLight ? '#E0E7FF' : 'rgba(129, 140, 248, 0.15)' }]}>
-                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#4F46E5' : '#818CF8' }]}>ACTIVE</Text>
+                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#4F46E5' : '#818CF8' }]}>{t('weather.active', 'ACTIVE')}</Text>
               </View>
             )}
           </View>
@@ -620,7 +654,7 @@ export function WeatherSheetContent() {
                 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>kts</Text>
               </Text>
               <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                Astronomical Drift
+                {t('weather.tidal_drift', 'Astronomical Drift')}
               </Text>
             </View>
             <MiniWeatherSparkline
@@ -647,10 +681,10 @@ export function WeatherSheetContent() {
           ]}
         >
           <View style={styles.cardHeader}>
-            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>SWELL PERIOD</Text>
+            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>{t('weather.swell_period', 'SWELL PERIOD').toUpperCase()}</Text>
             {activeChartMetric === 'period' && (
               <View style={[styles.activeChartBadge, { backgroundColor: isLight ? '#FFE4E6' : 'rgba(251, 113, 133, 0.15)' }]}>
-                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#E11D48' : '#FB7185' }]}>ACTIVE</Text>
+                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#E11D48' : '#FB7185' }]}>{t('weather.active', 'ACTIVE')}</Text>
               </View>
             )}
           </View>
@@ -661,7 +695,7 @@ export function WeatherSheetContent() {
                 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>s</Text>
               </Text>
               <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                Wave Interval / Roll
+                {t('weather.wave_roll', 'Wave Interval / Roll')}
               </Text>
             </View>
             <MiniWeatherSparkline
@@ -688,10 +722,10 @@ export function WeatherSheetContent() {
           ]}
         >
           <View style={styles.cardHeader}>
-            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>AIR HUMIDITY</Text>
+            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>{t('weather.air_humidity', 'AIR HUMIDITY').toUpperCase()}</Text>
             {activeChartMetric === 'humidity' && (
               <View style={[styles.activeChartBadge, { backgroundColor: isLight ? '#CFFAFE' : 'rgba(6, 182, 212, 0.15)' }]}>
-                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#0891B2' : '#06B6D4' }]}>ACTIVE</Text>
+                <Text style={[styles.activeChartBadgeText, { color: isLight ? '#0891B2' : '#06B6D4' }]}>{t('weather.active', 'ACTIVE')}</Text>
               </View>
             )}
           </View>
@@ -702,7 +736,7 @@ export function WeatherSheetContent() {
                 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>%</Text>
               </Text>
               <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                Dew Point & Moisture
+                {t('weather.dew_moisture', 'Dew Point & Moisture')}
               </Text>
             </View>
             <MiniWeatherSparkline
@@ -718,7 +752,7 @@ export function WeatherSheetContent() {
         {/* 10. Nearest Port */}
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.cardHeader}>
-            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>NEAREST PORT</Text>
+            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>{t('weather.nearest_port', 'NEAREST PORT').toUpperCase()}</Text>
           </View>
           <Text style={[styles.cardValueSmall, { color: colors.text }]} numberOfLines={1}>
             {conditions.nearestPort.port.name.replace(' Fishing Harbor', '').replace(' Harbor', '')}
@@ -736,7 +770,7 @@ export function WeatherSheetContent() {
         }}
       >
         <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 4 }]}>
-          ANIMATED PREDICTIVE CHARTS (36H)
+          {t('weather.anim_charts_title', 'ANIMATED PREDICTIVE CHARTS (36H)').toUpperCase()}
         </Text>
         <MarineAnimatedWeatherChart
           hourly={hourly}
@@ -748,12 +782,12 @@ export function WeatherSheetContent() {
 
       {/* 6. 48-Hour Scrollable Astronomical Tide Chart */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 4 }]}>
-        ASTRONOMICAL HARMONIC TIDES (48H)
+        {t('weather.tides_title', 'ASTRONOMICAL HARMONIC TIDES (48H)').toUpperCase()}
       </Text>
       <TideChart tideData={tides} isOffline={isOffline} />
 
       {/* 7. Hourly Marine Forecast (Next 36h) */}
-      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>HOURLY MARINE FORECAST</Text>
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('weather.hourly_title', 'HOURLY MARINE FORECAST').toUpperCase()}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hourlyScroll}>
         {hourly.map((item, idx) => (
           <View

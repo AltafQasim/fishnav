@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LogoutConfirmModal } from '@/components/auth/logout-confirm-modal';
 import { GoogleLogoSvg } from '@/components/ui/google-logo-svg';
 import { useAuth } from '@/context/auth-context';
+import { useLanguage } from '@/context/language-context';
 import { useSubscription } from '@/context/subscription-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
@@ -91,6 +92,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { theme, colors, isLight } = useAppTheme();
+  const { t } = useLanguage();
   const {
     captain,
     isAuthenticated,
@@ -138,16 +140,16 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
   const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   const planDisplayName = useMemo(() => {
-    if (proPlan === 'lifetime') return 'Lifetime Skipper Pass';
-    if (proPlan === 'quarterly') return 'Quarterly Voyager License';
-    return 'Annual Master Mariner License';
-  }, [proPlan]);
+    if (proPlan === 'lifetime') return t('pro.lifetime_title', 'Lifetime Skipper Pass');
+    if (proPlan === 'quarterly') return t('pro.quarterly_title', 'Quarterly Voyager License');
+    return t('pro.annual_title', 'Annual Master Mariner License');
+  }, [proPlan, t]);
 
   const planCostDisplay = useMemo(() => {
-    if (proPlan === 'lifetime') return '₹3,999 • One-Time Permanent';
-    if (proPlan === 'quarterly') return '₹499 / 3 Months (₹166/mo)';
-    return '₹1,499 / Year (₹125/mo)';
-  }, [proPlan]);
+    if (proPlan === 'lifetime') return `₹3,999 • ${t('pro.forever', 'One-Time Permanent')}`;
+    if (proPlan === 'quarterly') return `₹499 / 3 ${t('pro.months', 'Months')} (₹166/${t('pro.month', 'mo')})`;
+    return `₹1,499 / ${t('pro.year', 'Year')} (₹125/${t('pro.month', 'mo')})`;
+  }, [proPlan, t]);
 
   const handleCopyLicenseKey = async () => {
     try {
@@ -288,7 +290,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
           <View style={[styles.topBar, { borderBottomColor: colors.divider }]}>
             <View style={styles.topBarLeft}>
               <MaterialCommunityIcons name="badge-account-horizontal" size={22} color={colors.accent} />
-              <Text style={[styles.headerTitle, { color: colors.text }]}>Captain & Vessel Dossier</Text>
+              <Text style={[styles.headerTitle, { color: colors.text }]}>{t('profile.title', 'Captain & Vessel Dossier')}</Text>
             </View>
             <Pressable
               onPress={onClose}
@@ -354,7 +356,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               </Text>
               <View style={[styles.rankBadge, isLight && { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]}>
                 <Ionicons name="shield-checkmark" size={12} color={isLight ? '#16A34A' : '#10B981'} />
-                <Text style={[styles.rankText, isLight && { color: '#16A34A' }]}>LICENSED MASTER MARINER</Text>
+                <Text style={[styles.rankText, isLight && { color: '#16A34A' }]}>{t('pro.master_license', 'LICENSED MASTER MARINER')}</Text>
               </View>
               <Text style={[styles.captainContact, { color: colors.textSecondary }]}>
                 {captain?.emailOrPhone || '+91 98765 43210'}
@@ -365,7 +367,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                 onPress={() => setShowPhotoPicker(true)}
               >
                 <Ionicons name="image-outline" size={13} color={colors.accent} />
-                <Text style={[styles.changePhotoText, { color: colors.accent }]}>Change Profile Photo</Text>
+                <Text style={[styles.changePhotoText, { color: colors.accent }]}>{t('profile.choose_photo', 'Change Profile Photo')}</Text>
               </Pressable>
             </View>
 
@@ -387,7 +389,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               >
                 <Ionicons name="location" size={18} color={colors.accent} />
                 <Text style={[styles.statVal, { color: colors.text }]}>{waypoints.length}</Text>
-                <Text style={[styles.statLbl, { color: colors.textMuted }]}>HOTSPOTS</Text>
+                <Text style={[styles.statLbl, { color: colors.textMuted }]}>{t('waypoints.title', 'HOTSPOTS').toUpperCase()}</Text>
               </View>
               <Pressable
                 style={[
@@ -406,7 +408,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               >
                 <MaterialCommunityIcons name="map-marker-path" size={18} color={isLight ? colors.accent : '#38BDF8'} />
                 <Text style={[styles.statVal, { color: colors.text }]}>{savedTrips.length}</Text>
-                <Text style={[styles.statLbl, { color: colors.textMuted }]}>VOYAGES ›</Text>
+                <Text style={[styles.statLbl, { color: colors.textMuted }]}>{t('tab.trips', 'VOYAGES').toUpperCase()} ›</Text>
               </Pressable>
               <View
                 style={[
@@ -424,7 +426,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               >
                 <Ionicons name="navigate" size={18} color={isLight ? '#16A34A' : '#10B981'} />
                 <Text style={[styles.statVal, { color: colors.text }]}>3D FIX</Text>
-                <Text style={[styles.statLbl, { color: colors.textMuted }]}>GPS LOCK</Text>
+                <Text style={[styles.statLbl, { color: colors.textMuted }]}>{t('overlay.gps', 'GPS LOCK').toUpperCase()}</Text>
               </View>
             </View>
 
@@ -433,7 +435,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               <View style={styles.sectionHeaderLeft}>
                 <MaterialCommunityIcons name="crown" size={18} color="#F59E0B" />
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                  PRO MEMBERSHIP & VESSEL LICENSE
+                  {t('pro.title', 'PRO MEMBERSHIP')} & {t('settings.vessel', 'VESSEL LICENSE')}
                 </Text>
               </View>
 
@@ -588,10 +590,10 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                       {isPro
                         ? planDisplayName
                         : hasReferralBonus
-                          ? 'Captain Referral Pass'
+                          ? t('settings.status_referral_pass', 'Captain Referral Pass')
                           : isTrialExpired
-                            ? 'Evaluation Trial Ended'
-                            : '3-Day Free Vessel Trial'}
+                            ? t('settings.trial_ended', 'Evaluation Trial Ended')
+                            : t('settings.status_active_trial', '3-Day Free Vessel Trial')}
                     </Text>
 
                     <View
@@ -637,13 +639,13 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                       >
                         {isPro
                           ? isExpiringSoon
-                            ? 'EXPIRING SOON'
-                            : 'ACTIVE'
+                            ? t('settings.status_expiring_soon', 'EXPIRING SOON')
+                            : t('settings.status_active', 'ACTIVE')
                           : hasReferralBonus
-                            ? 'REFERRAL PASS'
+                            ? t('settings.status_referral_pass', 'REFERRAL PASS')
                             : isTrialExpired
-                              ? 'EXPIRED'
-                              : 'ACTIVE TRIAL'}
+                              ? t('settings.status_expired', 'EXPIRED')
+                              : t('settings.status_active_trial', 'ACTIVE TRIAL')}
                       </Text>
                     </View>
                   </View>
@@ -651,13 +653,13 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                   <Text style={[styles.proMembershipSub, { color: colors.textSecondary }]}>
                     {isPro
                       ? proPlan === 'lifetime'
-                        ? 'Perpetual master license. High-res bathymetry & AIS radar unlocked forever.'
-                        : 'Official vessel license active with full offshore bathymetry & AIS radar.'
+                        ? t('pro.perpetual_desc', 'Perpetual master license. High-res bathymetry & AIS radar unlocked forever.')
+                        : t('pro.active_desc', 'Official vessel license active with full offshore bathymetry & AIS radar.')
                       : hasReferralBonus
-                        ? 'Unlocked via Captain referral invitations. Zero recurring charges.'
+                        ? t('pro.referral_active_desc', 'Unlocked via Captain referral invitations. Zero recurring charges.')
                         : isTrialExpired
-                          ? 'Free trial has ended. Upgrade to continue high-res navigation.'
-                          : 'Unrestricted Pro evaluation pass. All features active.'}
+                          ? t('settings.trial_ended_desc', 'Free trial has ended. Upgrade to continue high-res navigation.')
+                          : t('settings.trial_eval_desc', 'Unrestricted Pro evaluation pass. All features active.')}
                   </Text>
                 </View>
               </View>
@@ -692,10 +694,10 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                         <Text style={[styles.hudHugeInfinity, { color: '#F59E0B' }]}>♾️</Text>
                         <View style={{ flex: 1 }}>
                           <Text style={[styles.hudHeadline, { color: colors.text }]}>
-                            PERPETUAL LIFETIME ACCESS
+                            {t('pro.perpetual_access', 'PERPETUAL LIFETIME ACCESS')}
                           </Text>
                           <Text style={[styles.hudSubtitle, { color: colors.textSecondary }]}>
-                            Never expires • All bathymetry, radar & offline charts guaranteed
+                            {t('pro.perpetual_desc', 'Never expires • All bathymetry, radar & offline charts guaranteed')}
                           </Text>
                         </View>
                       </View>
@@ -706,7 +708,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                       <View style={styles.hudTopRow}>
                         <View style={styles.hudCountdownBox}>
                           <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
-                            TIME REMAINING
+                            {t('pro.time_remaining', 'TIME REMAINING')}
                           </Text>
                           <View style={styles.hudDaysRow}>
                             <Text
@@ -723,7 +725,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                                 { color: isExpiringSoon ? '#EF4444' : '#F59E0B' },
                               ]}
                             >
-                              {proDaysRemaining === 1 ? 'DAY' : 'DAYS'} LEFT
+                              {t('pro.days_left', 'DAYS LEFT')}
                             </Text>
                           </View>
                         </View>
@@ -732,7 +734,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                           <View style={[styles.hudDatePill, { backgroundColor: isLight ? '#FFFFFF' : 'rgba(0, 0, 0, 0.25)', borderColor: isLight ? '#E2E8F0' : 'transparent', borderWidth: isLight ? 1 : 0 }]}>
                             <Ionicons name="calendar" size={13} color={isExpiringSoon ? '#EF4444' : '#F59E0B'} />
                             <Text style={[styles.hudDateText, { color: colors.text }]}>
-                              Expires: <Text style={{ fontWeight: '800' }}>{proFormattedExpiry}</Text>
+                              {t('pro.valid_until', 'Expires:')} <Text style={{ fontWeight: '800' }}>{proFormattedExpiry}</Text>
                             </Text>
                           </View>
                         </View>
@@ -753,7 +755,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                         </View>
                         <View style={styles.hudProgressLabels}>
                           <Text style={[styles.hudProgressLabelText, { color: colors.textMuted }]}>
-                            Cycle: {proPlan === 'quarterly' ? '90 Days' : '365 Days'}
+                            {t('settings.cycle', 'Cycle')}: {proPlan === 'quarterly' ? t('pro.cycle_90', '90 Days') : t('pro.cycle_365', '365 Days')}
                           </Text>
                           <Text
                             style={[
@@ -761,7 +763,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                               { color: isExpiringSoon ? '#EF4444' : '#F59E0B', fontWeight: '700' },
                             ]}
                           >
-                            {proDaysRemaining} days remaining ({Math.max(1, 100 - proProgressPercent)}%)
+                            {proDaysRemaining} {t('settings.days_remaining', 'days remaining')} ({Math.max(1, 100 - proProgressPercent)}%)
                           </Text>
                         </View>
                       </View>
@@ -773,14 +775,14 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                     <View style={styles.hudTopRow}>
                       <View style={styles.hudCountdownBox}>
                         <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
-                          REFERRAL PASS REMAINING
+                          {t('settings.referral_pass_remaining', 'REFERRAL PASS REMAINING')}
                         </Text>
                         <View style={styles.hudDaysRow}>
                           <Text style={[styles.hudBigNumber, { color: '#22C55E' }]}>
                             {bonusProDaysRemaining}
                           </Text>
                           <Text style={[styles.hudBigUnit, { color: '#22C55E' }]}>
-                            {bonusProDaysRemaining === 1 ? 'DAY' : 'DAYS'} FREE
+                            {bonusProDaysRemaining === 1 ? t('settings.day_free', 'DAY FREE') : t('settings.days_free', 'DAYS FREE')}
                           </Text>
                         </View>
                       </View>
@@ -788,11 +790,11 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                         <View style={[styles.hudDatePill, { backgroundColor: isLight ? '#FFFFFF' : 'rgba(0, 0, 0, 0.25)', borderColor: isLight ? '#BBF7D0' : 'transparent', borderWidth: isLight ? 1 : 0 }]}>
                           <Ionicons name="gift" size={13} color="#22C55E" />
                           <Text style={[styles.hudDateText, { color: colors.text }]}>
-                            Valid Until: <Text style={{ fontWeight: '800' }}>{bonusProFormattedExpiry}</Text>
+                            {t('pro.valid_until', 'Valid Until:')} <Text style={{ fontWeight: '800' }}>{bonusProFormattedExpiry}</Text>
                           </Text>
                         </View>
                         <Text style={[styles.hudSubInfo, { color: colors.textSecondary }]}>
-                          +{referralDaysEarned}d earned from crew invites
+                          +{referralDaysEarned}d {t('settings.invite_crew', 'earned from crew invites')}
                         </Text>
                       </View>
                     </View>
@@ -803,7 +805,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                     <View style={styles.hudTopRow}>
                       <View style={styles.hudCountdownBox}>
                         <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
-                          {isTrialExpired ? 'TRIAL STATUS' : 'FREE EVALUATION PERIOD'}
+                          {isTrialExpired ? t('settings.status_expired', 'TRIAL STATUS') : t('settings.free_evaluation', 'FREE EVALUATION PERIOD')}
                         </Text>
                         <View style={styles.hudDaysRow}>
                           <Text
@@ -820,7 +822,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                               { color: isTrialExpired ? '#EF4444' : colors.accent },
                             ]}
                           >
-                            {isTrialExpired ? 'EXPIRED' : `LEFT (${trialDaysRemaining}d)`}
+                            {isTrialExpired ? t('settings.status_expired', 'EXPIRED') : `${t('pro.days_left', 'LEFT')} (${trialDaysRemaining}d)`}
                           </Text>
                         </View>
                       </View>
@@ -832,13 +834,13 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                             color={isTrialExpired ? '#EF4444' : colors.accent}
                           />
                           <Text style={[styles.hudDateText, { color: colors.text }]}>
-                            {isTrialExpired ? 'Trial Ended' : `Trial Ends: ${trialFormattedExpiry}`}
+                            {isTrialExpired ? t('settings.trial_ended', 'Trial Ended') : `${t('settings.trial_ends', 'Trial Ends')}: ${trialFormattedExpiry}`}
                           </Text>
                         </View>
                         <Text style={[styles.hudSubInfo, { color: colors.textSecondary }]}>
                           {isTrialExpired
-                            ? 'Offshore charts locked'
-                            : 'Upgrade anytime for permanent access'}
+                            ? t('settings.charts_locked', 'Offshore charts locked')
+                            : t('settings.upgrade_anytime', 'Upgrade anytime for permanent access')}
                         </Text>
                       </View>
                     </View>
@@ -857,10 +859,10 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                         </View>
                         <View style={styles.hudProgressLabels}>
                           <Text style={[styles.hudProgressLabelText, { color: colors.textMuted }]}>
-                            72 Hours Free Evaluation
+                            72 Hours {t('settings.free_evaluation', 'Free Evaluation')}
                           </Text>
                           <Text style={[styles.hudProgressLabelText, { color: colors.accent, fontWeight: '700' }]}>
-                            {trialHoursRemaining} hours left
+                            {trialHoursRemaining} {t('weather.hours_left', 'hours left')}
                           </Text>
                         </View>
                       </View>
@@ -873,7 +875,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                   <View style={styles.hudCertLeft}>
                     <MaterialCommunityIcons name="certificate" size={14} color="#F59E0B" />
                     <Text style={[styles.hudCertLabel, { color: isLight ? '#64748B' : colors.textMuted }]}>
-                      LICENSE ID:
+                      {t('settings.license_id', 'LICENSE ID:')}
                     </Text>
                     <Text style={[styles.hudCertValue, { color: colors.text }]}>
                       {licenseCertificateId}
@@ -892,7 +894,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                   <Ionicons name="warning" size={18} color="#EF4444" />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.expiringSoonAlertTitle}>
-                      LICENSE EXPIRING SOON! ({proDaysRemaining} Days Left)
+                      {t('settings.status_expiring_soon', 'LICENSE EXPIRING SOON')} ({proDaysRemaining} {t('pro.days_left', 'Days Left')})
                     </Text>
                     <Text style={styles.expiringSoonAlertDesc}>
                       Your vessel license will expire on {proFormattedExpiry}. Renew now to avoid offshore chart blackout & radar shutdown.
@@ -905,19 +907,19 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               <View style={styles.unlockedGrid}>
                 <View style={[styles.unlockedItem, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#E2E8F0' : colors.chipBorder }]}>
                   <Ionicons name="cloud-offline" size={13} color={isLight ? '#16A34A' : '#10B981'} />
-                  <Text style={[styles.unlockedText, { color: colors.text }]}>Offline Charts</Text>
+                  <Text style={[styles.unlockedText, { color: colors.text }]}>{t('hub.offline', 'Offline Charts')}</Text>
                 </View>
                 <View style={[styles.unlockedItem, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#E2E8F0' : colors.chipBorder }]}>
                   <Ionicons name="fish" size={13} color={isLight ? colors.accent : '#00F0FF'} />
-                  <Text style={[styles.unlockedText, { color: colors.text }]}>AI Hotspots</Text>
+                  <Text style={[styles.unlockedText, { color: colors.text }]}>{t('hub.spots', 'AI Hotspots')}</Text>
                 </View>
                 <View style={[styles.unlockedItem, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#E2E8F0' : colors.chipBorder }]}>
                   <Ionicons name="radio" size={13} color={isLight ? '#D97706' : '#F59E0B'} />
-                  <Text style={[styles.unlockedText, { color: colors.text }]}>AIS Radar</Text>
+                  <Text style={[styles.unlockedText, { color: colors.text }]}>{t('pro.feat_ais_title', 'AIS Radar')}</Text>
                 </View>
                 <View style={[styles.unlockedItem, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#E2E8F0' : colors.chipBorder }]}>
                   <Ionicons name="location" size={13} color={isLight ? '#9333EA' : '#A855F7'} />
-                  <Text style={[styles.unlockedText, { color: colors.text }]}>Waypoints Sync</Text>
+                  <Text style={[styles.unlockedText, { color: colors.text }]}>{t('hub.waypoints', 'Waypoints Sync')}</Text>
                 </View>
               </View>
 
@@ -929,7 +931,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                     onPress={() => setShowReceiptModal(true)}
                   >
                     <Ionicons name="receipt-outline" size={14} color={isLight ? colors.accent : colors.textSecondary} />
-                    <Text style={[styles.proManageBtnText, { color: colors.text }]}>Tax Invoice</Text>
+                    <Text style={[styles.proManageBtnText, { color: colors.text }]}>{t('profile.tax_invoice', 'Tax Invoice')}</Text>
                   </Pressable>
                 </View>
               ) : (
@@ -948,7 +950,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                       style={styles.upgradeCtaGrad}
                     >
                       <MaterialCommunityIcons name="crown" size={17} color="#FFFFFF" />
-                      <Text style={[styles.upgradeCtaText, { color: '#FFFFFF' }]}>UPGRADE TO FISHNAV PRO</Text>
+                      <Text style={[styles.upgradeCtaText, { color: '#FFFFFF' }]}>{t('pro.upgrade_btn', 'UPGRADE TO FISHNAV PRO')}</Text>
                     </LinearGradient>
                   </Pressable>
 
@@ -960,7 +962,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                     }}
                   >
                     <Ionicons name="people" size={14} color={isLight ? '#16A34A' : '#22C55E'} />
-                    <Text style={[styles.referralCtaText, { color: isLight ? '#16A34A' : '#22C55E' }]}>Invite (+10d)</Text>
+                    <Text style={[styles.referralCtaText, { color: isLight ? '#16A34A' : '#22C55E' }]}>{t('referral.share_btn', 'Invite')} (+10d)</Text>
                   </Pressable>
                 </View>
               )}
@@ -1005,7 +1007,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               </View>
               <View style={styles.tripsTextWrap}>
                 <View style={styles.tripsTitleRow}>
-                  <Text style={[styles.tripsTitle, { color: colors.text }]}>Trips & Routes Logbook</Text>
+                  <Text style={[styles.tripsTitle, { color: colors.text }]}>{t('trips.title', 'Trips & Routes Logbook')}</Text>
                   <View
                     style={[
                       styles.tripsBadge,
@@ -1016,12 +1018,12 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                     ]}
                   >
                     <Text style={[styles.tripsBadgeText, { color: colors.accent }]}>
-                      {savedTrips.length} VOYAGES
+                      {savedTrips.length} {t('tab.trips', 'VOYAGES').toUpperCase()}
                     </Text>
                   </View>
                 </View>
                 <Text style={[styles.tripsSubtitle, { color: colors.textSecondary }]}>
-                  View GPS voyage tracks, distance & backtrack routes
+                  {t('trips.subtitle', 'View GPS voyage tracks, distance & backtrack routes')}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
@@ -1031,7 +1033,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
             <View style={styles.sectionHeaderBetween}>
               <View style={styles.sectionHeaderLeft}>
                 <MaterialCommunityIcons name="sail-boat" size={16} color={colors.accent} />
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>VESSEL & BOAT SPECIFICATIONS</Text>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('profile.vessel_specs', 'VESSEL & BOAT SPECIFICATIONS')}</Text>
               </View>
 
               <Pressable
@@ -1039,7 +1041,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                 onPress={() => setShowVesselEditor(true)}
               >
                 <Ionicons name="create-outline" size={14} color={colors.accent} />
-                <Text style={[styles.editSpecsText, { color: colors.accent }]}>Update</Text>
+                <Text style={[styles.editSpecsText, { color: colors.accent }]}>{t('btn.edit', 'Update')}</Text>
               </Pressable>
             </View>
 
@@ -1058,37 +1060,37 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               ]}
             >
               <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Vessel Name</Text>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('profile.boat_name', 'Vessel Name')}</Text>
                 <Text style={[styles.infoValue, { color: colors.accent, fontWeight: '800' }]}>
                   {captain?.vesselName || 'Sea Hunter II'}
                 </Text>
               </View>
               <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
               <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Call Sign / Reg No</Text>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('profile.registration', 'Call Sign / Reg No')}</Text>
                 <Text style={[styles.infoValue, { color: colors.accent, fontWeight: '800' }]}>
                   {captain?.callSign || 'IND-GJ-8821'}
                 </Text>
               </View>
               <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
               <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Vessel Class</Text>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('profile.vessel_type', 'Vessel Class')}</Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>{captain?.vesselType || 'Deep Sea Trawler (42ft)'}</Text>
               </View>
               <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
               <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Home Harbor</Text>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('profile.home_port', 'Home Harbor')}</Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>{captain?.homeHarbor || 'Veraval Fishing Port'}</Text>
               </View>
 
               <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
               <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Cruising Speed</Text>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('profile.cruise_speed', 'Cruising Speed')}</Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>{captain?.cruiseSpeedKnots || '12'} knots</Text>
               </View>
               <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
               <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Maritime License</Text>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('pro.master_license', 'Maritime License')}</Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>{captain?.licenseNumber || 'IND-MF-2026-991'}</Text>
               </View>
             </View>
@@ -1096,7 +1098,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
             {/* 3. LOGIN & SECURITY CREDENTIALS SECTION */}
             <View style={styles.sectionHeaderRow}>
               <Ionicons name="key-outline" size={15} color={colors.accent} />
-              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>LOGIN & AUTHENTICATION DETAILS</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('profile.auth_details', 'LOGIN & AUTHENTICATION DETAILS')}</Text>
             </View>
 
             <View
@@ -1145,14 +1147,14 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
 
                 <View style={[styles.activePill, isLight && { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]}>
                   <View style={styles.greenPulse} />
-                  <Text style={[styles.activeText, isLight && { color: '#16A34A' }]}>VERIFIED</Text>
+                  <Text style={[styles.activeText, isLight && { color: '#16A34A' }]}>{t('profile.verified', 'VERIFIED')}</Text>
                 </View>
               </View>
 
               <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
 
               <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Account Identifier</Text>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('profile.account_id', 'Account Identifier')}</Text>
                 <Text style={[styles.infoValue, { color: colors.accent, fontWeight: '700' }]}>
                   {captain?.emailOrPhone || '+91 98765 43210'}
                 </Text>
@@ -1161,7 +1163,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
 
               <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Session Started</Text>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('profile.session_started', 'Session Started')}</Text>
                 <Text style={[styles.infoValue, { color: colors.text }]}>
                   {captain?.loginAt || 'Today, Active'}
                 </Text>
@@ -1170,10 +1172,10 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
 
               <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>Account Security</Text>
+                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('profile.account_security', 'Account Security')}</Text>
                 <View style={styles.securityBadge}>
                   <Ionicons name="shield-checkmark-outline" size={13} color="#10B981" />
-                  <Text style={[styles.securityText, { color: isLight ? '#16A34A' : '#10B981' }]}>256-Bit Marine Key</Text>
+                  <Text style={[styles.securityText, { color: isLight ? '#16A34A' : '#10B981' }]}>{t('profile.security_key', '256-Bit Marine Key')}</Text>
                 </View>
               </View>
             </View>
@@ -1211,7 +1213,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               onPress={handleLogout}
             >
               <Ionicons name="log-out-outline" size={18} color="#EF4444" />
-              <Text style={[styles.logoutText, isLight && { color: '#DC2626' }]}>SIGN OUT / SWITCH ACCOUNT</Text>
+              <Text style={[styles.logoutText, isLight && { color: '#DC2626' }]}>{t('profile.sign_out', 'SIGN OUT').toUpperCase()}</Text>
             </Pressable>
           </ScrollView>
         </View>
@@ -1251,7 +1253,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
             <View style={[styles.subModalHeader, { borderBottomColor: colors.divider }]}>
               <View style={styles.topBarLeft}>
                 <Ionicons name="camera" size={20} color={colors.accent} />
-                <Text style={[styles.subModalTitle, { color: colors.text }]}>Choose Profile Photo</Text>
+                <Text style={[styles.subModalTitle, { color: colors.text }]}>{t('profile.choose_photo', 'Choose Profile Photo')}</Text>
               </View>
               <Pressable
                 onPress={() => setShowPhotoPicker(false)}
@@ -1278,9 +1280,9 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                   <Ionicons name="cloud-upload" size={22} color={colors.accent} />
                 </View>
                 <View style={styles.uploadTextWrap}>
-                  <Text style={[styles.uploadTitle, { color: colors.text }]}>Choose from Device / Gallery</Text>
+                  <Text style={[styles.uploadTitle, { color: colors.text }]}>{t('profile.device_gallery', 'Choose from Device / Gallery')}</Text>
                   <Text style={[styles.uploadSub, { color: colors.textSecondary }]}>
-                    Select a personal photo from your phone or PC
+                    {t('profile.gallery_desc', 'Select a personal photo from your phone or PC')}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
@@ -1288,7 +1290,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
 
               {/* Option 2: Curated Maritime Captain Presets */}
               <Text style={[styles.presetSectionTitle, { color: colors.textMuted }]}>
-                OR SELECT MARITIME CAPTAIN AVATAR
+                {t('profile.select_avatar', 'OR SELECT MARITIME CAPTAIN AVATAR')}
               </Text>
               <View style={styles.presetsGrid}>
                 {CAPTAIN_PHOTO_PRESETS.map((item) => {
@@ -1333,7 +1335,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               </View>
 
               {/* Option 3: Custom URL Input */}
-              <Text style={[styles.presetSectionTitle, { color: colors.textMuted }]}>OR ENTER IMAGE URL</Text>
+              <Text style={[styles.presetSectionTitle, { color: colors.textMuted }]}>{t('profile.enter_url', 'OR ENTER IMAGE URL')}</Text>
               <View style={styles.urlInputRow}>
                 <TextInput
                   style={[
@@ -1354,7 +1356,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                   style={[styles.urlApplyBtn, { backgroundColor: colors.accent }]}
                   onPress={handleApplyCustomUrl}
                 >
-                  <Text style={styles.urlApplyText}>Apply</Text>
+                  <Text style={styles.urlApplyText}>{t('btn.update', 'Apply')}</Text>
                 </Pressable>
               </View>
 
@@ -1362,7 +1364,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               {captain?.avatarUrl && (
                 <Pressable style={styles.resetPhotoBtn} onPress={handleResetPhoto}>
                   <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                  <Text style={styles.resetPhotoText}>Remove Photo (Use Ship Wheel Icon)</Text>
+                  <Text style={styles.resetPhotoText}>{t('profile.remove_photo', 'Remove Photo (Use Ship Wheel Icon)')}</Text>
                 </Pressable>
               )}
             </ScrollView>
@@ -1404,7 +1406,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
             <View style={[styles.subModalHeader, { borderBottomColor: colors.divider }]}>
               <View style={styles.topBarLeft}>
                 <MaterialCommunityIcons name="sail-boat" size={22} color={colors.accent} />
-                <Text style={[styles.subModalTitle, { color: colors.text }]}>Update Boat & Vessel Specs</Text>
+                <Text style={[styles.subModalTitle, { color: colors.text }]}>{t('profile.edit_vessel', 'Update Boat & Vessel Specs')}</Text>
               </View>
               <Pressable
                 onPress={() => setShowVesselEditor(false)}
@@ -1418,7 +1420,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.editorContent}>
               {/* 1. Vessel Name */}
               <View style={styles.editField}>
-                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>BOAT / VESSEL NAME</Text>
+                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>{t('profile.boat_name', 'BOAT / VESSEL NAME').toUpperCase()}</Text>
                 <View
                   style={[
                     styles.editInputWrap,
@@ -1442,7 +1444,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               {/* 2. Call Sign / Registration */}
               <View style={styles.editField}>
                 <Text style={[styles.editLabel, { color: colors.textSecondary }]}>
-                  OFFICIAL REGISTRATION / CALL SIGN
+                  {t('profile.registration', 'OFFICIAL REGISTRATION / CALL SIGN').toUpperCase()}
                 </Text>
                 <View
                   style={[
@@ -1466,7 +1468,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
 
               {/* 3. Captain Name */}
               <View style={styles.editField}>
-                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>CAPTAIN / MASTER NAME</Text>
+                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>{t('profile.title', 'CAPTAIN / MASTER NAME').toUpperCase()}</Text>
                 <View
                   style={[
                     styles.editInputWrap,
@@ -1489,7 +1491,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
 
               {/* 4. Vessel Type Selector */}
               <View style={styles.editField}>
-                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>VESSEL CLASS / TYPE</Text>
+                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>{t('profile.vessel_type', 'VESSEL CLASS / TYPE').toUpperCase()}</Text>
                 <View
                   style={[
                     styles.editInputWrap,
@@ -1530,7 +1532,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               {/* 5. Home Harbor Selector */}
               <View style={styles.editField}>
                 <Text style={[styles.editLabel, { color: colors.textSecondary }]}>
-                  HOME HARBOR / PORT OF REGISTRY
+                  {t('profile.home_port', 'HOME HARBOR / PORT OF REGISTRY').toUpperCase()}
                 </Text>
                 <View
                   style={[
@@ -1572,7 +1574,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               {/* 6. Cruising Speed */}
               <View style={styles.editField}>
                 <Text style={[styles.editLabel, { color: colors.textSecondary }]}>
-                  CRUISING SPEED (KNOTS)
+                  {t('profile.cruise_speed', 'CRUISING SPEED (KNOTS)').toUpperCase()}
                 </Text>
                 <View
                   style={[
@@ -1598,7 +1600,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               {/* 7. Maritime License */}
               <View style={styles.editField}>
                 <Text style={[styles.editLabel, { color: colors.textSecondary }]}>
-                  MARITIME LICENSE / PERMIT NO
+                  {t('pro.master_license', 'MARITIME LICENSE / PERMIT NO').toUpperCase()}
                 </Text>
                 <View
                   style={[
@@ -1629,7 +1631,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                   style={styles.saveGradient}
                 >
                   <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                  <Text style={styles.saveText}>SAVE BOAT SPECIFICATIONS</Text>
+                  <Text style={styles.saveText}>{t('profile.save_changes', 'SAVE BOAT SPECIFICATIONS')}</Text>
                 </LinearGradient>
               </Pressable>
             </ScrollView>
@@ -1661,7 +1663,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                 <MaterialCommunityIcons name="ship-wheel" size={24} color={colors.accent} />
                 <View>
                   <Text style={[styles.receiptBrand, { color: colors.text }]}>FishNav Marine</Text>
-                  <Text style={[styles.receiptSub, { color: colors.textMuted }]}>Official Maritime Tax Invoice</Text>
+                  <Text style={[styles.receiptSub, { color: colors.textMuted }]}>{t('profile.invoice_title', 'Official Maritime Tax Invoice')}</Text>
                 </View>
               </View>
               <Pressable
@@ -1677,47 +1679,47 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
 
             <View style={styles.receiptBody}>
               <View style={styles.receiptRow}>
-                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>Invoice No:</Text>
+                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>{t('profile.invoice_no', 'Invoice No:')}</Text>
                 <Text style={[styles.receiptValue, { color: colors.text }]}>{invoiceNumber}</Text>
               </View>
               <View style={styles.receiptRow}>
-                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>License Certificate:</Text>
+                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>{t('profile.invoice_cert', 'License Certificate:')}</Text>
                 <Text style={[styles.receiptValue, { color: '#F59E0B' }]}>{licenseCertificateId}</Text>
               </View>
               <View style={styles.receiptRow}>
-                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>Vessel / Captain:</Text>
+                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>{t('profile.invoice_vessel', 'Vessel / Captain:')}</Text>
                 <Text style={[styles.receiptValue, { color: colors.text }]}>
                   {captain?.vesselName || 'Sea Hunter II'} ({captain?.callSign || 'IND-GJ-8821'})
                 </Text>
               </View>
               <View style={styles.receiptRow}>
-                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>Plan Type:</Text>
+                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>{t('profile.invoice_plan', 'Plan Type:')}</Text>
                 <Text style={[styles.receiptValue, { color: colors.text }]}>{planDisplayName}</Text>
               </View>
               <View style={styles.receiptRow}>
-                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>Billing Period:</Text>
+                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>{t('profile.invoice_period', 'Billing Period:')}</Text>
                 <Text style={[styles.receiptValue, { color: colors.text }]}>
-                  {proPlan === 'lifetime' ? 'Perpetual Lifetime' : proFormattedExpiry || '1 Year Active'}
+                  {proPlan === 'lifetime' ? t('pro.forever', 'Perpetual Lifetime') : proFormattedExpiry || '1 Year Active'}
                 </Text>
               </View>
               <View style={styles.receiptRow}>
-                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>Payment Status:</Text>
+                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>{t('profile.invoice_status', 'Payment Status:')}</Text>
                 <View style={[styles.paidBadge, isLight && { backgroundColor: '#DCFCE7' }]}>
                   <Ionicons name="checkmark-circle" size={13} color={isLight ? '#16A34A' : '#10B981'} />
-                  <Text style={[styles.paidBadgeText, isLight && { color: '#16A34A' }]}>PAID & VERIFIED</Text>
+                  <Text style={[styles.paidBadgeText, isLight && { color: '#16A34A' }]}>{t('profile.invoice_paid', 'PAID & VERIFIED')}</Text>
                 </View>
               </View>
 
               <View style={[styles.receiptDivider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
 
               <View style={styles.receiptRow}>
-                <Text style={[styles.receiptTotalLabel, { color: colors.text }]}>Total Amount Paid:</Text>
+                <Text style={[styles.receiptTotalLabel, { color: colors.text }]}>{t('profile.invoice_total', 'Total Amount Paid:')}</Text>
                 <Text style={[styles.receiptTotalVal, { color: colors.accent }]}>
                   {proPlan === 'lifetime' ? '₹3,999.00' : proPlan === 'quarterly' ? '₹499.00' : '₹1,499.00'}
                 </Text>
               </View>
               <Text style={[styles.receiptGstNote, { color: colors.textMuted }]}>
-                Includes 18% Integrated Goods and Services Tax (IGST) for Marine Navigation Software.
+                {t('profile.invoice_gst', 'Includes 18% Integrated Goods and Services Tax (IGST) for Marine Navigation Software.')}
               </Text>
             </View>
 
@@ -1732,7 +1734,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                 style={styles.receiptDoneGrad}
               >
                 <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-                <Text style={styles.receiptDoneText}>CLOSE RECEIPT</Text>
+                <Text style={styles.receiptDoneText}>{t('profile.close_receipt', 'CLOSE RECEIPT')}</Text>
               </LinearGradient>
             </Pressable>
           </View>

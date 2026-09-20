@@ -14,6 +14,7 @@ import { WaypointCard } from '@/components/waypoint/waypoint-card';
 import { WaypointModal } from '@/components/waypoint/waypoint-modal';
 import { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
+import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useWaypoints } from '@/context/waypoints-context';
 import { useUserLocation } from '@/hooks/use-user-location';
@@ -78,14 +79,17 @@ export function WaypointsSheetContent({
     setModalVisible(true);
   };
 
+  const { colors, isLight } = useAppTheme();
+  const { t } = useLanguage();
+
   const handleDeletePrompt = (spot: FishingSpot) => {
     Alert.alert(
-      'Delete Waypoint',
-      `Are you sure you want to delete "${spot.name}"? This action cannot be undone.`,
+      t('waypoints.delete_title', 'Delete Waypoint'),
+      t('waypoints.delete_confirm', `Are you sure you want to delete "${spot.name}"? This action cannot be undone.`),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('btn.cancel', 'Cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('btn.delete', 'Delete'),
           style: 'destructive',
           onPress: async () => {
             await deleteWaypoint(spot.id);
@@ -109,8 +113,6 @@ export function WaypointsSheetContent({
     onViewOnMap(spot);
   };
 
-  const { colors, isLight } = useAppTheme();
-
   return (
     <View style={styles.container}>
       {/* Search & Add Bar */}
@@ -127,7 +129,7 @@ export function WaypointsSheetContent({
           <Ionicons name="search" size={17} color={colors.textMuted} style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search waypoints or species..."
+            placeholder={t('waypoints.search_placeholder', 'Search waypoints or species...')}
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -146,18 +148,18 @@ export function WaypointsSheetContent({
           accessibilityRole="button"
         >
           <Ionicons name="add" size={18} color={isLight ? '#FFFFFF' : '#020B14'} />
-          <Text style={[styles.addBtnText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>Add</Text>
+          <Text style={[styles.addBtnText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>{t('waypoints.add_spot', 'Add')}</Text>
         </Pressable>
       </View>
 
       {/* Filter Pills */}
       <View style={styles.filterRow}>
         {[
-          { id: 'all', label: 'All' },
-          { id: 'favorites', label: 'Favorites' },
-          { id: 'deep', label: 'Deep (50m+)' },
-          { id: 'reef', label: 'Coral Reefs' },
-          { id: 'wreck', label: 'Shipwrecks' },
+          { id: 'all', label: t('waypoints.filter_all', 'All') },
+          { id: 'favorites', label: t('waypoints.filter_favorites', 'Favorites') },
+          { id: 'deep', label: t('waypoints.filter_deep', 'Deep (50m+)') },
+          { id: 'reef', label: t('waypoints.filter_reefs', 'Coral Reefs') },
+          { id: 'wreck', label: t('waypoints.filter_wrecks', 'Shipwrecks') },
         ].map((item) => {
           const isSelected = activeFilter === item.id;
           return (
@@ -200,9 +202,9 @@ export function WaypointsSheetContent({
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name="location-outline" size={44} color={MapColors.textMuted} />
-            <Text style={styles.emptyTitle}>No Waypoints Found</Text>
+            <Text style={styles.emptyTitle}>{t('waypoints.empty_title', 'No Waypoints Found')}</Text>
             <Text style={styles.emptySub}>
-              {searchQuery ? 'Try another search query' : 'Tap "+ Add" to save your first fishing waypoint.'}
+              {searchQuery ? t('waypoints.empty_sub', 'Try another search query') : t('waypoints.empty_sub', 'Tap "+ Add" to save your first fishing waypoint.')}
             </Text>
           </View>
         }

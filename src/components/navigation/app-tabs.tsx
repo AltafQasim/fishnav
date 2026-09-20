@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
+import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import {
   CalendarTabIcon,
@@ -38,6 +39,7 @@ export type AppTabsProps = {
  */
 export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
   const { colors, isLight, isDark } = useAppTheme();
+  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
@@ -215,7 +217,7 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
                   { color: colors.accent, fontSize: activeLabelFontSize },
                 ]}
               >
-                Waypoint
+                {t('tab.waypoints', 'Waypoint')}
               </Text>
             )}
           </TouchableOpacity>
@@ -238,7 +240,7 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
                   { color: colors.accent, fontSize: activeLabelFontSize },
                 ]}
               >
-                Weather
+                {t('tab.weather', 'Weather')}
               </Text>
             )}
           </TouchableOpacity>
@@ -264,7 +266,7 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
                   { color: colors.accent, fontSize: activeLabelFontSize },
                 ]}
               >
-                Calendar
+                {t('tab.calendar', 'Calendar')}
               </Text>
             )}
           </TouchableOpacity>
@@ -287,7 +289,7 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
                   { color: colors.accent, fontSize: activeLabelFontSize },
                 ]}
               >
-                Settings
+                {t('tab.settings', 'Settings')}
               </Text>
             )}
           </TouchableOpacity>

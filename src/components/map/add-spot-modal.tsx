@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
+import { useLanguage } from '@/context/language-context';
 
 type AddSpotModalProps = {
   visible: boolean;
@@ -52,6 +53,7 @@ export function AddSpotModal({
   onSave,
 }: AddSpotModalProps) {
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
   const [name, setName] = useState('');
   const [latStr, setLatStr] = useState('');
   const [lngStr, setLngStr] = useState('');
@@ -100,7 +102,7 @@ export function AddSpotModal({
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>
               <Ionicons name="bookmark" size={20} color={MapColors.accent} />
-              <Text style={styles.title}>Save Fishing Waypoint</Text>
+              <Text style={styles.title}>{t('waypoints.add_spot', 'Save Fishing Waypoint')}</Text>
             </View>
             <Pressable onPress={onClose} hitSlop={10} style={styles.closeBtn}>
               <Ionicons name="close" size={22} color={MapColors.textSecondary} />
@@ -109,7 +111,7 @@ export function AddSpotModal({
 
           <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
             {/* Spot Name */}
-            <Text style={styles.label}>SPOT / REEF NAME</Text>
+            <Text style={styles.label}>{t('spot.name_label', 'SPOT / REEF NAME')}</Text>
             <TextInput
               style={styles.input}
               placeholder="e.g. Deep Ghol Hole, North Shoal..."
@@ -119,7 +121,7 @@ export function AddSpotModal({
             />
 
             {/* Target Species / Category */}
-            <Text style={[styles.label, { marginTop: 14 }]}>TARGET SPECIES / TYPE</Text>
+            <Text style={[styles.label, { marginTop: 14 }]}>{t('spot.species_label', 'TARGET SPECIES / TYPE')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tagScroll}>
               {SPECIES_TAGS.map((tag) => {
                 const active = tag === selectedTag;
@@ -142,7 +144,7 @@ export function AddSpotModal({
             {/* Coordinates Lat & Long */}
             <View style={styles.coordRow}>
               <View style={styles.coordField}>
-                <Text style={styles.label}>LATITUDE</Text>
+                <Text style={styles.label}>{t('coords.lat', 'LATITUDE')}</Text>
                 <TextInput
                   style={styles.input}
                   keyboardType="numeric"
@@ -151,7 +153,7 @@ export function AddSpotModal({
                 />
               </View>
               <View style={styles.coordField}>
-                <Text style={styles.label}>LONGITUDE</Text>
+                <Text style={styles.label}>{t('coords.lng', 'LONGITUDE')}</Text>
                 <TextInput
                   style={styles.input}
                   keyboardType="numeric"
@@ -162,7 +164,7 @@ export function AddSpotModal({
             </View>
 
             {/* Depth */}
-            <Text style={[styles.label, { marginTop: 14 }]}>WATER DEPTH (METERS)</Text>
+            <Text style={[styles.label, { marginTop: 14 }]}>{t('spot.depth_label', 'WATER DEPTH (METERS)')}</Text>
             <TextInput
               style={styles.input}
               keyboardType="number-pad"
@@ -173,7 +175,7 @@ export function AddSpotModal({
             />
 
             {/* Marker Color */}
-            <Text style={[styles.label, { marginTop: 14 }]}>CHART PIN COLOR</Text>
+            <Text style={[styles.label, { marginTop: 14 }]}>{t('spot.pin_color', 'CHART PIN COLOR')}</Text>
             <View style={styles.colorsRow}>
               {COLOR_OPTIONS.map((c) => {
                 const active = c === selectedColor;
@@ -191,7 +193,7 @@ export function AddSpotModal({
             {/* Save Button */}
             <Pressable style={styles.saveBtn} onPress={handleSave}>
               <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-              <Text style={styles.saveText}>SAVE TO MY SPOTS</Text>
+              <Text style={styles.saveText}>{t('spot.save', 'SAVE TO MY SPOTS')}</Text>
             </Pressable>
           </ScrollView>
         </View>

@@ -4,10 +4,12 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MarineCompassView } from '@/components/compass/marine-compass-view';
 import { MapColors } from '@/constants/map-theme';
+import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 
 export function CompassSheetContent() {
   const { colors, isLight } = useAppTheme();
+  const { t } = useLanguage();
   const [northMode, setNorthMode] = useState<'magnetic' | 'true'>('magnetic');
 
   return (
@@ -20,7 +22,7 @@ export function CompassSheetContent() {
       <View style={styles.topBar}>
         <View style={styles.calibratedBadge}>
           <View style={styles.liveDot} />
-          <Text style={styles.calibratedText}>COMPASS SENSOR ACTIVE</Text>
+          <Text style={styles.calibratedText}>{t('compass.sensor_active', 'COMPASS SENSOR ACTIVE')}</Text>
         </View>
 
         <Pressable
@@ -29,7 +31,7 @@ export function CompassSheetContent() {
           accessibilityRole="button"
         >
           <Text style={[styles.modeBtnText, { color: colors.accent }]}>
-            {northMode === 'magnetic' ? 'MAG NORTH' : 'TRUE NORTH'}
+            {northMode === 'magnetic' ? t('compass.mag_north', 'MAG NORTH') : t('compass.true_north', 'TRUE NORTH')}
           </Text>
         </Pressable>
       </View>
@@ -41,10 +43,10 @@ export function CompassSheetContent() {
       <View style={[styles.guideCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
         <View style={styles.guideHeader}>
           <Ionicons name="compass" size={16} color={colors.accent} />
-          <Text style={[styles.guideTitle, { color: colors.accent }]}>MARINE STEERING GUIDANCE</Text>
+          <Text style={[styles.guideTitle, { color: colors.accent }]}>{t('compass.guidance_title', 'MARINE STEERING GUIDANCE')}</Text>
         </View>
         <Text style={[styles.guideText, { color: colors.textSecondary }]}>
-          The red Lubber Line marks your boat's bow orientation. When you tap a waypoint and start navigation, a blue arrow will point directly to your target.
+          {t('compass.guidance_desc', "The red Lubber Line marks your boat's bow orientation. When you tap a waypoint and start navigation, a blue arrow will point directly to your target.")}
         </Text>
       </View>
     </ScrollView>

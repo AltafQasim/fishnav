@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapColors } from '@/constants/map-theme';
 import { useAuth } from '@/context/auth-context';
+import { useLanguage } from '@/context/language-context';
+import { LanguageDropdown } from '@/components/ui/language-dropdown';
 import { useSubscription } from '@/context/subscription-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useOfflineDownload } from '@/context/offline-map-context';
@@ -35,6 +37,7 @@ export function SettingsSheetContent() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { theme, setTheme, colors, isLight, isDark, isHighContrast } = useAppTheme();
+  const { language, setLanguage, t, availableLanguages } = useLanguage();
   const { captain, updateCaptain } = useAuth();
   const { waypoints, resetWaypoints } = useWaypoints();
   const { savedTrips } = useTripTracking();
@@ -158,7 +161,10 @@ export function SettingsSheetContent() {
 
   const handleDownloadRegion = async (region: OfflineRegion) => {
     if (isDownloading) {
-      Alert.alert('Download in Progress', 'Please wait until the current map chart finishes downloading.');
+      Alert.alert(
+        t('settings.download_in_progress', 'Download in Progress'),
+        t('settings.download_wait', 'Please wait until the current map chart finishes downloading.')
+      );
       return;
     }
 
@@ -166,13 +172,13 @@ export function SettingsSheetContent() {
 
     if (success) {
       Alert.alert(
-        '✓ Chart Saved Offline',
-        `"${region.name}" has been successfully downloaded! You can now navigate this area in deep sea with 0% cellular internet.`
+        t('settings.chart_saved_title', '✓ Chart Saved Offline'),
+        `"${region.name}" ${t('settings.chart_saved_body', 'has been successfully downloaded! You can now navigate this area in deep sea with 0% cellular internet.')}`
       );
     } else {
       Alert.alert(
-        'Download Incomplete',
-        'Could not complete downloading all map tiles. Please check your internet connection and try again.'
+        t('settings.download_failed_title', 'Download Incomplete'),
+        t('settings.download_failed_body', 'Could not complete downloading all map tiles. Please check your internet connection and try again.')
       );
     }
   };
@@ -187,27 +193,27 @@ export function SettingsSheetContent() {
 
   const handleExportGpx = () => {
     Alert.alert(
-      'Export GPX',
-      `Exported ${waypoints.length} waypoints successfully to "FishNavPro_Backup.gpx".`,
-      [{ text: 'OK' }],
+      t('settings.export_title', 'Export GPX'),
+      `${waypoints.length} ${t('settings.export_body', 'waypoints successfully exported to FishNavPro_Backup.gpx.')}`,
+      [{ text: t('btn.done', 'OK') }],
     );
   };
 
   const handleImportGpx = () => {
     Alert.alert(
-      'Import GPX',
-      'Select a GPX or KML waypoint file from your device storage.',
-      [{ text: 'Browse Files' }, { text: 'Cancel', style: 'cancel' }],
+      t('settings.import_title', 'Import GPX'),
+      t('settings.import_body', 'Select a GPX or KML waypoint file from your device storage.'),
+      [{ text: t('settings.browse_files', 'Browse Files') }, { text: t('btn.cancel', 'Cancel'), style: 'cancel' }],
     );
   };
 
   const handleResetPrompt = () => {
     Alert.alert(
-      'Reset All Waypoints',
-      'Are you sure you want to reset your saved waypoints back to factory fishing spots? Any custom spots will be cleared.',
+      t('settings.reset_prompt_title', 'Reset All Waypoints'),
+      t('settings.reset_prompt_body', 'Are you sure you want to reset your saved waypoints back to factory fishing spots? Any custom spots will be cleared.'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Reset', style: 'destructive', onPress: resetWaypoints },
+        { text: t('btn.cancel', 'Cancel'), style: 'cancel' },
+        { text: t('btn.delete', 'Reset'), style: 'destructive', onPress: resetWaypoints },
       ],
     );
   };
@@ -226,7 +232,7 @@ export function SettingsSheetContent() {
           <View style={styles.sectionHeaderLeft}>
             <MaterialCommunityIcons name="crown" size={15} color="#F59E0B" style={{ marginRight: 5 }} />
             <Text style={[styles.sectionHeader, { color: '#F59E0B', marginLeft: 0 }]}>
-              MEMBERSHIP & VESSEL LICENSE
+              {t('settings.membership_license', 'MEMBERSHIP & VESSEL LICENSE')}
             </Text>
           </View>
           <View
@@ -274,13 +280,13 @@ export function SettingsSheetContent() {
                 ? proPlan === 'lifetime'
                   ? 'LIFETIME 👑'
                   : isExpiringSoon
-                    ? `EXPIRES IN ${proDaysRemaining}D ⚠️`
-                    : `${proDaysRemaining}D LEFT 👑`
+                    ? `${t('settings.status_expiring_soon', 'EXPIRES IN')} ${proDaysRemaining}D ⚠️`
+                    : `${proDaysRemaining}D ${t('pro.days_left', 'LEFT')} 👑`
                 : hasReferralBonus
                   ? `${bonusProDaysRemaining}D BONUS 🎁`
                   : isTrialExpired
-                    ? 'TRIAL EXPIRED 🚨'
-                    : `${trialDaysRemaining}D TRIAL ACTIVE ⚡`}
+                    ? `${t('settings.status_expired', 'TRIAL EXPIRED')} 🚨`
+                    : `${trialDaysRemaining}D ${t('settings.status_active_trial', 'TRIAL ACTIVE')} ⚡`}
             </Text>
           </View>
         </View>
@@ -366,20 +372,26 @@ export function SettingsSheetContent() {
                       },
                     ]}
                   >
-                    {isPro ? (isExpiringSoon ? 'EXPIRING SOON' : 'ACTIVE') : hasReferralBonus ? 'REFERRAL PASS' : isTrialExpired ? 'EXPIRED' : 'ACTIVE TRIAL'}
+                    {isPro
+                      ? (isExpiringSoon ? t('settings.status_expiring_soon', 'EXPIRING SOON') : t('settings.status_active', 'ACTIVE'))
+                      : hasReferralBonus
+                        ? t('settings.status_referral_pass', 'REFERRAL PASS')
+                        : isTrialExpired
+                          ? t('settings.status_expired', 'EXPIRED')
+                          : t('settings.status_active_trial', 'ACTIVE TRIAL')}
                   </Text>
                 </View>
               </View>
               <Text style={[styles.proMembershipSub, { color: colors.textSecondary }]}>
                 {isPro
                   ? proPlan === 'lifetime'
-                    ? 'Perpetual master license. High-res bathymetry & AIS radar unlocked forever.'
-                    : 'Official vessel license active with full offshore bathymetry & AIS radar.'
+                    ? t('pro.perpetual_desc', 'Perpetual master license. High-res bathymetry & AIS radar unlocked forever.')
+                    : t('pro.active_desc', 'Official vessel license active with full offshore bathymetry & AIS radar.')
                   : hasReferralBonus
-                    ? 'Unlocked via Captain referral invitations. Zero recurring charges.'
+                    ? t('pro.referral_active_desc', 'Unlocked via Captain referral invitations. Zero recurring charges.')
                     : isTrialExpired
-                      ? 'Free trial has ended. Upgrade to continue high-res navigation.'
-                      : 'Unrestricted Pro evaluation pass. All features active.'}
+                      ? t('settings.trial_ended_desc', 'Free trial has ended. Upgrade to continue high-res navigation.')
+                      : t('settings.trial_eval_desc', 'Unrestricted Pro evaluation pass. All features active.')}
               </Text>
             </View>
           </View>
@@ -414,10 +426,10 @@ export function SettingsSheetContent() {
                     <Text style={[styles.hudHugeInfinity, { color: '#F59E0B' }]}>♾️</Text>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.hudHeadline, { color: colors.text }]}>
-                        PERPETUAL LIFETIME ACCESS
+                        {t('pro.perpetual_access', 'PERPETUAL LIFETIME ACCESS')}
                       </Text>
                       <Text style={[styles.hudSubtitle, { color: colors.textSecondary }]}>
-                        Never expires • All bathymetry, radar & offline charts guaranteed
+                        {t('pro.perpetual_desc', 'Never expires • All bathymetry, radar & offline charts guaranteed')}
                       </Text>
                     </View>
                   </View>
@@ -428,7 +440,7 @@ export function SettingsSheetContent() {
                   <View style={styles.hudTopRow}>
                     <View style={styles.hudCountdownBox}>
                       <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
-                        TIME REMAINING
+                        {t('pro.time_remaining', 'TIME REMAINING')}
                       </Text>
                       <View style={styles.hudDaysRow}>
                         <Text
@@ -445,7 +457,7 @@ export function SettingsSheetContent() {
                             { color: isExpiringSoon ? '#EF4444' : '#F59E0B' },
                           ]}
                         >
-                          {proDaysRemaining === 1 ? 'DAY' : 'DAYS'} LEFT
+                          {proDaysRemaining === 1 ? t('pro.days_left', 'DAY LEFT') : t('pro.days_left', 'DAYS LEFT')}
                         </Text>
                       </View>
                     </View>
@@ -454,7 +466,7 @@ export function SettingsSheetContent() {
                       <View style={styles.hudDatePill}>
                         <Ionicons name="calendar" size={13} color={isExpiringSoon ? '#EF4444' : '#F59E0B'} />
                         <Text style={[styles.hudDateText, { color: colors.text }]}>
-                          Expires: <Text style={{ fontWeight: '800' }}>{proFormattedExpiry}</Text>
+                          {t('pro.valid_until', 'Expires')}: <Text style={{ fontWeight: '800' }}>{proFormattedExpiry}</Text>
                         </Text>
                       </View>
                     </View>
@@ -475,7 +487,7 @@ export function SettingsSheetContent() {
                     </View>
                     <View style={styles.hudProgressLabels}>
                       <Text style={[styles.hudProgressLabelText, { color: colors.textMuted }]}>
-                        Cycle: {proPlan === 'quarterly' ? '90 Days' : '365 Days'}
+                        {t('settings.cycle', 'Cycle')}: {proPlan === 'quarterly' ? t('pro.cycle_90', '90 Days') : t('pro.cycle_365', '365 Days')}
                       </Text>
                       <Text
                         style={[
@@ -483,7 +495,7 @@ export function SettingsSheetContent() {
                           { color: isExpiringSoon ? '#EF4444' : '#F59E0B', fontWeight: '700' },
                         ]}
                       >
-                        {proDaysRemaining} days remaining ({Math.max(1, 100 - proProgressPercent)}%)
+                        {proDaysRemaining} {t('settings.days_remaining', 'days remaining')} ({Math.max(1, 100 - proProgressPercent)}%)
                       </Text>
                     </View>
                   </View>
@@ -495,14 +507,14 @@ export function SettingsSheetContent() {
                 <View style={styles.hudTopRow}>
                   <View style={styles.hudCountdownBox}>
                     <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
-                      REFERRAL PASS REMAINING
+                      {t('settings.referral_pass_remaining', 'REFERRAL PASS REMAINING')}
                     </Text>
                     <View style={styles.hudDaysRow}>
                       <Text style={[styles.hudBigNumber, { color: '#22C55E' }]}>
                         {bonusProDaysRemaining}
                       </Text>
                       <Text style={[styles.hudBigUnit, { color: '#22C55E' }]}>
-                        {bonusProDaysRemaining === 1 ? 'DAY' : 'DAYS'} FREE
+                        {bonusProDaysRemaining === 1 ? t('settings.day_free', 'DAY FREE') : t('settings.days_free', 'DAYS FREE')}
                       </Text>
                     </View>
                   </View>
@@ -510,11 +522,11 @@ export function SettingsSheetContent() {
                     <View style={styles.hudDatePill}>
                       <Ionicons name="gift" size={13} color="#22C55E" />
                       <Text style={[styles.hudDateText, { color: colors.text }]}>
-                        Valid Until: <Text style={{ fontWeight: '800' }}>{bonusProFormattedExpiry}</Text>
+                        {t('pro.valid_until', 'Valid Until')}: <Text style={{ fontWeight: '800' }}>{bonusProFormattedExpiry}</Text>
                       </Text>
                     </View>
                     <Text style={[styles.hudSubInfo, { color: colors.textSecondary }]}>
-                      +{referralDaysEarned}d earned from {referralCount} crew invites
+                      +{referralDaysEarned}d {t('settings.invite_crew', 'earned from crew invites')} ({referralCount})
                     </Text>
                   </View>
                 </View>
@@ -525,7 +537,7 @@ export function SettingsSheetContent() {
                 <View style={styles.hudTopRow}>
                   <View style={styles.hudCountdownBox}>
                     <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
-                      {isTrialExpired ? 'TRIAL STATUS' : 'FREE EVALUATION PERIOD'}
+                      {isTrialExpired ? t('pro.trial_expired', 'TRIAL STATUS') : t('settings.free_evaluation', 'FREE EVALUATION PERIOD')}
                     </Text>
                     <View style={styles.hudDaysRow}>
                       <Text
@@ -542,7 +554,7 @@ export function SettingsSheetContent() {
                           { color: isTrialExpired ? '#EF4444' : colors.accent },
                         ]}
                       >
-                        {isTrialExpired ? 'EXPIRED' : `LEFT (${trialDaysRemaining}d)`}
+                        {isTrialExpired ? t('settings.status_expired', 'EXPIRED') : `${t('pro.days_left', 'LEFT')} (${trialDaysRemaining}d)`}
                       </Text>
                     </View>
                   </View>
@@ -554,13 +566,13 @@ export function SettingsSheetContent() {
                         color={isTrialExpired ? '#EF4444' : colors.accent}
                       />
                       <Text style={[styles.hudDateText, { color: colors.text }]}>
-                        {isTrialExpired ? 'Trial Ended' : `Trial Ends: ${trialFormattedExpiry}`}
+                        {isTrialExpired ? t('settings.trial_ended', 'Trial Ended') : `${t('settings.trial_ends', 'Trial Ends')}: ${trialFormattedExpiry}`}
                       </Text>
                     </View>
                     <Text style={[styles.hudSubInfo, { color: colors.textSecondary }]}>
                       {isTrialExpired
-                        ? 'Offshore charts locked'
-                        : 'Upgrade anytime for permanent access'}
+                        ? t('settings.charts_locked', 'Offshore charts locked')
+                        : t('settings.upgrade_anytime', 'Upgrade anytime for permanent access')}
                     </Text>
                   </View>
                 </View>
@@ -579,10 +591,10 @@ export function SettingsSheetContent() {
                     </View>
                     <View style={styles.hudProgressLabels}>
                       <Text style={[styles.hudProgressLabelText, { color: colors.textMuted }]}>
-                        72 Hours Free Evaluation
+                        72 Hours {t('settings.free_evaluation', 'Free Evaluation')}
                       </Text>
                       <Text style={[styles.hudProgressLabelText, { color: colors.accent, fontWeight: '700' }]}>
-                        {trialHoursRemaining} hours left
+                        {trialHoursRemaining} {t('weather.hours_left', 'hours left')}
                       </Text>
                     </View>
                   </View>
@@ -595,7 +607,7 @@ export function SettingsSheetContent() {
               <View style={styles.hudCertLeft}>
                 <MaterialCommunityIcons name="certificate" size={14} color="#F59E0B" />
                 <Text style={[styles.hudCertLabel, { color: colors.textMuted }]}>
-                  LICENSE ID:
+                  {t('settings.license_id', 'LICENSE ID:')}
                 </Text>
                 <Text style={[styles.hudCertValue, { color: colors.text }]}>
                   {licenseCertificateId}
@@ -603,7 +615,7 @@ export function SettingsSheetContent() {
               </View>
               <Pressable style={styles.hudCopyBtn} onPress={handleCopyLicense} hitSlop={8}>
                 <Ionicons name="copy-outline" size={12} color={colors.accent} />
-                <Text style={[styles.hudCopyBtnText, { color: colors.accent }]}>COPY</Text>
+                <Text style={[styles.hudCopyBtnText, { color: colors.accent }]}>{t('referral.copy', 'COPY')}</Text>
               </Pressable>
             </View>
           </View>
@@ -614,7 +626,7 @@ export function SettingsSheetContent() {
               <Ionicons name="warning" size={18} color="#EF4444" />
               <View style={{ flex: 1 }}>
                 <Text style={styles.expiringSoonAlertTitle}>
-                  LICENSE EXPIRING SOON! ({proDaysRemaining} Days Left)
+                  {t('settings.status_expiring_soon', 'LICENSE EXPIRING SOON!')} ({proDaysRemaining} {t('pro.days_left', 'Days Left')})
                 </Text>
                 <Text style={styles.expiringSoonAlertDesc}>
                   Your vessel license will expire on {proFormattedExpiry}. Renew now to avoid offshore chart blackout & radar shutdown.
@@ -628,7 +640,7 @@ export function SettingsSheetContent() {
             <View style={styles.referralBonusPill}>
               <Ionicons name="gift" size={14} color="#22C55E" />
               <Text style={styles.referralBonusPillText}>
-                +{referralDaysEarned} Days Free Pro earned from {referralCount} Captain Invites
+                +{referralDaysEarned} {t('settings.days_free', 'Days Free Pro')} ({referralCount} {t('settings.invite_crew', 'Captain Invites')})
               </Text>
             </View>
           )}
@@ -664,7 +676,11 @@ export function SettingsSheetContent() {
                   { color: isExpiringSoon ? '#FFFFFF' : colors.accent, fontWeight: '800' },
                 ]}
               >
-                {isExpiringSoon ? 'Renew License Now' : isPro ? 'Manage Pro & Billing' : 'Upgrade to Pro'}
+                {isExpiringSoon
+                  ? t('settings.renew_now', 'Renew License Now')
+                  : isPro
+                    ? t('settings.manage_pro', 'Manage Pro & Billing')
+                    : t('pro.upgrade_btn', 'Upgrade to Pro')}
               </Text>
             </Pressable>
 
@@ -680,7 +696,7 @@ export function SettingsSheetContent() {
             >
               <Ionicons name="people" size={16} color="#22C55E" />
               <Text style={[styles.actionBtnText, { color: '#22C55E' }]}>
-                Invite Crew (+10d)
+                {t('settings.invite_crew', 'Invite Crew (+10d)')}
               </Text>
             </Pressable>
           </View>
@@ -702,9 +718,9 @@ export function SettingsSheetContent() {
           <MaterialCommunityIcons name="map-marker-path" size={24} color={colors.accent} />
         </View>
         <View style={styles.tripsTextWrap}>
-          <Text style={[styles.tripsTitle, { color: colors.text }]}>Trips & Routes Logbook</Text>
+          <Text style={[styles.tripsTitle, { color: colors.text }]}>{t('hub.trips_log', 'Trips & Routes Logbook')}</Text>
           <Text style={[styles.tripsSubtitle, { color: colors.textSecondary }]}>
-            {savedTrips.length} recorded fishing voyages • View tracks on map
+            {savedTrips.length} {t('settings.trips_sub', 'recorded fishing voyages • View tracks on map')}
           </Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
@@ -716,7 +732,7 @@ export function SettingsSheetContent() {
           <View style={styles.sectionHeaderLeft}>
             <MaterialCommunityIcons name="map-clock-outline" size={18} color={colors.accent} style={{ marginRight: 6 }} />
             <Text style={[styles.sectionHeader, { color: colors.accent }]}>
-              OFFLINE NAUTICAL CHARTS
+              {t('settings.offline', 'OFFLINE NAUTICAL CHARTS')}
             </Text>
           </View>
           <View
@@ -729,7 +745,7 @@ export function SettingsSheetContent() {
             ]}
           >
             <Text style={[styles.badgeThemeText, { color: downloadedRegions.length > 0 ? '#22C55E' : '#F59E0B' }]}>
-              {downloadedRegions.length > 0 ? 'DEEP-SEA READY ✓' : 'NEEDS SETUP ⚡'}
+              {downloadedRegions.length > 0 ? t('settings.deep_sea_ready', 'DEEP-SEA READY ✓') : t('settings.needs_setup', 'NEEDS SETUP ⚡')}
             </Text>
           </View>
         </View>
@@ -759,12 +775,12 @@ export function SettingsSheetContent() {
             </View>
             <View style={styles.statusStripTextWrap}>
               <Text style={[styles.statusStripTitle, { color: downloadedRegions.length > 0 ? '#22C55E' : '#F59E0B' }]}>
-                {downloadedRegions.length > 0 ? 'OFFLINE CHARTS READY FOR SEA' : 'NO OFFLINE CHARTS SAVED'}
+                {downloadedRegions.length > 0 ? t('settings.charts_ready_title', 'OFFLINE CHARTS READY FOR SEA') : t('settings.no_charts_title', 'NO OFFLINE CHARTS SAVED')}
               </Text>
               <Text style={[styles.statusStripSub, { color: colors.textSecondary }]}>
                 {downloadedRegions.length > 0
-                  ? `${downloadedRegions.length} chart zone(s) saved • ${storageUsageMb} MB cached on phone`
-                  : 'Pre-download charts while connected to port Wi-Fi or 4G before sailing'}
+                  ? `${downloadedRegions.length} ${t('settings.zones_saved', 'chart zone(s) saved')} • ${storageUsageMb} MB ${t('settings.cached_on_phone', 'cached on phone')}`
+                  : t('settings.predownload_advice', 'Pre-download charts while connected to port Wi-Fi or 4G before sailing')}
               </Text>
             </View>
           </View>
@@ -777,11 +793,11 @@ export function SettingsSheetContent() {
               <View style={styles.progressTitleWrap}>
                 <ActivityIndicator size="small" color={colors.accent} style={{ marginRight: 8 }} />
                 <Text style={[styles.progressTitleText, { color: colors.text }]}>
-                  Downloading {downloadProgress.regionName}...
+                  {t('settings.downloading', 'Downloading')} {downloadProgress.regionName}...
                 </Text>
               </View>
               <Pressable onPress={() => cancelDownload()} style={styles.cancelDownloadBtn}>
-                <Text style={styles.cancelDownloadText}>Cancel</Text>
+                <Text style={styles.cancelDownloadText}>{t('btn.cancel', 'Cancel')}</Text>
               </Pressable>
             </View>
 
@@ -794,7 +810,7 @@ export function SettingsSheetContent() {
                 {downloadProgress.completed} / {downloadProgress.total} tiles ({downloadProgress.percent}%)
               </Text>
               <Text style={[styles.progressStatText, { color: colors.accent }]}>
-                {downloadProgress.percent === 100 ? 'Finalizing cache...' : 'Saving high-res tiles'}
+                {downloadProgress.percent === 100 ? t('settings.finalizing_cache', 'Finalizing cache...') : t('settings.saving_tiles', 'Saving high-res tiles')}
               </Text>
             </View>
           </View>
@@ -833,7 +849,7 @@ export function SettingsSheetContent() {
                     { color: isCurrentAreaDownloaded ? '#22C55E' : colors.accent },
                   ]}
                 >
-                  {isCurrentAreaDownloaded ? '30 NM CACHED OFFLINE' : 'CURRENT BOAT PERIMETER'}
+                  {isCurrentAreaDownloaded ? t('settings.cached_30nm', '30 NM CACHED OFFLINE') : t('settings.current_perimeter', 'CURRENT BOAT PERIMETER')}
                 </Text>
               </View>
               <Text style={[styles.currentAreaCoordText, { color: colors.textMuted }]}>
@@ -846,12 +862,12 @@ export function SettingsSheetContent() {
             <View style={styles.currentAreaBody}>
               <View style={styles.currentAreaTextWrap}>
                 <Text style={[styles.currentAreaTitle, { color: colors.text }]}>
-                  Surrounding Sea Chart (30 NM)
+                  {t('settings.surrounding_sea', 'Surrounding Sea Chart (30 NM)')}
                 </Text>
                 <Text style={[styles.currentAreaDesc, { color: colors.textSecondary }]}>
                   {isCurrentAreaDownloaded
-                    ? `✓ Active 30 NM zone is saved (${currentAreaMeta?.tileCount || 260} tiles). Tap 'Update' if boat moved to a new zone.`
-                    : 'Instant 30 Nautical Mile boundary covering all fishing spots, banks & channels'}
+                    ? t('settings.active_zone_saved', `✓ Active 30 NM zone is saved (${currentAreaMeta?.tileCount || 260} tiles). Tap 'Update' if boat moved to a new zone.`)
+                    : t('settings.instant_30nm', 'Instant 30 Nautical Mile boundary covering all fishing spots, banks & channels')}
                 </Text>
               </View>
               <Pressable
@@ -885,7 +901,7 @@ export function SettingsSheetContent() {
                         { color: isCurrentAreaDownloaded ? '#22C55E' : isLight ? '#FFFFFF' : '#020B14' },
                       ]}
                     >
-                      {isCurrentAreaDownloaded ? 'Update' : 'Download'}
+                      {isCurrentAreaDownloaded ? t('btn.update', 'Update') : t('btn.download', 'Download')}
                     </Text>
                   </>
                 )}
@@ -905,13 +921,13 @@ export function SettingsSheetContent() {
                 ]}
               />
               <Text style={[styles.harborPacksHeader, { color: colors.textSecondary }]}>
-                {location ? 'NEARBY HARBOR CHARTS (GPS SUGGESTIONS)' : 'POPULAR HARBOR CHARTS (GUJARAT)'}
+                {location ? t('settings.nearby_charts', 'NEARBY HARBOR CHARTS (GPS SUGGESTIONS)') : t('settings.popular_charts', 'POPULAR HARBOR CHARTS (GUJARAT)')}
               </Text>
             </View>
             <View style={[styles.nearbyGpsBadge, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
               <Ionicons name="location-outline" size={11} color={colors.accent} style={{ marginRight: 2 }} />
               <Text style={[styles.nearbyGpsBadgeText, { color: colors.accent }]}>
-                {location ? 'TOP 4 CLOSEST' : 'DEFAULT'}
+                {location ? t('settings.top4_closest', 'TOP 4 CLOSEST') : t('settings.default_badge', 'DEFAULT')}
               </Text>
             </View>
           </View>
@@ -944,7 +960,7 @@ export function SettingsSheetContent() {
                       </Text>
                       {isDownloaded ? (
                         <View style={styles.downloadedPill}>
-                          <Text style={styles.downloadedPillText}>SAVED</Text>
+                          <Text style={styles.downloadedPillText}>{t('settings.saved_badge', 'SAVED')}</Text>
                         </View>
                       ) : (
                         region.distanceNm !== undefined && (
@@ -969,7 +985,7 @@ export function SettingsSheetContent() {
                                 },
                               ]}
                             >
-                              {region.distanceNm <= 3 ? '⚓ IN PORT' : `${region.distanceNm} NM`}
+                              {region.distanceNm <= 3 ? `⚓ ${t('settings.in_port', 'IN PORT')}` : `${region.distanceNm} NM`}
                             </Text>
                           </View>
                         )
@@ -1019,7 +1035,7 @@ export function SettingsSheetContent() {
                             { color: isDownloaded ? '#22C55E' : isLight ? '#FFFFFF' : '#020B14' },
                           ]}
                         >
-                          {isDownloaded ? 'Update' : 'Download'}
+                          {isDownloaded ? t('btn.update', 'Update') : t('btn.download', 'Download')}
                         </Text>
                       </>
                     )}
@@ -1036,8 +1052,8 @@ export function SettingsSheetContent() {
           >
             <Text style={[styles.showMoreRegionsBtnText, { color: colors.accent }]}>
               {showAllRegions
-                ? '▴ Show Top 4 Nearest Only'
-                : '▾ Show All 10 Coastal Regions'}
+                ? t('settings.show_top4', '▴ Show Top 4 Nearest Only')
+                : t('settings.show_all10', '▾ Show All 10 Coastal Regions')}
             </Text>
           </Pressable>
 
@@ -1048,10 +1064,10 @@ export function SettingsSheetContent() {
             <View style={styles.storageStatsWrap}>
               <Ionicons name="save-outline" size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
               <Text style={[styles.storageStatsText, { color: colors.textSecondary }]}>
-                Offline Storage: <Text style={{ color: colors.text, fontWeight: '700' }}>{storageUsageMb} MB</Text>
+                {t('settings.offline_storage', 'Offline Storage')}: <Text style={{ color: colors.text, fontWeight: '700' }}>{storageUsageMb} MB</Text>
                 {downloadedRegions.length > 0
-                  ? ` (${downloadedRegions.length} pack${downloadedRegions.length > 1 ? 's' : ''})`
-                  : ' (No maps saved)'}
+                  ? ` (${downloadedRegions.length} ${t('settings.packs_saved', 'packs')})`
+                  : ` (${t('settings.no_maps_saved', 'No maps saved')})`}
               </Text>
             </View>
           </View>
@@ -1062,11 +1078,11 @@ export function SettingsSheetContent() {
       <View style={styles.section}>
         <View style={styles.sectionHeaderRow}>
           <Text style={[styles.sectionHeader, { color: colors.accent }]}>
-            APP THEME
+            {t('settings.app_theme', 'APP THEME')}
           </Text>
           <View style={[styles.badgeTheme, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
             <Text style={[styles.badgeThemeText, { color: colors.accent }]}>
-              {theme === 'high-contrast' ? 'HIGH CONTRAST' : 'LIGHT MODE'}
+              {theme === 'high-contrast' ? t('settings.high_contrast', 'HIGH CONTRAST').toUpperCase() : t('settings.light_mode', 'LIGHT MODE').toUpperCase()}
             </Text>
           </View>
         </View>
@@ -1078,23 +1094,23 @@ export function SettingsSheetContent() {
               [
                 {
                   id: 'high-contrast' as const,
-                  name: 'High Contrast',
+                  name: t('settings.high_contrast', 'High Contrast'),
                   tag: 'CURRENT MARINE',
-                  desc: 'Signature oceanic neon: deep abyss with glowing cyan & maximum water legibility',
+                  desc: t('settings.theme_high_contrast_desc', 'Signature oceanic neon: deep abyss with glowing cyan & maximum water legibility'),
                   icon: 'contrast' as const,
                   accentColor: '#00F0FF',
                   bgColor: 'rgba(0, 240, 255, 0.15)',
-                  badge: 'CURRENT',
+                  badge: t('settings.current_badge', 'CURRENT'),
                 },
                 {
                   id: 'light' as const,
-                  name: 'Light Theme',
+                  name: t('settings.light_mode', 'Light Theme'),
                   tag: 'DAYLIGHT NAUTICAL',
-                  desc: 'Clean, high-luminance white & daylight charts for bright outdoor sunlight',
+                  desc: t('settings.theme_light_desc', 'Clean, high-luminance white & daylight charts for bright outdoor sunlight'),
                   icon: 'sunny' as const,
                   accentColor: '#0284C7',
                   bgColor: 'rgba(2, 132, 199, 0.15)',
-                  badge: 'DAYLIGHT',
+                  badge: t('settings.daylight_badge', 'DAYLIGHT'),
                 },
               ]
             ).map((item) => {
@@ -1180,10 +1196,12 @@ export function SettingsSheetContent() {
 
       {/* 1. Vessel Profile */}
       <View style={styles.section}>
-        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>VESSEL & BOAT PROFILE</Text>
+        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+          {t('settings.vessel', 'VESSEL & BOAT PROFILE')}
+        </Text>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Boat Name</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.boat_name', 'Boat Name')}</Text>
             <TextInput
               style={[
                 styles.textInput,
@@ -1203,7 +1221,7 @@ export function SettingsSheetContent() {
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Draft Limit (Meters)</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.draft_limit', 'Draft Limit (Meters)')}</Text>
             <TextInput
               style={[
                 styles.textInput,
@@ -1223,7 +1241,7 @@ export function SettingsSheetContent() {
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Cruise Speed (Knots)</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.cruise_speed', 'Cruise Speed (Knots)')}</Text>
             <TextInput
               style={[
                 styles.textInput,
@@ -1245,18 +1263,45 @@ export function SettingsSheetContent() {
           <Pressable style={[styles.saveVesselBtn, { backgroundColor: colors.accent }]} onPress={handleSaveVessel}>
             <Ionicons name="checkmark-circle" size={16} color={isLight ? '#FFFFFF' : '#020B14'} />
             <Text style={[styles.saveVesselBtnText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>
-              Save Vessel Specs
+              {t('settings.save_vessel', 'Save Vessel Specs')}
             </Text>
           </Pressable>
         </View>
       </View>
 
+      {/* 🌐 Section: Application Language & Translation */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeaderRow}>
+          <View style={styles.sectionHeaderLeft}>
+            <Ionicons name="globe-outline" size={16} color={colors.accent} style={{ marginRight: 6 }} />
+            <Text style={[styles.sectionHeader, { color: colors.text, marginLeft: 0 }]}>
+              {t('settings.language', 'APPLICATION LANGUAGE')}
+            </Text>
+          </View>
+          <View style={[styles.langBadgePill, { backgroundColor: colors.chipBg, borderColor: colors.accent }]}>
+            <Text style={[styles.langBadgePillText, { color: colors.accent }]}>
+              {availableLanguages.find((l) => l.code === language)?.flag}{' '}
+              {availableLanguages.find((l) => l.code === language)?.nativeName}
+            </Text>
+          </View>
+        </View>
+
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Text style={[styles.langSectionSub, { color: colors.textSecondary }]}>
+            {t('settings.language.subtitle', 'Choose your preferred language for the app')}
+          </Text>
+          <LanguageDropdown />
+        </View>
+      </View>
+
       {/* 2. Units */}
       <View style={styles.section}>
-        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>UNITS & MEASUREMENTS</Text>
+        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+          {t('settings.units', 'UNITS & MEASUREMENTS')}
+        </Text>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Distance Unit</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.distance_unit', 'Distance Unit')}</Text>
             <View style={styles.toggleRow}>
               {(['NM', 'KM', 'MI'] as const).map((u) => (
                 <Pressable
@@ -1291,7 +1336,7 @@ export function SettingsSheetContent() {
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Speed Unit</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.speed_unit', 'Speed Unit')}</Text>
             <View style={styles.toggleRow}>
               {(['KTS', 'KMH'] as const).map((u) => (
                 <Pressable
@@ -1326,7 +1371,7 @@ export function SettingsSheetContent() {
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Depth Unit</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.depth_unit', 'Depth Unit')}</Text>
             <View style={styles.toggleRow}>
               {(['M', 'FT'] as const).map((u) => (
                 <Pressable
@@ -1351,7 +1396,7 @@ export function SettingsSheetContent() {
                       depthUnit === u && { color: colors.accent, fontWeight: '700' },
                     ]}
                   >
-                    {u === 'M' ? 'Meters' : 'Feet'}
+                    {u === 'M' ? t('settings.meters', 'Meters') : t('settings.feet', 'Feet')}
                   </Text>
                 </Pressable>
               ))}
@@ -1362,12 +1407,14 @@ export function SettingsSheetContent() {
 
       {/* 3. Safety Alarms */}
       <View style={styles.section}>
-        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>NAVIGATION ALARMS & SENSORS</Text>
+        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+          {t('settings.alarms', 'NAVIGATION ALARMS & SENSORS')}
+        </Text>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.fieldRow}>
             <View style={styles.switchInfo}>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>High-Precision GPS</Text>
-              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>1-second interval NMEA tracking</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.high_gps', 'High-Precision GPS')}</Text>
+              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>{t('settings.high_gps_sub', '1-second interval NMEA tracking')}</Text>
             </View>
             <Switch
               value={gpsPrecision}
@@ -1381,8 +1428,8 @@ export function SettingsSheetContent() {
 
           <View style={styles.fieldRow}>
             <View style={styles.switchInfo}>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>Shallow Water Warning</Text>
-              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>Alarm when depth is &lt; {boatDraft}m</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.shallow_warning', 'Shallow Water Warning')}</Text>
+              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>{t('settings.shallow_sub', `Alarm when depth is < ${boatDraft}m`)}</Text>
             </View>
             <Switch
               value={shallowAlarm}
@@ -1396,8 +1443,8 @@ export function SettingsSheetContent() {
 
           <View style={styles.fieldRow}>
             <View style={styles.switchInfo}>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>Arabian Sea Danger Alerts</Text>
-              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>Hazard warnings around coastal rocks</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.danger_alerts', 'Arabian Sea Danger Alerts')}</Text>
+              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>{t('settings.danger_alerts_sub', 'Hazard warnings around coastal rocks')}</Text>
             </View>
             <Switch
               value={dangerZoneAlarm}
@@ -1411,8 +1458,8 @@ export function SettingsSheetContent() {
 
           <View style={styles.fieldRow}>
             <View style={styles.switchInfo}>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>Keep Screen Awake</Text>
-              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>Never sleep during active navigation</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.keep_awake', 'Keep Screen Awake')}</Text>
+              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>{t('settings.keep_awake_sub', 'Never sleep during active navigation')}</Text>
             </View>
             <Switch
               value={keepAwake}
@@ -1426,10 +1473,10 @@ export function SettingsSheetContent() {
 
       {/* 4. Map Overlays */}
       <View style={styles.section}>
-        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>MAP DISPLAY & CHARTS</Text>
+        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('settings.map_display', 'MAP DISPLAY & CHARTS')}</Text>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Bathymetric Depth Contours</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.depth_contours', 'Bathymetric Depth Contours')}</Text>
             <Switch
               value={showContours}
               onValueChange={setShowContours}
@@ -1441,7 +1488,7 @@ export function SettingsSheetContent() {
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>Nautical Seamarks & Buoys</Text>
+            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.seamarks_buoys', 'Nautical Seamarks & Buoys')}</Text>
             <Switch
               value={showSeamarks}
               onValueChange={setShowSeamarks}
@@ -1454,12 +1501,14 @@ export function SettingsSheetContent() {
 
       {/* 5. Data & Backup */}
       <View style={styles.section}>
-        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>DATA & GPX BACKUP</Text>
+        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
+          {t('settings.backup', 'DATA & GPX BACKUP')}
+        </Text>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.fieldRow}>
             <View>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>Saved Waypoints</Text>
-              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>{waypoints.length} spots in storage</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.saved_waypoints', 'Saved Waypoints')}</Text>
+              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>{waypoints.length} {t('settings.spots_in_storage', 'spots in storage')}</Text>
             </View>
           </View>
 
@@ -1471,7 +1520,7 @@ export function SettingsSheetContent() {
               onPress={handleExportGpx}
             >
               <Ionicons name="download-outline" size={16} color={colors.accent} />
-              <Text style={[styles.actionBtnText, { color: colors.accent }]}>Export GPX</Text>
+              <Text style={[styles.actionBtnText, { color: colors.accent }]}>{t('settings.export_gpx', 'Export GPX')}</Text>
             </Pressable>
 
             <Pressable
@@ -1479,7 +1528,7 @@ export function SettingsSheetContent() {
               onPress={handleImportGpx}
             >
               <Ionicons name="cloud-upload-outline" size={16} color={colors.accent} />
-              <Text style={[styles.actionBtnText, { color: colors.accent }]}>Import GPX</Text>
+              <Text style={[styles.actionBtnText, { color: colors.accent }]}>{t('settings.import_gpx', 'Import GPX')}</Text>
             </Pressable>
           </View>
 
@@ -1487,21 +1536,21 @@ export function SettingsSheetContent() {
 
           <Pressable style={styles.resetBtn} onPress={handleResetPrompt}>
             <Ionicons name="refresh-outline" size={16} color="#EF4444" />
-            <Text style={styles.resetBtnText}>Reset Waypoints to Default</Text>
+            <Text style={styles.resetBtnText}>{t('settings.reset_waypoints', 'Reset Waypoints to Default')}</Text>
           </Pressable>
         </View>
       </View>
 
       {/* 6. Emergency VHF */}
       <View style={styles.section}>
-        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>MARINE EMERGENCY CHANNELS</Text>
+        <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('settings.emergency', 'MARINE EMERGENCY CHANNELS')}</Text>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: 'rgba(239, 68, 68, 0.25)' }]}>
           <View style={styles.emergencyRow}>
             <Ionicons name="radio" size={18} color="#EF4444" />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.emergencyTitle, { color: colors.text }]}>VHF CHANNEL 16</Text>
+              <Text style={[styles.emergencyTitle, { color: colors.text }]}>{t('settings.vhf_16', 'VHF CHANNEL 16')}</Text>
               <Text style={[styles.emergencySub, { color: colors.textSecondary }]}>
-                International Maritime Distress & Safety
+                {t('settings.vhf_sub', 'International Maritime Distress & Safety')}
               </Text>
             </View>
           </View>
@@ -1511,9 +1560,9 @@ export function SettingsSheetContent() {
           <View style={styles.emergencyRow}>
             <Ionicons name="call" size={18} color="#22C55E" />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.emergencyTitle, { color: colors.text }]}>COAST GUARD: 1554</Text>
+              <Text style={[styles.emergencyTitle, { color: colors.text }]}>{t('settings.coast_guard_title', 'COAST GUARD: 1554')}</Text>
               <Text style={[styles.emergencySub, { color: colors.textSecondary }]}>
-                24x7 Indian Coast Guard Maritime Search & Rescue
+                {t('settings.coast_guard_sub', '24x7 Indian Coast Guard Maritime Search & Rescue')}
               </Text>
             </View>
           </View>
@@ -2373,6 +2422,63 @@ const styles = StyleSheet.create({
     color: '#22C55E',
     fontSize: 11,
     fontWeight: '700',
+  },
+  langBadgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  langBadgePillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  langSectionSub: {
+    fontSize: 11,
+    lineHeight: 16,
+    marginBottom: 12,
+  },
+  langGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  langCard: {
+    width: '48.5%',
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  langCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  langFlag: {
+    fontSize: 18,
+  },
+  langRadioUnchecked: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 1.5,
+  },
+  langNativeName: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  langEnglishName: {
+    fontSize: 11,
+    marginTop: 1,
+  },
+  langRegionText: {
+    fontSize: 9,
+    marginTop: 3,
   },
 });
 

@@ -1,10 +1,12 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useMemo } from 'react';
 import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapStyleId } from '@/components/map/map-style-selector';
 import { MapOverlaysState } from '@/components/map/native-map-view';
 import { MapColors } from '@/constants/map-theme';
+import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 
 type MapLayersModalProps = {
@@ -18,36 +20,6 @@ type MapLayersModalProps = {
   onToggleGpsHud: () => void;
 };
 
-const MAP_STYLES: {
-  id: MapStyleId;
-  name: string;
-  desc: string;
-  icon: 'map' | 'earth' | 'compass';
-  color: string;
-}[] = [
-  {
-    id: 'google',
-    name: 'Standard Chart',
-    desc: 'Clear coastal geography, roads, harbors & marine landmarks',
-    icon: 'map',
-    color: '#0284C7',
-  },
-  {
-    id: 'satellite',
-    name: 'Satellite View',
-    desc: 'High-resolution aerial satellite imagery, coral reefs & shallow sandbars',
-    icon: 'earth',
-    color: '#10B981',
-  },
-  {
-    id: 'standard',
-    name: 'Nautical Vector Chart',
-    desc: 'Detailed coastal vectors, shoreline docks & depth contours',
-    icon: 'compass',
-    color: '#6366F1',
-  },
-];
-
 export function MapLayersModal({
   visible,
   activeStyle,
@@ -60,6 +32,34 @@ export function MapLayersModal({
 }: MapLayersModalProps) {
   const insets = useSafeAreaInsets();
   const { colors, isLight } = useAppTheme();
+  const { t } = useLanguage();
+
+  const mapStyles = useMemo(
+    () => [
+      {
+        id: 'google' as MapStyleId,
+        name: t('style.standard', 'Standard Chart'),
+        desc: t('style.standard.desc', 'Clear coastal geography, roads, harbors & marine landmarks'),
+        icon: 'map' as const,
+        color: '#0284C7',
+      },
+      {
+        id: 'satellite' as MapStyleId,
+        name: t('style.satellite', 'Satellite View'),
+        desc: t('style.satellite.desc', 'High-resolution aerial satellite imagery, coral reefs & shallow sandbars'),
+        icon: 'earth' as const,
+        color: '#10B981',
+      },
+      {
+        id: 'standard' as MapStyleId,
+        name: t('style.vector', 'Nautical Vector Chart'),
+        desc: t('style.vector.desc', 'Detailed coastal vectors, shoreline docks & depth contours'),
+        icon: 'compass' as const,
+        color: '#6366F1',
+      },
+    ],
+    [t],
+  );
 
   return (
     <Modal
@@ -92,9 +92,11 @@ export function MapLayersModal({
                 <Ionicons name="layers" size={20} color={colors.accent} />
               </View>
               <View>
-                <Text style={[styles.title, { color: colors.text }]}>Map Layers & Nautical Details</Text>
+                <Text style={[styles.title, { color: colors.text }]}>
+                  {t('map.layers.title', 'Map Layers & Nautical Details')}
+                </Text>
                 <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                  Base chart styles & marine overlays
+                  {t('map.layers.subtitle', 'Base chart styles & marine overlays')}
                 </Text>
               </View>
             </View>
@@ -108,9 +110,11 @@ export function MapLayersModal({
           </View>
 
           {/* Section: Base Map Styles */}
-          <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>MAP TYPE</Text>
+          <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
+            {t('map.type', 'MAP TYPE')}
+          </Text>
           <View style={styles.stylesGrid}>
-            {MAP_STYLES.map((item) => {
+            {mapStyles.map((item) => {
               const selected = item.id === activeStyle;
               return (
                 <Pressable
@@ -156,7 +160,7 @@ export function MapLayersModal({
 
           {/* Section: Nautical Overlays */}
           <Text style={[styles.sectionLabel, { marginTop: 18, color: colors.textMuted }]}>
-            MARINE OVERLAYS
+            {t('map.overlays', 'MARINE OVERLAYS')}
           </Text>
           <View
             style={[
@@ -169,8 +173,8 @@ export function MapLayersModal({
           >
             <ToggleRow
               icon={<MaterialCommunityIcons name="lighthouse" size={20} color="#38BDF8" />}
-              title="OpenSeaMap Seamarks"
-              subtitle="Buoys, beacons, navigation lights, harbor signals"
+              title={t('overlay.seamarks', 'OpenSeaMap Seamarks')}
+              subtitle={t('overlay.seamarks.desc', 'Buoys, beacons, navigation lights, harbor signals')}
               value={overlays.seamarks}
               onValueChange={() => onToggleOverlay('seamarks')}
               textColor={colors.text}
@@ -182,8 +186,8 @@ export function MapLayersModal({
             <View style={[styles.divider, { backgroundColor: colors.divider }]} />
             <ToggleRow
               icon={<Ionicons name="warning-outline" size={20} color={MapColors.red} />}
-              title="Maritime Danger Zones"
-              subtitle="Underwater obstructions, sandbars & restricted reefs"
+              title={t('overlay.danger', 'Maritime Danger Zones')}
+              subtitle={t('overlay.danger.desc', 'Underwater obstructions, sandbars & restricted reefs')}
               value={overlays.dangerZone}
               onValueChange={() => onToggleOverlay('dangerZone')}
               textColor={colors.text}
@@ -195,8 +199,8 @@ export function MapLayersModal({
             <View style={[styles.divider, { backgroundColor: colors.divider }]} />
             <ToggleRow
               icon={<Ionicons name="speedometer-outline" size={20} color={MapColors.green} />}
-              title="Marine GPS Instrument Card"
-              subtitle="Live Coordinates, accuracy & GPS telemetry"
+              title={t('overlay.gps', 'Marine GPS Instrument Card')}
+              subtitle={t('overlay.gps.desc', 'Live Coordinates, accuracy & GPS telemetry')}
               value={showGpsHud}
               onValueChange={onToggleGpsHud}
               textColor={colors.text}

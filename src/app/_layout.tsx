@@ -8,6 +8,7 @@ import { MarineSplashScreen } from '@/components/auth/marine-splash-screen';
 import { FishNavProModal } from '@/components/subscription/fishnav-pro-modal';
 import { MarineReferralModal } from '@/components/subscription/marine-referral-modal';
 import { AuthProvider, useAuth } from '@/context/auth-context';
+import { LanguageProvider } from '@/context/language-context';
 import { LocationProvider } from '@/context/location-context';
 import { MarineAlertProvider } from '@/context/marine-alert-context';
 import { SubscriptionProvider } from '@/context/subscription-context';
@@ -77,21 +78,23 @@ export default function RootLayout() {
 
   return (
     <AppThemeProvider>
-      <MarineAlertProvider>
-        <AuthProvider>
-          <SubscriptionProvider>
-            <LocationProvider>
-              <WaypointsProvider>
-                <TripProvider>
-                  <OfflineMapProvider>
-                    <RootContent />
-                  </OfflineMapProvider>
-                </TripProvider>
-              </WaypointsProvider>
-            </LocationProvider>
-          </SubscriptionProvider>
-        </AuthProvider>
-      </MarineAlertProvider>
+      <LanguageProvider>
+        <MarineAlertProvider>
+          <AuthProvider>
+            <SubscriptionProvider>
+              <LocationProvider>
+                <WaypointsProvider>
+                  <TripProvider>
+                    <OfflineMapProvider>
+                      <RootContent />
+                    </OfflineMapProvider>
+                  </TripProvider>
+                </WaypointsProvider>
+              </LocationProvider>
+            </SubscriptionProvider>
+          </AuthProvider>
+        </MarineAlertProvider>
+      </LanguageProvider>
     </AppThemeProvider>
   );
 }

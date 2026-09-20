@@ -36,6 +36,7 @@ import { MapColors } from '@/constants/map-theme';
 import { useTripTracking } from '@/context/trip-context';
 import { useSubscription } from '@/context/subscription-context';
 import { useWaypoints } from '@/context/waypoints-context';
+import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { bearingDegrees, distanceNm, etaFromNm, formatBearing, formatNm } from '@/utils/geo';
@@ -51,6 +52,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
   const isTablet = windowWidth >= 600;
   const mapRef = useRef<NativeMapHandle>(null);
   const { colors } = useAppTheme();
+  const { t, language } = useLanguage();
 
   const {
     waypoints,
@@ -253,41 +255,48 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
   }, [activeTarget, location]);
 
   const meta = useMemo(() => {
+    const monthYear = new Date()
+      .toLocaleDateString(language === 'en' ? 'en-US' : `${language}-IN`, {
+        month: 'short',
+        year: 'numeric',
+      })
+      .toUpperCase();
+
     switch (activeTab) {
       case 'waypoint':
         return {
-          title: 'Mark Waypoint',
+          title: t('tab.waypoints', 'Spots & Waypoints'),
           subtitle: 'Save active GPS coordinates as waypoint',
           badgeText: `${waypoints.length} SPOTS`,
         };
       case 'weather':
         return {
-          title: 'Marine Forecast',
-          subtitle: 'Waves, wind speed, tides & sea surface conditions',
+          title: t('tab.weather', 'Marine Forecast'),
+          subtitle: t('weather.title', 'Waves, wind speed, tides & sea surface conditions'),
           badgeText: 'LIVE RADAR',
         };
       case 'compass':
         return {
-          title: 'Marine Compass & HUD',
-          subtitle: 'Magnetic course, target bearing & steering advice',
+          title: t('tab.compass', 'Marine Compass & HUD'),
+          subtitle: t('compass.guidance_title', 'Magnetic course, target bearing & steering advice'),
           badgeText: 'SENSOR ON',
         };
       case 'calendar':
         return {
-          title: 'Solunar Fishing Forecast',
-          subtitle: 'Moon phases, feeding windows & prime bite times',
-          badgeText: 'OCT 2026',
+          title: t('tab.calendar', 'Solunar Fishing Forecast'),
+          subtitle: t('calendar.solunar_subtitle', 'Moon phases, feeding windows & prime bite times'),
+          badgeText: monthYear,
         };
       case 'settings':
         return {
-          title: 'Navionics & Vessel Settings',
+          title: t('tab.settings', 'Navionics & Vessel Settings'),
           subtitle: 'Vessel profile, units, navigation alarms & backup',
           badgeText: 'v1.0.0 PRO',
         };
       default:
         return { title: '', subtitle: '', badgeText: '' };
     }
-  }, [activeTab, waypoints.length]);
+  }, [activeTab, waypoints.length, language, t]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>

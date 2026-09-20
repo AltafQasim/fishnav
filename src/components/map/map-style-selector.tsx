@@ -1,22 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
-import { ComponentProps } from 'react';
+import { ComponentProps, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { MapColors } from '@/constants/map-theme';
+import { useLanguage } from '@/context/language-context';
 
 export type MapStyleId = 'google' | 'satellite' | 'terrain' | 'standard' | 'marine' | 'night';
 
 type IonName = ComponentProps<typeof Ionicons>['name'];
-
-const STYLES: {
-  id: MapStyleId;
-  label: string;
-  icon: IonName;
-}[] = [
-  { id: 'google', label: 'Standard', icon: 'map-outline' },
-  { id: 'satellite', label: 'Satellite', icon: 'globe-outline' },
-  { id: 'standard', label: 'Vector Chart', icon: 'navigate-outline' },
-];
 
 type MapStyleSelectorProps = {
   value: MapStyleId;
@@ -24,9 +15,20 @@ type MapStyleSelectorProps = {
 };
 
 export function MapStyleSelector({ value, onChange }: MapStyleSelectorProps) {
+  const { t } = useLanguage();
+
+  const stylesList = useMemo<{ id: MapStyleId; label: string; icon: IonName }[]>(
+    () => [
+      { id: 'google', label: t('style.standard', 'Standard'), icon: 'map-outline' },
+      { id: 'satellite', label: t('style.satellite', 'Satellite'), icon: 'globe-outline' },
+      { id: 'standard', label: t('style.vector', 'Vector Chart'), icon: 'navigate-outline' },
+    ],
+    [t],
+  );
+
   return (
     <View style={styles.bar}>
-      {STYLES.map((item) => {
+      {stylesList.map((item) => {
         const active = item.id === value;
         return (
           <Pressable

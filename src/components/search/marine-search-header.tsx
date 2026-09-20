@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
 import { useAuth } from '@/context/auth-context';
+import { useLanguage } from '@/context/language-context';
 import { useSubscription } from '@/context/subscription-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useWaypoints } from '@/context/waypoints-context';
@@ -219,6 +220,7 @@ export function MarineSearchHeader({
   const { colors, isLight } = useAppTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useLanguage();
   const { captain } = useAuth();
   const { waypoints } = useWaypoints();
   const {
@@ -241,13 +243,13 @@ export function MarineSearchHeader({
   // Current Location formatted text for badge (ONLY City Name, NO lat/lng)
   const locationDisplay = useMemo(() => {
     if (!userLocation) {
-      return 'Detecting City...';
+      return t('location.detecting', 'Detecting City...');
     }
     if (placeLabel && placeLabel.trim().length > 0 && placeLabel !== 'Current Location') {
       return placeLabel.trim();
     }
     return getNearestCityFallback(userLocation.latitude, userLocation.longitude);
-  }, [userLocation, placeLabel]);
+  }, [userLocation, placeLabel, t]);
 
   // Smooth slide-up animation when sheet/tab opens
   const animY = useRef(new Animated.Value(0)).current;
@@ -450,7 +452,7 @@ export function MarineSearchHeader({
               setIsFocused(true);
               onFocus?.();
             }}
-            placeholder="Search spots, coords, weather, ports..."
+            placeholder={t('search.placeholder', 'Search spots, coords, weather, ports...')}
             placeholderTextColor={colors.textSecondary}
             returnKeyType="search"
             autoCorrect={false}
