@@ -23,7 +23,7 @@ export type AppThemeColors = {
   textSecondary: string;
   textMuted: string;
   divider: string;
-  mapStyle?: 'marine' | 'night' | 'standard';
+  mapStyle?: 'google' | 'satellite' | 'terrain' | 'standard' | 'marine' | 'night';
   statusBar: 'light' | 'dark';
   navBarFill: string;
   navBarBorder: string;
@@ -55,7 +55,7 @@ export const APP_THEMES: Record<AppThemeId, AppThemeColors> = {
     textSecondary: '#94A3B8',
     textMuted: '#5E7A90',
     divider: 'rgba(0, 240, 255, 0.18)',
-    mapStyle: 'marine',
+    mapStyle: 'google',
     statusBar: 'light',
     navBarFill: '#00162B',
     navBarBorder: 'rgba(0, 240, 255, 0.35)',

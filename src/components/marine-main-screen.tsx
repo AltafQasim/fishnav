@@ -60,7 +60,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     setActiveNavigationTarget,
     toggleFavorite,
   } = useWaypoints();
-  const { location, status, heading, requestPermissionAndLocate, openSettings, refresh } =
+  const { location, status, heading, requestPermissionAndLocate, openSettings, refresh, placeLabel } =
     useUserLocation();
 
   // Active Sheet Tab (Default is NULL = Map is shown!)
@@ -73,7 +73,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     seamarks: true,
     dangerZone: true,
   });
-  const [activeMapStyle, setActiveMapStyle] = useState<MapStyleId>('standard');
+  const [activeMapStyle, setActiveMapStyle] = useState<MapStyleId>('google');
 
   const [showGpsHud, setShowGpsHud] = useState(false);
 
@@ -348,6 +348,14 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
         <MarineSearchHeader
           hidden={activeTab !== null || Boolean(selectedSpot) || isMapPickingMode}
           userLocation={location}
+          placeLabel={placeLabel}
+          onPressLocationBadge={() => {
+            if (location) {
+              mapRef.current?.centerOnUser();
+            } else {
+              void requestPermissionAndLocate();
+            }
+          }}
           onOpenMore={() => setShowLayersModal(true)}
           onOpenProfile={() => setShowProfileModal(true)}
           onSelectSpot={handleViewSpotOnMap}

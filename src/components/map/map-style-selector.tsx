@@ -1,23 +1,21 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { ComponentProps } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { MapColors } from '@/constants/map-theme';
 
-export type MapStyleId = 'standard' | 'satellite' | 'marine' | 'night';
+export type MapStyleId = 'google' | 'satellite' | 'terrain' | 'standard' | 'marine' | 'night';
 
 type IonName = ComponentProps<typeof Ionicons>['name'];
 
 const STYLES: {
   id: MapStyleId;
   label: string;
-  icon: IonName | 'waves';
-  lib: 'ion' | 'mci';
+  icon: IonName;
 }[] = [
-  { id: 'standard', label: 'Standard', icon: 'cube-outline', lib: 'ion' },
-  { id: 'satellite', label: 'Satellite', icon: 'globe-outline', lib: 'ion' },
-  { id: 'marine', label: 'Marine', icon: 'waves', lib: 'mci' },
-  { id: 'night', label: 'Night', icon: 'moon', lib: 'ion' },
+  { id: 'google', label: 'Standard', icon: 'map-outline' },
+  { id: 'satellite', label: 'Satellite', icon: 'globe-outline' },
+  { id: 'standard', label: 'Vector Chart', icon: 'navigate-outline' },
 ];
 
 type MapStyleSelectorProps = {
@@ -35,19 +33,11 @@ export function MapStyleSelector({ value, onChange }: MapStyleSelectorProps) {
             key={item.id}
             onPress={() => onChange(item.id)}
             style={[styles.item, active && styles.itemActive]}>
-            {item.lib === 'mci' ? (
-              <MaterialCommunityIcons
-                name={item.icon as 'waves'}
-                size={16}
-                color={active ? MapColors.text : MapColors.textSecondary}
-              />
-            ) : (
-              <Ionicons
-                name={item.icon as IonName}
-                size={16}
-                color={active ? MapColors.text : MapColors.textSecondary}
-              />
-            )}
+            <Ionicons
+              name={item.icon}
+              size={16}
+              color={active ? MapColors.text : MapColors.textSecondary}
+            />
             <Text style={[styles.label, active && styles.labelActive]}>{item.label}</Text>
           </Pressable>
         );

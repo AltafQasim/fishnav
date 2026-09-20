@@ -575,21 +575,24 @@ ${BUNDLED_LEAFLET_CSS}
       return new LayerClass(onlineUrl, mergedOptions);
     }
 
-    // Available tile sets (Offline tiles priority + online fallback + blur overzoom)
+    // Available tile sets (3 Distinct Layers: Standard Chart, Satellite View, Nautical Vector Chart)
     const baseLayers = {
-      standard: createOfflineAwareTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap'
+      google: createOfflineAwareTileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        maxZoom: 20
       }, true),
-      satellite: createOfflineAwareTileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri'
+      satellite: createOfflineAwareTileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        maxZoom: 20
       }, false),
-      marine: createOfflineAwareTileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OSM &copy; CARTO'
-      }, true),
-      night: createOfflineAwareTileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OSM &copy; CARTO'
+      standard: createOfflineAwareTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19
       }, true)
     };
+    // Graceful aliases for legacy/cached styles
+    baseLayers.terrain = baseLayers.google;
+    baseLayers.marine = baseLayers.google;
+    baseLayers.night = baseLayers.google;
 
     function post(msg) {
       if (window.ReactNativeWebView) {
@@ -677,7 +680,7 @@ ${BUNDLED_LEAFLET_CSS}
     function initMap() {
       map = L.map('map', {
         zoomControl: false,
-        attributionControl: true,
+        attributionControl: false,
         preferCanvas: true,
         fadeAnimation: true,
         zoomAnimation: true,
@@ -688,7 +691,7 @@ ${BUNDLED_LEAFLET_CSS}
         worldCopyJump: false
       }).setView([DEFAULT.lat, DEFAULT.lng], DEFAULT.zoom);
 
-      setBaseStyle('standard');
+      setBaseStyle('google');
 
       // Danger zone
       setDangerZone(true);
@@ -720,7 +723,7 @@ ${BUNDLED_LEAFLET_CSS}
 
     function setBaseStyle(style) {
       if (baseLayer) map.removeLayer(baseLayer);
-      baseLayer = baseLayers[style] || baseLayers.standard;
+      baseLayer = baseLayers[style] || baseLayers.google || baseLayers.standard;
       baseLayer.addTo(map);
       activeStyle = style;
     }

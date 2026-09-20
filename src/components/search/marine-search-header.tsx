@@ -25,6 +25,7 @@ import { useSubscription } from '@/context/subscription-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useWaypoints } from '@/context/waypoints-context';
 import type { UserLocation } from '@/hooks/use-user-location';
+import { getNearestCityFallback } from '@/utils/city-resolver';
 import { distanceNm, formatBearing, formatNm } from '@/utils/geo';
 
 // Predefined Major Coastal Ports & Fishing Harbors
@@ -188,6 +189,8 @@ const APP_FEATURES = [
 
 type MarineSearchHeaderProps = {
   userLocation: UserLocation | null;
+  placeLabel?: string | null;
+  onPressLocationBadge?: () => void;
   onOpenMore: () => void;
   onOpenProfile: () => void;
   onSelectSpot: (spot: FishingSpot) => void;
@@ -201,6 +204,8 @@ type MarineSearchHeaderProps = {
 
 export function MarineSearchHeader({
   userLocation,
+  placeLabel,
+  onPressLocationBadge,
   onOpenMore,
   onOpenProfile,
   onSelectSpot,
@@ -232,6 +237,17 @@ export function MarineSearchHeader({
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
+
+  // Current Location formatted text for badge (ONLY City Name, NO lat/lng)
+  const locationDisplay = useMemo(() => {
+    if (!userLocation) {
+      return 'Detecting City...';
+    }
+    if (placeLabel && placeLabel.trim().length > 0 && placeLabel !== 'Current Location') {
+      return placeLabel.trim();
+    }
+    return getNearestCityFallback(userLocation.latitude, userLocation.longitude);
+  }, [userLocation, placeLabel]);
 
   // Smooth slide-up animation when sheet/tab opens
   const animY = useRef(new Animated.Value(0)).current;
@@ -533,6 +549,54 @@ export function MarineSearchHeader({
           </View>
         </Pressable>
       </View>
+
+      {/* 📍 Current Location Floating Badge (Below search bar, left-aligned) */}
+      {!isFocused && (
+        <View style={styles.locationBadgeWrapper}>
+          <Pressable
+            style={[
+              styles.locationBadge,
+              {
+                backgroundColor: isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(4, 23, 40, 0.92)',
+                borderColor: isLight ? '#CBD5E1' : 'rgba(56, 189, 248, 0.35)',
+              },
+            ]}
+            onPress={onPressLocationBadge}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Current location badge"
+          >
+            <View style={styles.locationDotWrap}>
+              <View
+                style={[
+                  styles.locationDot,
+                  { backgroundColor: userLocation ? '#10B981' : '#F59E0B' },
+                ]}
+              />
+            </View>
+            <Ionicons
+              name="location-sharp"
+              size={12}
+              color={userLocation ? (isLight ? '#0284C7' : '#00F0FF') : colors.textSecondary}
+            />
+            <Text
+              style={[
+                styles.locationBadgeText,
+                { color: colors.text },
+              ]}
+              numberOfLines={1}
+            >
+              {locationDisplay}
+            </Text>
+            <Ionicons
+              name="locate-outline"
+              size={12}
+              color={colors.accent}
+              style={{ marginLeft: 2 }}
+            />
+          </Pressable>
+        </View>
+      )}
 
       {/* 🟡 Universal Search Results / Suggestions Dropdown */}
       {isFocused && (
@@ -971,5 +1035,42 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.4,
+  },
+  locationBadgeWrapper: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    marginLeft: 6,
+  },
+  locationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 8,
+    maxWidth: 320,
+  },
+  locationDotWrap: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  locationBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });

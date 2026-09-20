@@ -2,6 +2,8 @@ import * as Location from 'expo-location';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, AppStateStatus, Linking, Platform } from 'react-native';
 
+import { getNearestCityFallback, resolveCityName } from '@/utils/city-resolver';
+
 export type LocationStatus =
   | 'idle'
   | 'requesting'
@@ -111,19 +113,19 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     lastGeocodeAt.current = now;
 
     try {
-      const results = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
-      const first = results[0];
-      if (!first) {
-        setPlace(null);
-        return;
-      }
+      const city = await resolveCityName(lat, lng);
       setPlace({
-        city: first.city ?? first.subregion ?? first.district ?? null,
-        region: first.region ?? first.country ?? null,
-        name: first.name ?? first.street ?? null,
+        city: city,
+        region: null,
+        name: city,
       });
     } catch {
-      // Keep previous place label if geocode fails
+      const fallback = getNearestCityFallback(lat, lng);
+      setPlace({
+        city: fallback,
+        region: null,
+        name: fallback,
+      });
     }
   }, []);
 
@@ -279,7 +281,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   }, [startWatching, status]);
 
   const placeLabel =
-    place?.city ?? place?.name ?? (status === 'granted' ? 'Current Location' : null);
+    place?.city ?? (location ? getNearestCityFallback(location.latitude, location.longitude) : null);
 
   const value = useMemo<LocationContextType>(
     () => ({

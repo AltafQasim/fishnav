@@ -73,7 +73,7 @@ export function SharedBackgroundMap() {
       {/* Interactive Marine Leaflet Map */}
       <NativeMapView
         ref={mapRef}
-        mapStyle="standard"
+        mapStyle="google"
         overlays={overlays}
         location={location}
         heading={heading ?? location?.heading ?? 0}
