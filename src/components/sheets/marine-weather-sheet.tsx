@@ -18,6 +18,7 @@ import { TideChart } from '@/components/weather/tide-chart';
 import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useMarineWeather } from '@/hooks/use-marine-weather';
+import { getBaselineMarineData } from '@/services/marine-weather-service';
 
 export function WeatherSheetContent() {
   const { colors, isLight } = useAppTheme();
@@ -37,76 +38,85 @@ export function WeatherSheetContent() {
   const mainScrollRef = useRef<ScrollView>(null);
   const chartSectionY = useRef<number>(0);
 
-  const isWarning = conditions.safetyAdvisory.status === 'WARNING';
-  const isCaution = conditions.safetyAdvisory.status === 'CAUTION';
+  const baseline = useMemo(() => getBaselineMarineData(), []);
+  const safeConditions = conditions || baseline.conditions;
+  const safeHourly = Array.isArray(hourly) && hourly.length > 0 ? hourly : baseline.hourly;
+  const safeTides = tides || baseline.tides;
+
+  const safetyAdvisory = safeConditions.safetyAdvisory || baseline.conditions.safetyAdvisory;
+  const nearestPort = safeConditions.nearestPort || baseline.conditions.nearestPort;
+  const port = nearestPort.port || baseline.conditions.nearestPort.port;
+
+  const isWarning = safetyAdvisory.status === 'WARNING';
+  const isCaution = safetyAdvisory.status === 'CAUTION';
 
   const localizedAdvisoryTitle = useMemo(() => {
-    if (isWarning) return t('weather.advisory_warning', conditions.safetyAdvisory.title);
-    if (isCaution) return t('weather.advisory_caution', conditions.safetyAdvisory.title);
-    return t('weather.advisory_good', conditions.safetyAdvisory.title);
-  }, [isWarning, isCaution, conditions.safetyAdvisory.title, t]);
+    if (isWarning) return t('weather.advisory_warning', safetyAdvisory.title);
+    if (isCaution) return t('weather.advisory_caution', safetyAdvisory.title);
+    return t('weather.advisory_good', safetyAdvisory.title);
+  }, [isWarning, isCaution, safetyAdvisory.title, t]);
 
   const localizedAdvisorySub = useMemo(() => {
     if (isWarning) {
-      if (conditions.safetyAdvisory.dangerType === 'SQUALL') return t('weather.danger_squall', conditions.safetyAdvisory.subText);
-      if (conditions.safetyAdvisory.dangerType === 'RAIN') return t('weather.danger_rain', conditions.safetyAdvisory.subText);
-      if (conditions.safetyAdvisory.dangerType === 'SWELL') return t('weather.danger_swell', conditions.safetyAdvisory.subText);
-      if (conditions.safetyAdvisory.dangerType === 'WIND') return t('weather.danger_wind', conditions.safetyAdvisory.subText);
-      return t('weather.danger_squall', conditions.safetyAdvisory.subText);
+      if (safetyAdvisory.dangerType === 'SQUALL') return t('weather.danger_squall', safetyAdvisory.subText);
+      if (safetyAdvisory.dangerType === 'RAIN') return t('weather.danger_rain', safetyAdvisory.subText);
+      if (safetyAdvisory.dangerType === 'SWELL') return t('weather.danger_swell', safetyAdvisory.subText);
+      if (safetyAdvisory.dangerType === 'WIND') return t('weather.danger_wind', safetyAdvisory.subText);
+      return t('weather.danger_squall', safetyAdvisory.subText);
     }
     if (isCaution) {
-      return t('weather.caution_sub', conditions.safetyAdvisory.subText);
+      return t('weather.caution_sub', safetyAdvisory.subText);
     }
-    return t('weather.normal_sub', conditions.safetyAdvisory.subText);
-  }, [isWarning, isCaution, conditions.safetyAdvisory.dangerType, conditions.safetyAdvisory.subText, t]);
+    return t('weather.normal_sub', safetyAdvisory.subText);
+  }, [isWarning, isCaution, safetyAdvisory.dangerType, safetyAdvisory.subText, t]);
 
-  const getLocalizedWeatherDesc = (code: number, fallback: string) => {
-    if (code === 0) return t('weather.desc_clear', fallback);
-    if (code >= 1 && code <= 3) return t('weather.desc_partly_cloudy', fallback);
-    if (code >= 45 && code <= 48) return t('weather.desc_foggy', fallback);
-    if (code >= 51 && code <= 55) return t('weather.desc_drizzle', fallback);
-    if (code >= 61 && code <= 63) return t('weather.desc_rain', fallback);
-    if (code >= 65 && code <= 67) return t('weather.desc_heavy_rain', fallback);
-    if (code >= 80 && code <= 82) return t('weather.desc_rain', fallback);
-    if (code >= 95) return t('weather.desc_thunderstorm', fallback);
-    return fallback;
+  const getLocalizedWeatherDesc = (code: number, fallbackText: string) => {
+    if (code === 0) return t('weather.desc_clear', fallbackText);
+    if (code >= 1 && code <= 3) return t('weather.desc_partly_cloudy', fallbackText);
+    if (code >= 45 && code <= 48) return t('weather.desc_foggy', fallbackText);
+    if (code >= 51 && code <= 55) return t('weather.desc_drizzle', fallbackText);
+    if (code >= 61 && code <= 63) return t('weather.desc_rain', fallbackText);
+    if (code >= 65 && code <= 67) return t('weather.desc_heavy_rain', fallbackText);
+    if (code >= 80 && code <= 82) return t('weather.desc_rain', fallbackText);
+    if (code >= 95) return t('weather.desc_thunderstorm', fallbackText);
+    return fallbackText;
   };
 
   const waveSeries = useMemo(
-    () => hourly.map((h) => h.waveNum ?? parseFloat(h.wave?.replace('m', '') || '1.2')),
-    [hourly]
+    () => safeHourly.map((h) => h.waveNum ?? parseFloat(h.wave?.replace('m', '') || '1.2')),
+    [safeHourly]
   );
   const windSeries = useMemo(
-    () => hourly.map((h) => h.windNum ?? parseFloat(h.wind?.replace(' kts', '') || '14')),
-    [hourly]
+    () => safeHourly.map((h) => h.windNum ?? parseFloat(h.wind?.replace(' kts', '') || '14')),
+    [safeHourly]
   );
   const rainSeries = useMemo(
-    () => hourly.map((h) => h.rainNum ?? parseFloat(h.rain?.replace('mm', '') || '0')),
-    [hourly]
+    () => safeHourly.map((h) => h.rainNum ?? parseFloat(h.rain?.replace('mm', '') || '0')),
+    [safeHourly]
   );
   const tempSeries = useMemo(
-    () => hourly.map((h) => h.tempNum ?? parseFloat(h.temp?.replace('°', '') || '28')),
-    [hourly]
+    () => safeHourly.map((h) => h.tempNum ?? parseFloat(h.temp?.replace('°', '') || '28')),
+    [safeHourly]
   );
   const pressureSeries = useMemo(
-    () => hourly.map((h) => h.pressureNum ?? 1012),
-    [hourly]
+    () => safeHourly.map((h) => h.pressureNum ?? 1012),
+    [safeHourly]
   );
   const visibilitySeries = useMemo(
-    () => hourly.map((h) => h.visibilityNum ?? conditions.visibilityNm ?? 9.5),
-    [hourly, conditions.visibilityNm]
+    () => safeHourly.map((h) => h.visibilityNum ?? safeConditions.visibilityNm ?? 9.5),
+    [safeHourly, safeConditions.visibilityNm]
   );
   const currentSeries = useMemo(
-    () => hourly.map((h) => h.currentNum ?? conditions.tidalCurrentKnots ?? 0.8),
-    [hourly, conditions.tidalCurrentKnots]
+    () => safeHourly.map((h) => h.currentNum ?? safeConditions.tidalCurrentKnots ?? 0.8),
+    [safeHourly, safeConditions.tidalCurrentKnots]
   );
   const periodSeries = useMemo(
-    () => hourly.map((h) => h.periodNum ?? conditions.wavePeriodS ?? 7.0),
-    [hourly, conditions.wavePeriodS]
+    () => safeHourly.map((h) => h.periodNum ?? safeConditions.wavePeriodS ?? 7.0),
+    [safeHourly, safeConditions.wavePeriodS]
   );
   const humiditySeries = useMemo(
-    () => hourly.map((h) => h.humidityNum ?? conditions.relativeHumidity ?? 74),
-    [hourly, conditions.relativeHumidity]
+    () => safeHourly.map((h) => h.humidityNum ?? safeConditions.relativeHumidity ?? 74),
+    [safeHourly, safeConditions.relativeHumidity]
   );
 
   const handleCardPress = (metric: WeatherMetricType) => {
@@ -149,13 +159,13 @@ export function WeatherSheetContent() {
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Text style={[styles.portName, { color: colors.text }]} numberOfLines={1}>
-                {conditions.nearestPort.port.name}
+                {port.name}
               </Text>
               <View
                 style={[
                   styles.portTag,
                   {
-                    backgroundColor: conditions.nearestPort.isAtPort
+                    backgroundColor: nearestPort.isAtPort
                       ? isLight
                         ? '#DCFCE7'
                         : 'rgba(34, 197, 94, 0.15)'
@@ -169,7 +179,7 @@ export function WeatherSheetContent() {
                   style={[
                     styles.portTagText,
                     {
-                      color: conditions.nearestPort.isAtPort
+                      color: nearestPort.isAtPort
                         ? isLight
                           ? '#16A34A'
                           : '#22C55E'
@@ -177,15 +187,15 @@ export function WeatherSheetContent() {
                     },
                   ]}
                 >
-                  {conditions.nearestPort.isAtPort
+                  {nearestPort.isAtPort
                     ? t('weather.at_harbor', '⚓ AT HARBOR')
-                    : `${conditions.nearestPort.distanceNm} NM ${t('weather.offshore', 'OFFSHORE')}`}
+                    : `${nearestPort.distanceNm ?? '0.0'} NM ${t('weather.offshore', 'OFFSHORE')}`}
                 </Text>
               </View>
             </View>
             <Text style={[styles.portSub, { color: colors.textSecondary }]}>
-              {conditions.nearestPort.port.nameGujarati} • {conditions.nearestPort.port.district} (
-              {conditions.nearestPort.bearingText} {conditions.nearestPort.bearingDeg}°)
+              {port.nameGujarati} • {port.district} (
+              {nearestPort.bearingText ?? 'N'} {nearestPort.bearingDeg ?? 0}°)
             </Text>
           </View>
         </View>
@@ -300,7 +310,7 @@ export function WeatherSheetContent() {
             isWarning
               ? 'alert-circle'
               : isCaution
-              ? 'alert-triangle'
+              ? 'warning'
               : 'shield-checkmark'
           }
           size={24}
@@ -333,14 +343,14 @@ export function WeatherSheetContent() {
               style={[
                 styles.safetyBadge,
                 {
-                  backgroundColor: conditions.safetyAdvisory.isFishingSafe
+                  backgroundColor: safetyAdvisory.isFishingSafe
                     ? '#16A34A'
                     : '#DC2626',
                 },
               ]}
             >
               <Text style={styles.safetyBadgeText}>
-                {conditions.safetyAdvisory.isFishingSafe ? t('weather.fishing_safe', 'FISHING: SAFE') : t('weather.fishing_unsafe', 'FISHING: UNSAFE')}
+                {safetyAdvisory.isFishingSafe ? t('weather.fishing_safe', 'FISHING: SAFE') : t('weather.fishing_unsafe', 'FISHING: UNSAFE')}
               </Text>
             </View>
           </View>
@@ -755,10 +765,10 @@ export function WeatherSheetContent() {
             <Text style={[styles.cardLabel, { color: colors.textMuted }]}>{t('weather.nearest_port', 'NEAREST PORT').toUpperCase()}</Text>
           </View>
           <Text style={[styles.cardValueSmall, { color: colors.text }]} numberOfLines={1}>
-            {conditions.nearestPort.port.name.replace(' Fishing Harbor', '').replace(' Harbor', '')}
+            {(port.name || 'Veraval').replace(' Fishing Harbor', '').replace(' Harbor', '')}
           </Text>
           <Text style={[styles.cardSub, { color: colors.textSecondary }]}>
-            {conditions.nearestPort.displayBadge}
+            {nearestPort.displayBadge || 'Harbor'}
           </Text>
         </View>
       </View>
@@ -773,8 +783,8 @@ export function WeatherSheetContent() {
           {t('weather.anim_charts_title', 'ANIMATED PREDICTIVE CHARTS (36H)').toUpperCase()}
         </Text>
         <MarineAnimatedWeatherChart
-          hourly={hourly}
-          conditions={conditions}
+          hourly={safeHourly}
+          conditions={safeConditions}
           activeMetric={activeChartMetric}
           onMetricChange={setActiveChartMetric}
         />
@@ -784,12 +794,12 @@ export function WeatherSheetContent() {
       <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 4 }]}>
         {t('weather.tides_title', 'ASTRONOMICAL HARMONIC TIDES (48H)').toUpperCase()}
       </Text>
-      <TideChart tideData={tides} isOffline={isOffline} />
+      <TideChart tideData={safeTides} isOffline={isOffline} />
 
       {/* 7. Hourly Marine Forecast (Next 36h) */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('weather.hourly_title', 'HOURLY MARINE FORECAST').toUpperCase()}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hourlyScroll}>
-        {hourly.map((item, idx) => (
+        {safeHourly.map((item, idx) => (
           <View
             key={idx}
             style={[
@@ -825,75 +835,77 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: 16,
-    gap: 16,
+    padding: 12,
+    gap: 12,
   },
   portCard: {
-    padding: 14,
-    borderRadius: 16,
+    padding: 10,
+    borderRadius: 14,
     borderWidth: 1,
   },
   portLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   portIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   portName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
+    flexShrink: 1,
   },
   portTag: {
-    paddingHorizontal: 7,
+    paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
   },
   portTagText: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '700',
   },
   portSub: {
-    fontSize: 11,
-    marginTop: 2,
+    fontSize: 10.5,
+    marginTop: 1,
+    flexShrink: 1,
   },
   syncBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 12,
-    borderRadius: 14,
+    padding: 10,
+    borderRadius: 12,
     borderWidth: 1,
   },
   syncLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
     flex: 1,
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
   },
   syncTitle: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '800',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   syncSub: {
-    fontSize: 10,
+    fontSize: 9.5,
     marginTop: 1,
   },
   syncBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -901,70 +913,71 @@ const styles = StyleSheet.create({
   advisoryBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 10,
-    padding: 14,
-    borderRadius: 16,
+    gap: 8,
+    padding: 10,
+    borderRadius: 14,
     borderWidth: 1.5,
   },
   advisoryInfo: {
     flex: 1,
   },
   advisoryTitle: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '800',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
     flex: 1,
   },
   safetyBadge: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 5,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 5,
   },
   safetyBadgeText: {
     color: '#FFFFFF',
-    fontSize: 9,
+    fontSize: 8.5,
     fontWeight: '800',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   advisorySub: {
-    fontSize: 11,
-    lineHeight: 16,
-    marginTop: 3,
+    fontSize: 10.5,
+    lineHeight: 15,
+    marginTop: 2,
   },
   gujaratiNotice: {
-    fontSize: 11,
-    lineHeight: 16,
-    marginTop: 6,
+    fontSize: 10.5,
+    lineHeight: 15,
+    marginTop: 4,
     fontWeight: '600',
   },
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
     marginBottom: -4,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
   },
   card: {
     width: '48%',
     flexGrow: 1,
-    padding: 12,
-    borderRadius: 16,
+    padding: 9,
+    borderRadius: 14,
     borderWidth: 1,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   cardLabel: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '700',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
+    flexShrink: 1,
   },
   cardContentRow: {
     flexDirection: 'row',
@@ -973,33 +986,34 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   activeChartBadge: {
-    paddingHorizontal: 5,
-    paddingVertical: 1.5,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
     borderRadius: 4,
   },
   activeChartBadgeText: {
-    fontSize: 8,
+    fontSize: 7.5,
     fontWeight: '800',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   cardValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
-    lineHeight: 24,
+    lineHeight: 22,
   },
   cardValueSmall: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
-    lineHeight: 20,
-    marginTop: 4,
+    lineHeight: 18,
+    marginTop: 2,
   },
   cardUnit: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '500',
   },
   cardSub: {
-    fontSize: 10,
-    marginTop: 2,
+    fontSize: 9.5,
+    marginTop: 1,
+    flexShrink: 1,
   },
   hourlyScroll: {
     marginHorizontal: -16,

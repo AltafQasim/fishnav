@@ -120,7 +120,7 @@ export function CalendarSheetContent() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={[styles.content, { paddingBottom: 110 }]}
+      contentContainerStyle={[styles.content, { paddingBottom: 85 }]}
       showsVerticalScrollIndicator={false}
     >
       {/* 35-Day Header & Quick Jump Shortcuts */}
@@ -658,8 +658,8 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingHorizontal: 12,
+    paddingTop: 6,
   },
   stripHeaderRow: {
     flexDirection: 'row',
@@ -795,11 +795,11 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: MapColors.navyPanel,
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 14,
+    padding: 10,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   panchangCard: {
     borderWidth: 1.5,

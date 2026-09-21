@@ -501,34 +501,42 @@ export function MarineSearchHeader({
             <>
               <MaterialCommunityIcons
                 name={isExpiringSoon ? 'alert-circle' : 'crown'}
-                size={12}
+                size={13}
                 color={isExpiringSoon ? '#EF4444' : '#F59E0B'}
               />
               <Text style={[styles.trialBadgeText, { color: isExpiringSoon ? '#EF4444' : '#F59E0B' }]}>
-                {isExpiringSoon
-                  ? `PRO ${proDaysRemaining}d ⚠️`
-                  : proPlan === 'lifetime'
-                    ? 'PRO ♾️'
-                    : proDaysRemaining <= 60
-                      ? `PRO ${proDaysRemaining}d`
-                      : 'PRO 👑'}
+                {windowWidth < 420
+                  ? isExpiringSoon
+                    ? `${proDaysRemaining}d!`
+                    : 'PRO'
+                  : isExpiringSoon
+                    ? `PRO ${proDaysRemaining}d ⚠️`
+                    : proPlan === 'lifetime'
+                      ? 'PRO ♾️'
+                      : proDaysRemaining <= 60
+                        ? `PRO ${proDaysRemaining}d`
+                        : 'PRO 👑'}
               </Text>
             </>
           ) : hasReferralBonus ? (
             <>
-              <Ionicons name="gift" size={12} color="#22C55E" />
-              <Text style={[styles.trialBadgeText, { color: '#22C55E' }]}>{bonusProDaysRemaining}d BONUS</Text>
+              <Ionicons name="gift" size={13} color="#22C55E" />
+              <Text style={[styles.trialBadgeText, { color: '#22C55E' }]}>
+                {windowWidth < 420 ? `${bonusProDaysRemaining}d` : `${bonusProDaysRemaining}d BONUS`}
+              </Text>
             </>
           ) : isTrialExpired ? (
             <>
-              <Ionicons name="alert-circle" size={12} color="#EF4444" />
-              <Text style={[styles.trialBadgeText, { color: '#EF4444' }]}>EXPIRED</Text>
+              <Ionicons name="alert-circle" size={13} color="#EF4444" />
+              <Text style={[styles.trialBadgeText, { color: '#EF4444' }]}>
+                {windowWidth < 420 ? 'EXP' : 'EXPIRED'}
+              </Text>
             </>
           ) : (
             <>
-              <Ionicons name="flash" size={11} color={colors.accent} />
+              <Ionicons name="flash" size={12} color={colors.accent} />
               <Text style={[styles.trialBadgeText, { color: colors.accent }]}>
-                {trialDaysRemaining}d TRIAL
+                {windowWidth < 420 ? `${trialDaysRemaining}d` : `${trialDaysRemaining}d TRIAL`}
               </Text>
             </>
           )}
@@ -821,22 +829,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(4, 23, 40, 0.95)',
-    borderRadius: 26,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    borderRadius: 24,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
     borderWidth: 1.5,
     borderColor: 'rgba(56, 189, 248, 0.3)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.6,
-    shadowRadius: 12,
-    elevation: 16,
-    gap: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 14,
+    gap: 6,
   },
   actionPillBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -847,23 +855,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: 6,
   },
   textInput: {
     flex: 1,
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '500',
-    paddingVertical: 6,
-    paddingRight: 6,
+    paddingVertical: 4,
+    paddingRight: 4,
   },
   clearBtn: {
-    padding: 4,
+    padding: 3,
   },
   profileBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
     backgroundColor: 'rgba(2, 132, 199, 0.25)',
     borderWidth: 1.5,
     borderColor: '#00F0FF',
@@ -872,8 +880,8 @@ const styles = StyleSheet.create({
     shadowColor: '#00F0FF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 6,
+    shadowRadius: 5,
+    elevation: 5,
   },
   avatarInner: {
     width: '100%',
@@ -1026,53 +1034,55 @@ const styles = StyleSheet.create({
   trialBadgePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 14,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
-    gap: 4,
-    marginRight: 6,
+    gap: 3,
+    marginRight: 2,
   },
   trialBadgeText: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '800',
-    letterSpacing: 0.4,
+    letterSpacing: 0.2,
   },
   locationBadgeWrapper: {
     alignSelf: 'flex-start',
-    marginTop: 6,
-    marginLeft: 6,
+    marginTop: 5,
+    marginLeft: 4,
+    maxWidth: '90%',
   },
   locationBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 14,
     borderWidth: 1,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 8,
-    maxWidth: 320,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
+    maxWidth: 280,
   },
   locationDotWrap: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     alignItems: 'center',
     justifyContent: 'center',
   },
   locationDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   locationBadgeText: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
+    flexShrink: 1,
   },
 });

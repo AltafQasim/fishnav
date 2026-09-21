@@ -1,5 +1,6 @@
 export {
   formatAccuracy,
+  formatCoordinatesShort,
   formatLatitude,
   formatLongitude,
   LocationProvider,

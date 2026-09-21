@@ -63,6 +63,13 @@ export function formatLongitude(lng: number) {
   return toDms(lng, 'E', 'W');
 }
 
+export function formatCoordinatesShort(lat: number, lng: number): string {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return '—';
+  const latHemi = lat >= 0 ? 'N' : 'S';
+  const lngHemi = lng >= 0 ? 'E' : 'W';
+  return `${Math.abs(lat).toFixed(4)}° ${latHemi}, ${Math.abs(lng).toFixed(4)}° ${lngHemi}`;
+}
+
 export function formatAccuracy(meters: number | null) {
   if (meters == null || !Number.isFinite(meters)) return '—';
   if (meters < 10) return `${meters.toFixed(1)} m`;
@@ -158,9 +165,9 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     try {
       watchSub.current = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.BestForNavigation,
+          accuracy: Location.Accuracy.High,
           timeInterval: 1000,
-          distanceInterval: 1,
+          distanceInterval: 0,
           mayShowUserSettingsDialog: true,
         },
         (pos) => {
@@ -168,30 +175,46 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         },
       );
     } catch (err) {
-      console.warn('Location watchPositionAsync error:', err);
+      console.warn('Location watchPositionAsync error, retrying with Balanced:', err);
+      try {
+        watchSub.current = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.Balanced,
+            timeInterval: 1500,
+          },
+          (pos) => {
+            applyPosition(pos);
+          },
+        );
+      } catch (fallbackErr) {
+        console.warn('Location fallback watchPositionAsync error:', fallbackErr);
+      }
     }
 
-    try {
-      headingSub.current = await Location.watchHeadingAsync((data) => {
-        const mag = Number.isFinite(data.magHeading) ? Math.round(data.magHeading) : null;
-        const tru = data.trueHeading >= 0 && Number.isFinite(data.trueHeading) ? Math.round(data.trueHeading) : null;
-        const primary = tru ?? mag;
+    // Heading sensor (magnetometer) is only available on native devices (not on web browsers)
+    if (Platform.OS !== 'web') {
+      try {
+        headingSub.current = await Location.watchHeadingAsync((data) => {
+          const mag = Number.isFinite(data.magHeading) ? Math.round(data.magHeading) : null;
+          const tru = data.trueHeading >= 0 && Number.isFinite(data.trueHeading) ? Math.round(data.trueHeading) : null;
+          const primary = tru ?? mag;
 
-        if (primary != null) {
-          setHeading(primary);
-        }
-        if (mag != null) {
-          setMagHeading(mag);
-        }
-        if (tru != null) {
-          setTrueHeading(tru);
-        }
-        if (data.accuracy != null) {
-          setHeadingAccuracy(data.accuracy);
-        }
-      });
-    } catch (err) {
-      console.warn('Location watchHeadingAsync error:', err);
+          if (primary != null) {
+            setHeading(primary);
+          }
+          if (mag != null) {
+            setMagHeading(mag);
+          }
+          if (tru != null) {
+            setTrueHeading(tru);
+          }
+          if (data.accuracy != null) {
+            setHeadingAccuracy(data.accuracy);
+          }
+        });
+      } catch (err) {
+        console.warn('Location watchHeadingAsync error:', err);
+      }
     }
   }, [applyPosition, stopWatching]);
 
@@ -281,7 +304,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   }, [startWatching, status]);
 
   const placeLabel =
-    place?.city ?? (location ? getNearestCityFallback(location.latitude, location.longitude) : null);
+    location ? formatCoordinatesShort(location.latitude, location.longitude) : (place?.city ?? null);
 
   const value = useMemo<LocationContextType>(
     () => ({

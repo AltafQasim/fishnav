@@ -455,7 +455,8 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
               accessibilityRole="button"
               accessibilityLabel="Review Route"
             >
-              <Text style={[styles.pickingCardSecondaryText, { color: colors.text }]}>Review Route</Text>
+              <Ionicons name="git-branch-outline" size={15} color={colors.text} style={{ marginRight: 4 }} />
+              <Text style={[styles.pickingCardSecondaryText, { color: colors.text }]} numberOfLines={1}>Route</Text>
             </Pressable>
 
             <Pressable
@@ -464,8 +465,8 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
               accessibilityRole="button"
               accessibilityLabel="Start Navigation"
             >
-              <MaterialCommunityIcons name="navigation" size={18} color="#FFFFFF" style={{ transform: [{ rotate: '45deg' }] }} />
-              <Text style={styles.pickingCardPrimaryText}>START NAVIGATION</Text>
+              <MaterialCommunityIcons name="navigation" size={16} color="#FFFFFF" style={{ transform: [{ rotate: '45deg' }], marginRight: 4 }} />
+              <Text style={styles.pickingCardPrimaryText} numberOfLines={1}>Start</Text>
             </Pressable>
           </View>
         </View>
@@ -672,30 +673,30 @@ const styles = StyleSheet.create({
   },
   mapPickingCard: {
     position: 'absolute',
-    left: 14,
-    right: 14,
-    borderRadius: 20,
+    left: 10,
+    right: 10,
+    borderRadius: 16,
     borderWidth: 1.5,
-    padding: 14,
+    padding: 10,
     zIndex: 130,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 16,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 12,
     maxWidth: 600,
     alignSelf: 'center',
   },
   pickingCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    gap: 10,
+    marginBottom: 8,
+    gap: 8,
   },
   pickingCardIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -703,59 +704,60 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   pickingCardTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   pickingCardCoords: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '600',
-    marginTop: 2,
+    marginTop: 1,
   },
   pickingCardResetBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   pickingCardActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   pickingCardSecondaryBtn: {
     flex: 1,
-    paddingVertical: 11,
+    flexDirection: 'row',
+    paddingVertical: 9,
     borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   pickingCardSecondaryText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700',
   },
   pickingCardPrimaryBtn: {
-    flex: 1.4,
+    flex: 1.3,
     backgroundColor: '#0284C7',
-    paddingVertical: 11,
+    paddingVertical: 9,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: '#00F0FF',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
     shadowColor: '#00F0FF',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 6,
+    shadowOpacity: 0.35,
+    shadowRadius: 5,
+    elevation: 5,
   },
   pickingCardPrimaryText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '900',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
 });

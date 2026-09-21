@@ -1,7 +1,7 @@
 import { Slot, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { LogBox, Platform, StyleSheet, View } from 'react-native';
 
 import { MarineLoginScreen } from '@/components/auth/marine-login-screen';
 import { MarineSplashScreen } from '@/components/auth/marine-splash-screen';
@@ -11,11 +11,34 @@ import { AuthProvider, useAuth } from '@/context/auth-context';
 import { LanguageProvider } from '@/context/language-context';
 import { LocationProvider } from '@/context/location-context';
 import { MarineAlertProvider } from '@/context/marine-alert-context';
+import { OfflineMapProvider } from '@/context/offline-map-context';
 import { SubscriptionProvider } from '@/context/subscription-context';
 import { AppThemeProvider, useAppTheme } from '@/context/theme-context';
-import { OfflineMapProvider } from '@/context/offline-map-context';
 import { TripProvider } from '@/context/trip-context';
 import { WaypointsProvider } from '@/context/waypoints-context';
+
+LogBox.ignoreLogs([
+  '"shadow*" style props are deprecated. Use "boxShadow".',
+  'props.pointerEvents is deprecated. Use style.pointerEvents',
+  'Location.watchDeviceHeading: is not supported on web',
+  'Animated: `useNativeDriver` is not supported',
+]);
+
+if (Platform.OS === 'web' && typeof console !== 'undefined') {
+  const originalWarn = console.warn;
+  console.warn = (...args: any[]) => {
+    const first = typeof args[0] === 'string' ? args[0] : '';
+    if (
+      first.includes('"shadow*" style props are deprecated') ||
+      first.includes('props.pointerEvents is deprecated') ||
+      first.includes('Location.watchDeviceHeading: is not supported on web') ||
+      first.includes('useNativeDriver')
+    ) {
+      return;
+    }
+    originalWarn.apply(console, args);
+  };
+}
 
 SplashScreen.preventAutoHideAsync().catch(() => { });
 

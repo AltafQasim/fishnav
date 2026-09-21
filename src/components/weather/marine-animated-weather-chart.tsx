@@ -4,6 +4,7 @@ import {
   Animated,
   Dimensions,
   Easing,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -237,7 +238,7 @@ export function MarineAnimatedWeatherChart({
       toValue: 1,
       friction: 8,
       tension: 50,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [selectedMetric]);
 
@@ -249,12 +250,12 @@ export function MarineAnimatedWeatherChart({
             toValue: 2.2,
             duration: 1500,
             easing: Easing.out(Easing.quad),
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
             duration: 0,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
         ]),
         Animated.sequence([
@@ -262,12 +263,12 @@ export function MarineAnimatedWeatherChart({
             toValue: 0,
             duration: 1500,
             easing: Easing.out(Easing.quad),
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
           Animated.timing(pulseOpacity, {
             toValue: 0.7,
             duration: 0,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
         ]),
       ])
@@ -909,7 +910,7 @@ export function MiniWeatherSparkline({
       toValue: 1,
       duration: 600,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [data]);
 
@@ -921,12 +922,12 @@ export function MiniWeatherSparkline({
             toValue: 2.2,
             duration: 1600,
             easing: Easing.out(Easing.quad),
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
           Animated.timing(pulseAnim, {
             toValue: 1,
             duration: 0,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
         ]),
         Animated.sequence([
@@ -934,12 +935,12 @@ export function MiniWeatherSparkline({
             toValue: 0,
             duration: 1600,
             easing: Easing.out(Easing.quad),
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
           Animated.timing(pulseOpacity, {
             toValue: 0.75,
             duration: 0,
-            useNativeDriver: true,
+            useNativeDriver: Platform.OS !== 'web',
           }),
         ]),
       ])

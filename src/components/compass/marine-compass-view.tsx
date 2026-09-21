@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import {
   Animated,
   Dimensions,
+  Platform,
   StyleSheet,
   Text,
   View
@@ -73,7 +74,7 @@ export function MarineCompassView({ northMode = 'magnetic' }: MarineCompassViewP
       toValue: -continuousAngleRef.current,
       friction: 8,
       tension: 40,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   }, [currentHeading, rotationAnim]);
 

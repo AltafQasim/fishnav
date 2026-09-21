@@ -287,7 +287,7 @@ export function GoogleNavHud({
             hitSlop={6}
           >
             <NavigationCompassRose
-              size={74}
+              size={SCREEN_WIDTH < 380 ? 60 : 70}
               heading={userCompassHeading}
               targetBearing={targetBearing}
               relativeSteerAngle={relativeSteerAngle}
@@ -304,12 +304,12 @@ export function GoogleNavHud({
                 {getLocalizedSteer(steeringInstruction)}
               </Text>
               <View style={styles.expandCompassIcon}>
-                <Ionicons name="expand-outline" size={14} color="#00F0FF" />
+                <Ionicons name="expand-outline" size={13} color="#00F0FF" />
               </View>
             </View>
             <Text style={styles.secondarySub} numberOfLines={1}>
               {targetSpot
-                ? `${t('cockpit.navigating_to', 'NAVIGATING TO')}: ${targetSpot.name} ${targetSpot.depthM ? `(${targetSpot.depthM}m)` : ''}`
+                ? `${t('cockpit.navigating_to', 'TO')}: ${targetSpot.name} ${targetSpot.depthM ? `(${targetSpot.depthM}m)` : ''}`
                 : `${t('hud.free_nav', 'Navigating Course')} • ${String(userCompassHeading)}°`}
             </Text>
           </Pressable>
@@ -322,7 +322,7 @@ export function GoogleNavHud({
           >
             <Ionicons
               name={headingUp ? 'navigate' : 'compass-outline'}
-              size={22}
+              size={20}
               color={headingUp ? '#00F0FF' : '#FFFFFF'}
             />
           </Pressable>
@@ -338,8 +338,8 @@ export function GoogleNavHud({
               hitSlop={8}
             >
               <View style={[styles.recDot, isPaused && styles.recDotPaused]} />
-              <Text style={styles.recText}>
-                {isPaused ? 'REC PAUSED • RESUME' : `REC ${formatTime(elapsedSeconds)} • STOP`}
+              <Text style={styles.recText} numberOfLines={1}>
+                {isPaused ? 'PAUSED' : `REC ${formatTime(elapsedSeconds)}`}
               </Text>
             </Pressable>
           ) : (
@@ -355,7 +355,9 @@ export function GoogleNavHud({
               hitSlop={8}
             >
               <Ionicons name="radio-button-on" size={13} color={colors.accent} />
-              <Text style={[styles.startRecordText, { color: colors.accent }]}>RECORD TRIP</Text>
+              <Text style={[styles.startRecordText, { color: colors.accent }]}>
+                {SCREEN_WIDTH < 390 ? 'REC' : 'RECORD TRIP'}
+              </Text>
             </Pressable>
           )}
 
@@ -474,25 +476,25 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   topBannerWrap: {
-    marginHorizontal: 12,
+    marginHorizontal: 10,
   },
   topGreenCard: {
     backgroundColor: '#043427', // Google Maps dark green navigation bar
-    borderRadius: 20,
-    padding: 10,
+    borderRadius: 18,
+    padding: 8,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: '#10B981',
     shadowColor: '#000',
     shadowOpacity: 0.55,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 12,
-    gap: 10,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
+    gap: 8,
   },
   compassDialWrap: {
-    borderRadius: 37,
+    borderRadius: 35,
     overflow: 'hidden',
     shadowColor: '#00F0FF',
     shadowOpacity: 0.35,
@@ -505,33 +507,34 @@ const styles = StyleSheet.create({
   steerHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   primaryInstruction: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     letterSpacing: -0.2,
     flex: 1,
   },
   expandCompassIcon: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: 'rgba(0, 240, 255, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   secondarySub: {
     color: '#A7F3D0',
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '600',
-    marginTop: 2,
+    marginTop: 1,
+    flexShrink: 1,
   },
   miniHeaderBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -767,22 +770,22 @@ const styles = StyleSheet.create({
 
   // Bottom Google Maps Style Bar
   bottomCockpitWrap: {
-    marginHorizontal: 12,
+    marginHorizontal: 10,
   },
   bottomCockpitCard: {
     backgroundColor: '#0B1C2D',
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderRadius: 18,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: 'rgba(56, 189, 248, 0.25)',
     shadowColor: '#000',
-    shadowOpacity: 0.6,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 14,
+    shadowOpacity: 0.55,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 12,
   },
   statCol: {
     flex: 1,
@@ -790,43 +793,43 @@ const styles = StyleSheet.create({
   },
   statMainGreen: {
     color: '#10B981',
-    fontSize: 19,
+    fontSize: 16,
     fontWeight: '900',
     letterSpacing: -0.3,
   },
   statMainWhite: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '800',
   },
   unitText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
     color: '#93C5FD',
   },
   statSubLabel: {
     color: '#64748B',
-    fontSize: 9,
+    fontSize: 8.5,
     fontWeight: '800',
-    marginTop: 3,
-    letterSpacing: 0.4,
+    marginTop: 2,
+    letterSpacing: 0.3,
   },
   vertDivider: {
     width: 1,
-    height: 30,
+    height: 26,
     backgroundColor: 'rgba(255,255,255,0.1)',
-    marginHorizontal: 4,
+    marginHorizontal: 2,
   },
   actionButtonsCol: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginLeft: 6,
+    gap: 6,
+    marginLeft: 4,
   },
   pauseCircleBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: '#1E293B',
     alignItems: 'center',
     justifyContent: 'center',
@@ -834,15 +837,15 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   redEndTripBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#DC2626', // Google Maps vibrant red stop circle
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#DC2626',
     shadowOpacity: 0.5,
-    shadowRadius: 8,
+    shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 6,
   },

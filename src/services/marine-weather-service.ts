@@ -384,31 +384,45 @@ export async function fetchLiveMarineForecast(
   lon: number
 ): Promise<CachedMarinePayload> {
   const nearestPort = findNearestGujaratPort(lat, lon);
+  // Marine models only accept water/ocean coordinates. If user is inland, use nearest harbor sea coordinates.
+  const marineLat = nearestPort?.port?.latitude ?? lat;
+  const marineLon = nearestPort?.port?.longitude ?? lon;
 
   // Marine API: wave height, period, swell
-  const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_direction,wave_period&wind_speed_unit=kn&forecast_days=3`;
+  const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${marineLat}&longitude=${marineLon}&hourly=wave_height,wave_direction,wave_period&wind_speed_unit=kn&forecast_days=3`;
 
   // Atmospheric API: rain, precipitation, weather_code, wind speed & gusts, pressure
   const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code,surface_pressure,wind_speed_10m,wind_gusts_10m,wind_direction_10m&hourly=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code,precipitation,rain,visibility&wind_speed_unit=kn&forecast_days=3`;
 
-  const [marineRes, atmosRes] = await Promise.all([
-    fetch(marineUrl, { headers: { Accept: 'application/json' } }),
-    fetch(forecastUrl, { headers: { Accept: 'application/json' } }),
-  ]);
+  let marineHourly: any = null;
+  let atmosHourly: any = null;
+  let atmosCurrent: any = null;
 
-  if (!marineRes.ok || !atmosRes.ok) {
-    throw new Error(`Weather API responded with status ${marineRes.status}/${atmosRes.status}`);
+  try {
+    const [marineRes, atmosRes] = await Promise.all([
+      fetch(marineUrl, { headers: { Accept: 'application/json' } }),
+      fetch(forecastUrl, { headers: { Accept: 'application/json' } }),
+    ]);
+
+    if (atmosRes.ok) {
+      const atmosData = await atmosRes.json();
+      atmosHourly = atmosData?.hourly;
+      atmosCurrent = atmosData?.current;
+    }
+
+    if (marineRes.ok) {
+      const marineData = await marineRes.json();
+      marineHourly = marineData?.hourly;
+    }
+  } catch (err) {
+    console.warn('[MarineWeatherService] Network request error:', err);
   }
 
-  const marineData = await marineRes.json();
-  const atmosData = await atmosRes.json();
-
-  const marineHourly = marineData.hourly;
-  const atmosHourly = atmosData.hourly;
-  const atmosCurrent = atmosData.current;
-
-  if (!marineHourly || !atmosHourly) {
-    throw new Error('Incomplete marine forecast payload received.');
+  // If atmospheric fetch failed completely (offline), fallback safely to baseline
+  if (!atmosHourly) {
+    const cached = await loadFromStorage();
+    if (cached) return cached;
+    return getBaselineMarineData(lat, lon);
   }
 
   // Find index of current hour
@@ -556,10 +570,30 @@ export async function loadFromStorage(): Promise<CachedMarinePayload | null> {
   if (inMemoryCache) return inMemoryCache;
   try {
     const saved = await persistentStorage.getJSON<CachedMarinePayload | null>(STORAGE_KEY, null);
-    if (saved) {
-      saved.tides = calculateAstronomicalTides();
-      inMemoryCache = saved;
-      return saved;
+    if (saved && saved.conditions) {
+      const baseline = getBaselineMarineData(saved.latitude ?? 20.902, saved.longitude ?? 70.366);
+      const nearestPort = saved.conditions?.nearestPort?.port
+        ? saved.conditions.nearestPort
+        : baseline.conditions.nearestPort;
+
+      const merged: CachedMarinePayload = {
+        ...baseline,
+        ...saved,
+        nearestPort,
+        conditions: {
+          ...baseline.conditions,
+          ...(saved.conditions || {}),
+          nearestPort,
+          safetyAdvisory: {
+            ...baseline.conditions.safetyAdvisory,
+            ...(saved.conditions?.safetyAdvisory || {}),
+          },
+        },
+        hourly: Array.isArray(saved.hourly) && saved.hourly.length > 0 ? saved.hourly : baseline.hourly,
+        tides: calculateAstronomicalTides(),
+      };
+      inMemoryCache = merged;
+      return merged;
     }
   } catch (err) {
     console.warn('[MarineWeatherService] Storage load failed:', err);

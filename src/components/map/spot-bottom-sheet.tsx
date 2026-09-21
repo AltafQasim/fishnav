@@ -108,8 +108,8 @@ export function SpotBottomSheet({
           style={[styles.goBtn, { backgroundColor: colors.accent }]}
           onPress={onGoTo}
         >
-          <Ionicons name="navigate" size={22} color={isLight ? '#FFFFFF' : '#020B14'} />
-          <Text style={[styles.goText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>{t('spot.start_nav', 'START NAVIGATION')}</Text>
+          <Ionicons name="navigate" size={19} color={isLight ? '#FFFFFF' : '#020B14'} />
+          <Text style={[styles.goText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>{t('spot.start_nav', 'Navigate')}</Text>
         </Pressable>
 
         {/* 2. Nautical Stats Grid (Distance, Bearing, ETA, Depth) */}
@@ -168,10 +168,10 @@ export function SpotBottomSheet({
           >
             <Ionicons
               name={isFavorite ? 'star' : 'star-outline'}
-              size={18}
+              size={16}
               color={isFavorite ? MapColors.yellow : colors.text}
             />
-            <Text style={[styles.quickActionText, { color: colors.text }]}>
+            <Text style={[styles.quickActionText, { color: colors.text }]} numberOfLines={1}>
               {isFavorite ? t('spot.saved', 'Saved') : t('spot.save', 'Favorite')}
             </Text>
           </Pressable>
@@ -180,8 +180,8 @@ export function SpotBottomSheet({
             style={[styles.quickActionBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
             onPress={handleShare}
           >
-            <Ionicons name="share-social-outline" size={18} color={colors.text} />
-            <Text style={[styles.quickActionText, { color: colors.text }]}>{t('spot.share', 'Share Spot')}</Text>
+            <Ionicons name="share-social-outline" size={16} color={colors.text} />
+            <Text style={[styles.quickActionText, { color: colors.text }]} numberOfLines={1}>{t('spot.share', 'Share')}</Text>
           </Pressable>
         </View>
 
@@ -250,9 +250,9 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    gap: 14,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    gap: 10,
   },
   badgeCyan: {
     backgroundColor: 'rgba(56, 189, 248, 0.15)',
@@ -295,31 +295,31 @@ const styles = StyleSheet.create({
   },
   goBtn: {
     backgroundColor: '#0284C7',
-    borderRadius: 16,
-    height: 52,
+    borderRadius: 14,
+    height: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 6,
     shadowColor: '#0284C7',
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
   },
   goText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
-    letterSpacing: 0.6,
+    letterSpacing: 0.4,
   },
   statsGrid: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#041728',
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 6,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },
@@ -328,73 +328,73 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statIcon: {
-    marginBottom: 4,
+    marginBottom: 3,
   },
   statLabel: {
     color: '#64748B',
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
   },
   statValue: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
-    marginTop: 2,
+    marginTop: 1,
   },
   seaStrip: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
     backgroundColor: 'rgba(56, 189, 248, 0.08)',
-    borderRadius: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
     borderWidth: 1,
     borderColor: 'rgba(56, 189, 248, 0.2)',
   },
   seaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
   seaText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   seaDivider: {
     width: 1,
-    height: 18,
+    height: 16,
     backgroundColor: 'rgba(56, 189, 248, 0.25)',
   },
   quickActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   quickActionBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 5,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    height: 42,
+    height: 38,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   quickActionText: {
     color: MapColors.text,
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
   },
   geoCard: {
     backgroundColor: '#041728',
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 14,
+    padding: 10,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },

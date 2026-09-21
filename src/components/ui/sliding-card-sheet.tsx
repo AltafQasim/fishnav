@@ -75,7 +75,7 @@ export function SlidingCardSheet({
       toValue: cardHeight + 40,
       damping: 24,
       stiffness: 220,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start(() => {
       setIsDismissed(true);
       onDismissChange?.(true);
@@ -89,7 +89,7 @@ export function SlidingCardSheet({
       toValue: 0,
       damping: 24,
       stiffness: 220,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start();
   };
 
