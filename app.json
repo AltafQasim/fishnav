@@ -32,6 +32,7 @@
         "ACCESS_FINE_LOCATION",
         "POST_NOTIFICATIONS"
       ],
+      "package": "com.ak2424.fishnav",
       "predictiveBackGestureEnabled": false
     },
     "web": {
