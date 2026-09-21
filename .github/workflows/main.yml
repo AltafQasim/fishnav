@@ -1,6 +1,6 @@
 name: EAS Build
 on:
-  workflow_dispatch: # इससे आप GitHub वेबसाइट से मैन्युअली बिल्ड ट्रिगर कर सकते हैं
+  workflow_dispatch:
 
 jobs:
   build:
@@ -12,7 +12,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Setup EAS
         uses: expo/expo-github-action@v8
@@ -20,9 +20,9 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
+      # Yarn के बजाय npm से इंस्टॉल करने के लिए:
       - name: Install dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: Run EAS Build
         run: eas build --platform android --profile preview --non-interactive
-        
