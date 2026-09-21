@@ -818,17 +818,20 @@ function degToCompass(deg: number): string {
 /**
  * Finds the nearest Gujarat fishing port or creek for any given GPS coordinates.
  */
-export function findNearestGujaratPort(latitude: number, longitude: number): NearestPortResult {
+export function findNearestGujaratPort(latitude?: number | null, longitude?: number | null): NearestPortResult {
+  const safeLat = typeof latitude === 'number' && Number.isFinite(latitude) ? latitude : 20.902;
+  const safeLon = typeof longitude === 'number' && Number.isFinite(longitude) ? longitude : 70.366;
+
   let nearestPort = GUJARAT_PORTS[0];
   let minDistanceNm = Infinity;
   let nearestBearing = 0;
 
   for (const port of GUJARAT_PORTS) {
-    const dist = distanceNm(latitude, longitude, port.latitude, port.longitude);
+    const dist = distanceNm(safeLat, safeLon, port.latitude, port.longitude);
     if (dist < minDistanceNm) {
       minDistanceNm = dist;
       nearestPort = port;
-      nearestBearing = Math.round(bearingDegrees(latitude, longitude, port.latitude, port.longitude));
+      nearestBearing = Math.round(bearingDegrees(safeLat, safeLon, port.latitude, port.longitude));
     }
   }
 

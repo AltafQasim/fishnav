@@ -949,17 +949,18 @@ export function MiniWeatherSparkline({
     return () => loop.stop();
   }, [pulseAnim, pulseOpacity]);
 
-  if (!data || data.length < 2) return null;
+  const cleanData = (data || []).map((n) => Number(n)).filter((n) => Number.isFinite(n));
+  if (cleanData.length < 2) return null;
 
-  const min = Math.min(...data);
-  const max = Math.max(...data);
+  const min = Math.min(...cleanData);
+  const max = Math.max(...cleanData);
   const range = max - min || 1;
   const padding = 4;
   const w = width - padding * 2;
   const h = height - padding * 2;
 
-  const pts = data.map((val, idx) => {
-    const x = padding + (idx / (data.length - 1)) * w;
+  const pts = cleanData.map((val, idx) => {
+    const x = padding + (idx / (cleanData.length - 1)) * w;
     const y = padding + h - ((val - min) / range) * h;
     return { x, y };
   });

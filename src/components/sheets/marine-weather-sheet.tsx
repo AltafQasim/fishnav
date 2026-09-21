@@ -1,5 +1,5 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -43,32 +43,32 @@ export function WeatherSheetContent() {
   const safeHourly = Array.isArray(hourly) && hourly.length > 0 ? hourly : baseline.hourly;
   const safeTides = tides || baseline.tides;
 
-  const safetyAdvisory = safeConditions.safetyAdvisory || baseline.conditions.safetyAdvisory;
-  const nearestPort = safeConditions.nearestPort || baseline.conditions.nearestPort;
-  const port = nearestPort.port || baseline.conditions.nearestPort.port;
+  const safetyAdvisory = safeConditions?.safetyAdvisory || baseline.conditions.safetyAdvisory;
+  const nearestPort = safeConditions?.nearestPort || baseline.conditions.nearestPort;
+  const port = nearestPort?.port || baseline.conditions.nearestPort.port;
 
-  const isWarning = safetyAdvisory.status === 'WARNING';
-  const isCaution = safetyAdvisory.status === 'CAUTION';
+  const isWarning = safetyAdvisory?.status === 'WARNING';
+  const isCaution = safetyAdvisory?.status === 'CAUTION';
 
   const localizedAdvisoryTitle = useMemo(() => {
-    if (isWarning) return t('weather.advisory_warning', safetyAdvisory.title);
-    if (isCaution) return t('weather.advisory_caution', safetyAdvisory.title);
-    return t('weather.advisory_good', safetyAdvisory.title);
-  }, [isWarning, isCaution, safetyAdvisory.title, t]);
+    if (isWarning) return t('weather.advisory_warning', safetyAdvisory?.title || 'WARNING');
+    if (isCaution) return t('weather.advisory_caution', safetyAdvisory?.title || 'CAUTION');
+    return t('weather.advisory_good', safetyAdvisory?.title || 'NORMAL');
+  }, [isWarning, isCaution, safetyAdvisory?.title, t]);
 
   const localizedAdvisorySub = useMemo(() => {
     if (isWarning) {
-      if (safetyAdvisory.dangerType === 'SQUALL') return t('weather.danger_squall', safetyAdvisory.subText);
-      if (safetyAdvisory.dangerType === 'RAIN') return t('weather.danger_rain', safetyAdvisory.subText);
-      if (safetyAdvisory.dangerType === 'SWELL') return t('weather.danger_swell', safetyAdvisory.subText);
-      if (safetyAdvisory.dangerType === 'WIND') return t('weather.danger_wind', safetyAdvisory.subText);
-      return t('weather.danger_squall', safetyAdvisory.subText);
+      if (safetyAdvisory?.dangerType === 'SQUALL') return t('weather.danger_squall', safetyAdvisory?.subText || '');
+      if (safetyAdvisory?.dangerType === 'RAIN') return t('weather.danger_rain', safetyAdvisory?.subText || '');
+      if (safetyAdvisory?.dangerType === 'SWELL') return t('weather.danger_swell', safetyAdvisory?.subText || '');
+      if (safetyAdvisory?.dangerType === 'WIND') return t('weather.danger_wind', safetyAdvisory?.subText || '');
+      return t('weather.danger_squall', safetyAdvisory?.subText || '');
     }
     if (isCaution) {
-      return t('weather.caution_sub', safetyAdvisory.subText);
+      return t('weather.caution_sub', safetyAdvisory?.subText || '');
     }
-    return t('weather.normal_sub', safetyAdvisory.subText);
-  }, [isWarning, isCaution, safetyAdvisory.dangerType, safetyAdvisory.subText, t]);
+    return t('weather.normal_sub', safetyAdvisory?.subText || '');
+  }, [isWarning, isCaution, safetyAdvisory?.dangerType, safetyAdvisory?.subText, t]);
 
   const getLocalizedWeatherDesc = (code: number, fallbackText: string) => {
     if (code === 0) return t('weather.desc_clear', fallbackText);
@@ -159,19 +159,19 @@ export function WeatherSheetContent() {
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Text style={[styles.portName, { color: colors.text }]} numberOfLines={1}>
-                {port.name}
+                {port?.name || 'Harbor'}
               </Text>
               <View
                 style={[
                   styles.portTag,
                   {
-                    backgroundColor: nearestPort.isAtPort
+                    backgroundColor: nearestPort?.isAtPort
                       ? isLight
                         ? '#DCFCE7'
                         : 'rgba(34, 197, 94, 0.15)'
                       : isLight
-                      ? '#E2E8F0'
-                      : 'rgba(255, 255, 255, 0.08)',
+                        ? '#E2E8F0'
+                        : 'rgba(255, 255, 255, 0.08)',
                   },
                 ]}
               >
@@ -179,7 +179,7 @@ export function WeatherSheetContent() {
                   style={[
                     styles.portTagText,
                     {
-                      color: nearestPort.isAtPort
+                      color: nearestPort?.isAtPort
                         ? isLight
                           ? '#16A34A'
                           : '#22C55E'
@@ -187,15 +187,15 @@ export function WeatherSheetContent() {
                     },
                   ]}
                 >
-                  {nearestPort.isAtPort
+                  {nearestPort?.isAtPort
                     ? t('weather.at_harbor', '⚓ AT HARBOR')
-                    : `${nearestPort.distanceNm ?? '0.0'} NM ${t('weather.offshore', 'OFFSHORE')}`}
+                    : `${nearestPort?.distanceNm ?? '0.0'} NM ${t('weather.offshore', 'OFFSHORE')}`}
                 </Text>
               </View>
             </View>
             <Text style={[styles.portSub, { color: colors.textSecondary }]}>
-              {port.nameGujarati} • {port.district} (
-              {nearestPort.bearingText ?? 'N'} {nearestPort.bearingDeg ?? 0}°)
+              {port?.nameGujarati ? `${port.nameGujarati} • ` : ''}{port?.district || ''} (
+              {nearestPort?.bearingText ?? 'N'} {nearestPort?.bearingDeg ?? 0}°)
             </Text>
           </View>
         </View>
@@ -211,8 +211,8 @@ export function WeatherSheetContent() {
                 ? '#FEF3C7'
                 : 'rgba(245, 158, 11, 0.1)'
               : isLight
-              ? '#F1F5F9'
-              : 'rgba(255, 255, 255, 0.04)',
+                ? '#F1F5F9'
+                : 'rgba(255, 255, 255, 0.04)',
             borderColor: isOffline
               ? isLight
                 ? '#FDE68A'
@@ -229,8 +229,8 @@ export function WeatherSheetContent() {
                 backgroundColor: isOffline
                   ? '#F59E0B'
                   : syncStatus === 'syncing'
-                  ? '#38BDF8'
-                  : '#22C55E',
+                    ? '#38BDF8'
+                    : '#22C55E',
               },
             ]}
           />
@@ -250,8 +250,8 @@ export function WeatherSheetContent() {
               {syncStatus === 'syncing'
                 ? t('weather.syncing', 'SYNCING HARBOR WEATHER...')
                 : isOffline
-                ? t('weather.offline_cached', 'OFFLINE • CACHED AT HARBOR')
-                : t('weather.online_live', 'ONLINE • HARBOR LIVE (AUTO-SYNCED)')}
+                  ? t('weather.offline_cached', 'OFFLINE • CACHED AT HARBOR')
+                  : t('weather.online_live', 'ONLINE • HARBOR LIVE (AUTO-SYNCED)')}
             </Text>
             <Text style={[styles.syncSub, { color: colors.textSecondary }]}>
               {isOffline
@@ -291,17 +291,17 @@ export function WeatherSheetContent() {
                 ? '#FEE2E2'
                 : 'rgba(239, 68, 68, 0.15)'
               : isCaution
-              ? isLight
-                ? '#FEF3C7'
-                : 'rgba(245, 158, 11, 0.15)'
-              : isLight
-              ? '#DCFCE7'
-              : 'rgba(34, 197, 94, 0.15)',
+                ? isLight
+                  ? '#FEF3C7'
+                  : 'rgba(245, 158, 11, 0.15)'
+                : isLight
+                  ? '#DCFCE7'
+                  : 'rgba(34, 197, 94, 0.15)',
             borderColor: isWarning
               ? '#EF4444'
               : isCaution
-              ? '#F59E0B'
-              : '#22C55E',
+                ? '#F59E0B'
+                : '#22C55E',
           },
         ]}
       >
@@ -310,8 +310,8 @@ export function WeatherSheetContent() {
             isWarning
               ? 'alert-circle'
               : isCaution
-              ? 'warning'
-              : 'shield-checkmark'
+                ? 'warning'
+                : 'shield-checkmark'
           }
           size={24}
           color={isWarning ? '#EF4444' : isCaution ? '#F59E0B' : '#22C55E'}
@@ -327,12 +327,12 @@ export function WeatherSheetContent() {
                       ? '#991B1B'
                       : '#FCA5A5'
                     : isCaution
-                    ? isLight
-                      ? '#92400E'
-                      : '#FCD34D'
-                    : isLight
-                    ? '#166534'
-                    : '#86EFAC',
+                      ? isLight
+                        ? '#92400E'
+                        : '#FCD34D'
+                      : isLight
+                        ? '#166534'
+                        : '#86EFAC',
                 },
               ]}
               numberOfLines={1}
@@ -343,14 +343,14 @@ export function WeatherSheetContent() {
               style={[
                 styles.safetyBadge,
                 {
-                  backgroundColor: safetyAdvisory.isFishingSafe
+                  backgroundColor: (safetyAdvisory?.isFishingSafe ?? true)
                     ? '#16A34A'
                     : '#DC2626',
                 },
               ]}
             >
               <Text style={styles.safetyBadgeText}>
-                {safetyAdvisory.isFishingSafe ? t('weather.fishing_safe', 'FISHING: SAFE') : t('weather.fishing_unsafe', 'FISHING: UNSAFE')}
+                {(safetyAdvisory?.isFishingSafe ?? true) ? t('weather.fishing_safe', 'FISHING: SAFE') : t('weather.fishing_unsafe', 'FISHING: UNSAFE')}
               </Text>
             </View>
           </View>
@@ -363,12 +363,12 @@ export function WeatherSheetContent() {
                     ? '#7F1D1D'
                     : '#F87171'
                   : isCaution
-                  ? isLight
-                    ? '#78350F'
-                    : '#FBBF24'
-                  : isLight
-                  ? '#14532D'
-                  : '#4ADE80',
+                    ? isLight
+                      ? '#78350F'
+                      : '#FBBF24'
+                    : isLight
+                      ? '#14532D'
+                      : '#4ADE80',
               },
             ]}
           >
@@ -409,11 +409,11 @@ export function WeatherSheetContent() {
           <View style={styles.cardContentRow}>
             <View>
               <Text style={[styles.cardValue, { color: colors.text }]}>
-                {conditions.waveHeightM}
+                {safeConditions.waveHeightM}
                 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>m</Text>
               </Text>
               <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                {conditions.wavePeriodS}s • {conditions.waveDirectionText}
+                {safeConditions.wavePeriodS}s • {safeConditions.waveDirectionText}
               </Text>
             </View>
             <MiniWeatherSparkline
@@ -450,11 +450,11 @@ export function WeatherSheetContent() {
           <View style={styles.cardContentRow}>
             <View>
               <Text style={[styles.cardValue, { color: colors.text }]}>
-                {conditions.windSpeedKnots}
+                {safeConditions.windSpeedKnots}
                 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>kts</Text>
               </Text>
               <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                Gusts {conditions.windGustsKnots}k • {conditions.windBeaufort}
+                Gusts {safeConditions.windGustsKnots}k • {safeConditions.windBeaufort}
               </Text>
             </View>
             <MiniWeatherSparkline
@@ -493,14 +493,14 @@ export function WeatherSheetContent() {
               <Text
                 style={[
                   styles.cardValue,
-                  { color: conditions.precipitationMm > 2 ? '#EF4444' : colors.text },
+                  { color: (safeConditions.precipitationMm ?? 0) > 2 ? '#EF4444' : colors.text },
                 ]}
               >
-                {conditions.precipitationMm}
+                {safeConditions.precipitationMm ?? 0}
                 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>mm/h</Text>
               </Text>
               <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                {getLocalizedWeatherDesc(conditions.weatherCode, conditions.weatherDesc)}
+                {getLocalizedWeatherDesc(safeConditions.weatherCode ?? 0, safeConditions.weatherDesc ?? 'Clear')}
               </Text>
             </View>
             <MiniWeatherSparkline
@@ -537,7 +537,7 @@ export function WeatherSheetContent() {
           <View style={styles.cardContentRow}>
             <View>
               <Text style={[styles.cardValue, { color: colors.text }]}>
-                {conditions.seaTempC}
+                {safeConditions.seaTempC ?? 28}
                 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>°C</Text>
               </Text>
               <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
@@ -578,11 +578,11 @@ export function WeatherSheetContent() {
           <View style={styles.cardContentRow}>
             <View>
               <Text style={[styles.cardValue, { color: colors.text }]}>
-                {conditions.surfacePressureHpa}
+                {safeConditions.surfacePressureHpa ?? 1012}
                 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>hPa</Text>
               </Text>
               <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                {conditions.surfacePressureHpa < 1005 ? t('weather.low_pressure', '⚠️ Low (Squall)') : t('weather.surface_pressure', 'Surface Pressure')}
+                {(safeConditions.surfacePressureHpa ?? 1012) < 1005 ? t('weather.low_pressure', '⚠️ Low (Squall)') : t('weather.surface_pressure', 'Surface Pressure')}
               </Text>
             </View>
             <MiniWeatherSparkline
@@ -619,11 +619,11 @@ export function WeatherSheetContent() {
           <View style={styles.cardContentRow}>
             <View>
               <Text style={[styles.cardValue, { color: colors.text }]}>
-                {conditions.visibilityNm}
+                {safeConditions.visibilityNm ?? 9.5}
                 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>NM</Text>
               </Text>
               <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                {conditions.visibilityNm >= 8 ? t('weather.clear_horizon', 'Clear Horizon') : t('weather.fog_mist', 'Marine Mist / Fog')}
+                {(safeConditions.visibilityNm ?? 9.5) >= 8 ? t('weather.clear_horizon', 'Clear Horizon') : t('weather.fog_mist', 'Marine Mist / Fog')}
               </Text>
             </View>
             <MiniWeatherSparkline
@@ -660,7 +660,7 @@ export function WeatherSheetContent() {
           <View style={styles.cardContentRow}>
             <View>
               <Text style={[styles.cardValue, { color: colors.text }]}>
-                {conditions.tidalCurrentKnots}
+                {safeConditions.tidalCurrentKnots ?? 0.8}
                 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>kts</Text>
               </Text>
               <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
@@ -701,7 +701,7 @@ export function WeatherSheetContent() {
           <View style={styles.cardContentRow}>
             <View>
               <Text style={[styles.cardValue, { color: colors.text }]}>
-                {conditions.wavePeriodS}
+                {safeConditions.wavePeriodS ?? 7.0}
                 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>s</Text>
               </Text>
               <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
@@ -742,7 +742,7 @@ export function WeatherSheetContent() {
           <View style={styles.cardContentRow}>
             <View>
               <Text style={[styles.cardValue, { color: colors.text }]}>
-                {conditions.relativeHumidity ?? 74}
+                {safeConditions.relativeHumidity ?? 74}
                 <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>%</Text>
               </Text>
               <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
@@ -765,10 +765,10 @@ export function WeatherSheetContent() {
             <Text style={[styles.cardLabel, { color: colors.textMuted }]}>{t('weather.nearest_port', 'NEAREST PORT').toUpperCase()}</Text>
           </View>
           <Text style={[styles.cardValueSmall, { color: colors.text }]} numberOfLines={1}>
-            {(port.name || 'Veraval').replace(' Fishing Harbor', '').replace(' Harbor', '')}
+            {(port?.name || 'Veraval').replace(' Fishing Harbor', '').replace(' Harbor', '')}
           </Text>
           <Text style={[styles.cardSub, { color: colors.textSecondary }]}>
-            {nearestPort.displayBadge || 'Harbor'}
+            {nearestPort?.displayBadge || 'Harbor'}
           </Text>
         </View>
       </View>
@@ -820,7 +820,7 @@ export function WeatherSheetContent() {
             <Text style={[styles.hourlyTemp, { color: colors.text }]}>{item.temp}</Text>
             <Text style={[styles.hourlyMetricText, { color: colors.textSecondary }]}>{item.wind}</Text>
             <Text style={[styles.hourlyMetricText, { color: colors.accent }]}>{item.wave}</Text>
-            {parseFloat(item.rain) > 0 && (
+            {parseFloat(String(item?.rain || '0')) > 0 && (
               <Text style={[styles.hourlyRainText, { color: '#38BDF8' }]}>🌧️ {item.rain}</Text>
             )}
           </View>

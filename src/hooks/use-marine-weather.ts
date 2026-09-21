@@ -28,8 +28,18 @@ export function useMarineWeather() {
   };
 
   const syncHarborData = useCallback(async (forcedLat?: number, forcedLon?: number) => {
-    const lat = forcedLat ?? location?.latitude ?? 20.902;
-    const lon = forcedLon ?? location?.longitude ?? 70.366;
+    const lat =
+      typeof forcedLat === 'number' && Number.isFinite(forcedLat)
+        ? forcedLat
+        : typeof location?.latitude === 'number' && Number.isFinite(location.latitude)
+        ? location.latitude
+        : 20.902;
+    const lon =
+      typeof forcedLon === 'number' && Number.isFinite(forcedLon)
+        ? forcedLon
+        : typeof location?.longitude === 'number' && Number.isFinite(location.longitude)
+        ? location.longitude
+        : 70.366;
 
     setSyncStatus('syncing');
     setIsRefreshing(true);
@@ -100,13 +110,13 @@ export function useMarineWeather() {
   }, [location?.latitude, location?.longitude, syncHarborData]);
 
   return {
-    conditions: data.conditions,
-    hourly: data.hourly,
-    tides: data.tides,
+    conditions: data?.conditions,
+    hourly: data?.hourly,
+    tides: data?.tides,
     syncStatus,
     isOffline: syncStatus === 'offline-cached',
     isRefreshing,
-    lastSyncedText: getRelativeSyncTime(data.syncedAt),
+    lastSyncedText: getRelativeSyncTime(data?.syncedAt || Date.now()),
     syncHarborData,
   };
 }

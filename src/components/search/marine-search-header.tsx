@@ -26,7 +26,7 @@ import { useSubscription } from '@/context/subscription-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useWaypoints } from '@/context/waypoints-context';
 import type { UserLocation } from '@/hooks/use-user-location';
-import { getNearestCityFallback } from '@/utils/city-resolver';
+import { formatCoordinatesShort, getNearestCityFallback } from '@/utils/city-resolver';
 import { distanceNm, formatBearing, formatNm } from '@/utils/geo';
 
 // Predefined Major Coastal Ports & Fishing Harbors
@@ -240,16 +240,13 @@ export function MarineSearchHeader({
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
-  // Current Location formatted text for badge (ONLY City Name, NO lat/lng)
+  // Current Location formatted text for badge (Direct GPS Coordinates)
   const locationDisplay = useMemo(() => {
     if (!userLocation) {
-      return t('location.detecting', 'Detecting City...');
+      return t('location.acquiring', 'Acquiring GPS...');
     }
-    if (placeLabel && placeLabel.trim().length > 0 && placeLabel !== 'Current Location') {
-      return placeLabel.trim();
-    }
-    return getNearestCityFallback(userLocation.latitude, userLocation.longitude);
-  }, [userLocation, placeLabel, t]);
+    return formatCoordinatesShort(userLocation.latitude, userLocation.longitude);
+  }, [userLocation, t]);
 
   // Smooth slide-up animation when sheet/tab opens
   const animY = useRef(new Animated.Value(0)).current;

@@ -317,7 +317,9 @@ function getBeaufort(knots: number): string {
  * 5. Baseline Fallback with Nearest Gujarat Port detection
  */
 export function getBaselineMarineData(lat: number = 20.902, lon: number = 70.366): CachedMarinePayload {
-  const nearestPort = findNearestGujaratPort(lat, lon);
+  const safeLat = typeof lat === 'number' && Number.isFinite(lat) ? lat : 20.902;
+  const safeLon = typeof lon === 'number' && Number.isFinite(lon) ? lon : 70.366;
+  const nearestPort = findNearestGujaratPort(safeLat, safeLon);
   const tides = calculateAstronomicalTides();
   const waveHeightM = 1.3;
   const windSpeedKnots = 14;
@@ -327,9 +329,9 @@ export function getBaselineMarineData(lat: number = 20.902, lon: number = 70.366
 
   return {
     syncedAt: Date.now() - 1000 * 60 * 10,
-    latitude: lat,
-    longitude: lon,
-    harborName: nearestPort.port.name,
+    latitude: safeLat,
+    longitude: safeLon,
+    harborName: nearestPort?.port?.name || 'Veraval Fishing Harbor',
     nearestPort,
     conditions: {
       waveHeightM,
@@ -356,7 +358,7 @@ export function getBaselineMarineData(lat: number = 20.902, lon: number = 70.366
         windGustsKnots,
         precipitationMm,
         weatherCode,
-        nearestPort.port.name
+        nearestPort?.port?.name || 'Veraval Harbor'
       ),
     },
     hourly: [
@@ -380,19 +382,21 @@ export function getBaselineMarineData(lat: number = 20.902, lon: number = 70.366
  * Requesting live precipitation, rain, weather_code, wind_gusts and marine swell
  */
 export async function fetchLiveMarineForecast(
-  lat: number,
-  lon: number
+  lat: number = 20.902,
+  lon: number = 70.366
 ): Promise<CachedMarinePayload> {
-  const nearestPort = findNearestGujaratPort(lat, lon);
+  const safeLat = typeof lat === 'number' && Number.isFinite(lat) ? lat : 20.902;
+  const safeLon = typeof lon === 'number' && Number.isFinite(lon) ? lon : 70.366;
+  const nearestPort = findNearestGujaratPort(safeLat, safeLon);
   // Marine models only accept water/ocean coordinates. If user is inland, use nearest harbor sea coordinates.
-  const marineLat = nearestPort?.port?.latitude ?? lat;
-  const marineLon = nearestPort?.port?.longitude ?? lon;
+  const marineLat = nearestPort?.port?.latitude ?? safeLat;
+  const marineLon = nearestPort?.port?.longitude ?? safeLon;
 
   // Marine API: wave height, period, swell
   const marineUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${marineLat}&longitude=${marineLon}&hourly=wave_height,wave_direction,wave_period&wind_speed_unit=kn&forecast_days=3`;
 
   // Atmospheric API: rain, precipitation, weather_code, wind speed & gusts, pressure
-  const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code,surface_pressure,wind_speed_10m,wind_gusts_10m,wind_direction_10m&hourly=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code,precipitation,rain,visibility&wind_speed_unit=kn&forecast_days=3`;
+  const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${safeLat}&longitude=${safeLon}&current=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code,surface_pressure,wind_speed_10m,wind_gusts_10m,wind_direction_10m&hourly=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_gusts_10m,wind_direction_10m,weather_code,precipitation,rain,visibility&wind_speed_unit=kn&forecast_days=3`;
 
   let marineHourly: any = null;
   let atmosHourly: any = null;
@@ -422,43 +426,45 @@ export async function fetchLiveMarineForecast(
   if (!atmosHourly) {
     const cached = await loadFromStorage();
     if (cached) return cached;
-    return getBaselineMarineData(lat, lon);
+    return getBaselineMarineData(safeLat, safeLon);
   }
 
-  // Find index of current hour
+  // Find index of current hour using available time array (atmos or marine)
+  const timeArray: string[] = atmosHourly?.time || marineHourly?.time || [];
   const nowIso = new Date().toISOString().slice(0, 13);
-  let currentIndex = marineHourly.time.findIndex((t: string) => t.startsWith(nowIso));
+  let currentIndex = timeArray.findIndex((t: string) => t.startsWith(nowIso));
   if (currentIndex === -1) currentIndex = 0;
 
   // Live Swell
-  const currentWaveHeight = Number((marineHourly.wave_height?.[currentIndex] ?? 1.2).toFixed(1));
-  const currentWavePeriod = Number((marineHourly.wave_period?.[currentIndex] ?? 7.0).toFixed(1));
-  const currentWaveDir = Math.round(marineHourly.wave_direction?.[currentIndex] ?? 210);
+  const currentWaveHeight = Number((marineHourly?.wave_height?.[currentIndex] ?? 1.2).toFixed(1));
+  const currentWavePeriod = Number((marineHourly?.wave_period?.[currentIndex] ?? 7.0).toFixed(1));
+  const currentWaveDir = Math.round(marineHourly?.wave_direction?.[currentIndex] ?? 210);
 
   // Live Wind & Gusts (prefer live 'current' object if available)
-  const currentWindSpeed = Math.round(atmosCurrent?.wind_speed_10m ?? atmosHourly.wind_speed_10m?.[currentIndex] ?? 14);
-  const currentWindGusts = Math.round(atmosCurrent?.wind_gusts_10m ?? atmosHourly.wind_gusts_10m?.[currentIndex] ?? currentWindSpeed * 1.35);
-  const currentWindDir = Math.round(atmosCurrent?.wind_direction_10m ?? atmosHourly.wind_direction_10m?.[currentIndex] ?? 230);
-  const currentPressure = Math.round(atmosCurrent?.surface_pressure ?? atmosHourly.surface_pressure?.[currentIndex] ?? 1012);
+  const currentWindSpeed = Math.round(atmosCurrent?.wind_speed_10m ?? atmosHourly?.wind_speed_10m?.[currentIndex] ?? 14);
+  const currentWindGusts = Math.round(atmosCurrent?.wind_gusts_10m ?? atmosHourly?.wind_gusts_10m?.[currentIndex] ?? currentWindSpeed * 1.35);
+  const currentWindDir = Math.round(atmosCurrent?.wind_direction_10m ?? atmosHourly?.wind_direction_10m?.[currentIndex] ?? 230);
+  const currentPressure = Math.round(atmosCurrent?.surface_pressure ?? atmosHourly?.surface_pressure?.[currentIndex] ?? 1012);
 
   // Live Precipitation & Rain
   const currentPrecipitation = Number(
-    (atmosCurrent?.precipitation ?? atmosCurrent?.rain ?? atmosHourly.precipitation?.[currentIndex] ?? 0).toFixed(1)
+    (atmosCurrent?.precipitation ?? atmosCurrent?.rain ?? atmosHourly?.precipitation?.[currentIndex] ?? 0).toFixed(1)
   );
-  const currentWeatherCode = atmosCurrent?.weather_code ?? atmosHourly.weather_code?.[currentIndex] ?? 0;
+  const currentWeatherCode = atmosCurrent?.weather_code ?? atmosHourly?.weather_code?.[currentIndex] ?? 0;
 
-  const currentVisibilityM = atmosHourly.visibility?.[currentIndex] ?? 18000;
+  const currentVisibilityM = atmosHourly?.visibility?.[currentIndex] ?? 18000;
   const currentVisibilityNm = Number((currentVisibilityM / 1852).toFixed(1));
-  const currentRelativeHumidity = Math.round(atmosCurrent?.relative_humidity_2m ?? atmosHourly.relative_humidity_2m?.[currentIndex] ?? 74);
+  const currentRelativeHumidity = Math.round(atmosCurrent?.relative_humidity_2m ?? atmosHourly?.relative_humidity_2m?.[currentIndex] ?? 74);
 
   // Critical Safety Advisory
+  const portName = nearestPort?.port?.name || 'Coastal Harbor';
   const safetyAdvisory = evaluateSafetyAdvisory(
     currentWaveHeight,
     currentWindSpeed,
     currentWindGusts,
     currentPrecipitation,
     currentWeatherCode,
-    nearestPort.port.name
+    portName
   );
 
   // Map next 24-48 hours of forecast
@@ -474,25 +480,26 @@ export async function fetchLiveMarineForecast(
     return isNight ? 'weather-night' : 'weather-partly-cloudy';
   };
 
-  const totalSlots = Math.min(36, (marineHourly.time.length || 0) - currentIndex);
+  const totalSlots = Math.min(36, Math.max(0, timeArray.length - currentIndex));
   for (let i = 0; i < totalSlots; i++) {
     const idx = currentIndex + i;
-    const timeStr = marineHourly.time[idx]; // "2026-09-14T22:00"
-    const hourNum = parseInt(timeStr.slice(11, 13), 10);
-    const isNextDay = i > 0 && hourNum < parseInt(marineHourly.time[idx - 1]?.slice(11, 13) ?? '0', 10);
+    const timeStr = timeArray[idx] || new Date().toISOString();
+    const hourNum = parseInt(timeStr.slice(11, 13) || '12', 10);
+    const prevHourNum = parseInt(timeArray[idx - 1]?.slice(11, 13) ?? '0', 10);
+    const isNextDay = i > 0 && hourNum < prevHourNum;
     const dayPrefix = i === 0 ? 'Now' : isNextDay || i >= 24 ? `Tom ${String(hourNum).padStart(2, '0')}:00` : `${String(hourNum).padStart(2, '0')}:00`;
 
-    const temp = Math.round(atmosHourly.temperature_2m?.[idx] ?? 28);
-    const wind = Math.round(atmosHourly.wind_speed_10m?.[idx] ?? 12);
-    const gusts = Math.round(atmosHourly.wind_gusts_10m?.[idx] ?? Math.round(wind * 1.35));
-    const wave = Number((marineHourly.wave_height?.[idx] ?? 1.1).toFixed(1));
-    const rain = Number((atmosHourly.precipitation?.[idx] ?? 0).toFixed(1));
-    const pressure = Math.round(atmosHourly.surface_pressure?.[idx] ?? 1012);
-    const code = atmosHourly.weather_code?.[idx] ?? 1;
-    const visibility = Number(((atmosHourly.visibility?.[idx] ?? 18000) / 1852).toFixed(1));
+    const temp = Math.round(atmosHourly?.temperature_2m?.[idx] ?? 28);
+    const wind = Math.round(atmosHourly?.wind_speed_10m?.[idx] ?? 12);
+    const gusts = Math.round(atmosHourly?.wind_gusts_10m?.[idx] ?? Math.round(wind * 1.35));
+    const wave = Number((marineHourly?.wave_height?.[idx] ?? 1.1).toFixed(1));
+    const rain = Number((atmosHourly?.precipitation?.[idx] ?? 0).toFixed(1));
+    const pressure = Math.round(atmosHourly?.surface_pressure?.[idx] ?? 1012);
+    const code = atmosHourly?.weather_code?.[idx] ?? 1;
+    const visibility = Number(((atmosHourly?.visibility?.[idx] ?? 18000) / 1852).toFixed(1));
     const current = Number((0.6 + 0.8 * Math.abs(Math.sin((hourNum / 12.42) * 2 * Math.PI))).toFixed(1));
-    const period = Number((marineHourly.wave_period?.[idx] ?? 7.0).toFixed(1));
-    const humidity = Math.round(atmosHourly.relative_humidity_2m?.[idx] ?? 74);
+    const period = Number((marineHourly?.wave_period?.[idx] ?? 7.0).toFixed(1));
+    const humidity = Math.round(atmosHourly?.relative_humidity_2m?.[idx] ?? 74);
 
     hourlyCards.push({
       time: dayPrefix,
@@ -520,9 +527,9 @@ export async function fetchLiveMarineForecast(
 
   const payload: CachedMarinePayload = {
     syncedAt: Date.now(),
-    latitude: lat,
-    longitude: lon,
-    harborName: nearestPort.port.name,
+    latitude: safeLat,
+    longitude: safeLon,
+    harborName: nearestPort?.port?.name || 'Veraval Fishing Harbor',
     nearestPort,
     conditions: {
       waveHeightM: currentWaveHeight,

@@ -2,8 +2,6 @@ import * as Location from 'expo-location';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, AppStateStatus, Linking, Platform } from 'react-native';
 
-import { getNearestCityFallback, resolveCityName } from '@/utils/city-resolver';
-
 export type LocationStatus =
   | 'idle'
   | 'requesting'
@@ -93,9 +91,6 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   const headingSub = useRef<Location.LocationSubscription | null>(null);
   const isWatchingRef = useRef(false);
 
-  const lastGeocodeAt = useRef(0);
-  const lastGeocodeKey = useRef('');
-
   const stopWatching = useCallback(() => {
     try {
       watchSub.current?.remove();
@@ -110,32 +105,6 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     isWatchingRef.current = false;
   }, []);
 
-  const reverseGeocode = useCallback(async (lat: number, lng: number) => {
-    const key = `${lat.toFixed(3)},${lng.toFixed(3)}`;
-    const now = Date.now();
-    if (key === lastGeocodeKey.current && now - lastGeocodeAt.current < 30_000) {
-      return;
-    }
-    lastGeocodeKey.current = key;
-    lastGeocodeAt.current = now;
-
-    try {
-      const city = await resolveCityName(lat, lng);
-      setPlace({
-        city: city,
-        region: null,
-        name: city,
-      });
-    } catch {
-      const fallback = getNearestCityFallback(lat, lng);
-      setPlace({
-        city: fallback,
-        region: null,
-        name: fallback,
-      });
-    }
-  }, []);
-
   const applyPosition = useCallback(
     (pos: Location.LocationObject) => {
       const next: UserLocation = {
@@ -148,13 +117,18 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         timestamp: pos.timestamp,
       };
       setLocation(next);
-      void reverseGeocode(next.latitude, next.longitude);
+      const coordsStr = formatCoordinatesShort(next.latitude, next.longitude);
+      setPlace({
+        city: coordsStr,
+        region: null,
+        name: coordsStr,
+      });
     },
-    [reverseGeocode],
+    [],
   );
 
   const startWatching = useCallback(async () => {
-    if (isWatchingRef.current && watchSub.current && headingSub.current) {
+    if (isWatchingRef.current && watchSub.current) {
       return;
     }
 
@@ -163,11 +137,12 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     isWatchingRef.current = true;
 
     try {
+      // First attempt with Balanced accuracy for instant fix indoors & outdoors
       watchSub.current = await Location.watchPositionAsync(
         {
-          accuracy: Location.Accuracy.High,
+          accuracy: Location.Accuracy.Balanced,
           timeInterval: 1000,
-          distanceInterval: 0,
+          distanceInterval: 1,
           mayShowUserSettingsDialog: true,
         },
         (pos) => {
@@ -175,12 +150,12 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         },
       );
     } catch (err) {
-      console.warn('Location watchPositionAsync error, retrying with Balanced:', err);
+      console.warn('Location watchPositionAsync error, retrying with High:', err);
       try {
         watchSub.current = await Location.watchPositionAsync(
           {
-            accuracy: Location.Accuracy.Balanced,
-            timeInterval: 1500,
+            accuracy: Location.Accuracy.High,
+            timeInterval: 1000,
           },
           (pos) => {
             applyPosition(pos);
@@ -258,13 +233,22 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
       await startWatching();
 
       // 3. Concurrently get fresh position fix in background without blocking
-      void Location.getCurrentPositionAsync({
+      Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       })
         .then((current) => {
           if (current) applyPosition(current);
         })
-        .catch(() => {});
+        .catch(() => {
+          // If Balanced fails (e.g. initial GPS sync delay), try Lowest for immediate coordinate lock
+          return Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Lowest,
+          })
+            .then((lowCurrent) => {
+              if (lowCurrent) applyPosition(lowCurrent);
+            })
+            .catch(() => {});
+        });
 
       return true;
     } catch (error) {
