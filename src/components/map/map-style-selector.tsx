@@ -1,24 +1,13 @@
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { ComponentProps } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { ComponentProps, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { MapColors } from '@/constants/map-theme';
+import { useLanguage } from '@/context/language-context';
 
-export type MapStyleId = 'standard' | 'satellite' | 'marine' | 'night';
+export type MapStyleId = 'google' | 'satellite' | 'terrain' | 'standard' | 'marine' | 'night';
 
 type IonName = ComponentProps<typeof Ionicons>['name'];
-
-const STYLES: {
-  id: MapStyleId;
-  label: string;
-  icon: IonName | 'waves';
-  lib: 'ion' | 'mci';
-}[] = [
-  { id: 'standard', label: 'Standard', icon: 'cube-outline', lib: 'ion' },
-  { id: 'satellite', label: 'Satellite', icon: 'globe-outline', lib: 'ion' },
-  { id: 'marine', label: 'Marine', icon: 'waves', lib: 'mci' },
-  { id: 'night', label: 'Night', icon: 'moon', lib: 'ion' },
-];
 
 type MapStyleSelectorProps = {
   value: MapStyleId;
@@ -26,28 +15,31 @@ type MapStyleSelectorProps = {
 };
 
 export function MapStyleSelector({ value, onChange }: MapStyleSelectorProps) {
+  const { t } = useLanguage();
+
+  const stylesList = useMemo<{ id: MapStyleId; label: string; icon: IonName }[]>(
+    () => [
+      { id: 'google', label: t('style.standard', 'Standard'), icon: 'map-outline' },
+      { id: 'satellite', label: t('style.satellite', 'Satellite'), icon: 'globe-outline' },
+      { id: 'standard', label: t('style.vector', 'Vector Chart'), icon: 'navigate-outline' },
+    ],
+    [t],
+  );
+
   return (
     <View style={styles.bar}>
-      {STYLES.map((item) => {
+      {stylesList.map((item) => {
         const active = item.id === value;
         return (
           <Pressable
             key={item.id}
             onPress={() => onChange(item.id)}
             style={[styles.item, active && styles.itemActive]}>
-            {item.lib === 'mci' ? (
-              <MaterialCommunityIcons
-                name={item.icon as 'waves'}
-                size={16}
-                color={active ? MapColors.text : MapColors.textSecondary}
-              />
-            ) : (
-              <Ionicons
-                name={item.icon as IonName}
-                size={16}
-                color={active ? MapColors.text : MapColors.textSecondary}
-              />
-            )}
+            <Ionicons
+              name={item.icon}
+              size={16}
+              color={active ? MapColors.text : MapColors.textSecondary}
+            />
             <Text style={[styles.label, active && styles.labelActive]}>{item.label}</Text>
           </Pressable>
         );

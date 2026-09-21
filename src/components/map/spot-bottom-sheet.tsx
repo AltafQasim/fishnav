@@ -1,16 +1,27 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
-import { Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FishingSpot } from '@/constants/fishing-spots';
+import { SlidingSheetContainer } from '@/components/ui/sliding-sheet-container';
+import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
+import { useLanguage } from '@/context/language-context';
+import { useAppTheme } from '@/context/theme-context';
 import { formatLatitude, formatLongitude } from '@/hooks/use-user-location';
 import { toDms } from '@/utils/geo';
 
 type SpotBottomSheetProps = {
+  isOpen?: boolean;
   spot?: FishingSpot | null;
-  droppedPin?: { latitude: number; longitude: number } | null;
   distanceLabel: string;
   bearingLabel: string;
   etaLabel: string;
@@ -18,13 +29,17 @@ type SpotBottomSheetProps = {
   onGoTo?: () => void;
   onSaveSpot?: () => void;
   onToggleFavorite?: () => void;
-  onMeasureFromHere?: () => void;
   onClose?: () => void;
 };
 
+/**
+ * 🗺️ SpotBottomSheet
+ * Displays fishing spot details in a smooth SlidingSheetContainer
+ * (identical to tab cards, with drag-down to dismiss and full vertical scrolling).
+ */
 export function SpotBottomSheet({
+  isOpen,
   spot,
-  droppedPin,
   distanceLabel,
   bearingLabel,
   etaLabel,
@@ -32,17 +47,18 @@ export function SpotBottomSheet({
   onGoTo,
   onSaveSpot,
   onToggleFavorite,
-  onMeasureFromHere,
-  onClose,
+  onClose = () => { },
 }: SpotBottomSheetProps) {
   const insets = useSafeAreaInsets();
+  const { colors, isLight } = useAppTheme();
+  const { t } = useLanguage();
 
-  const isDroppedPin = !spot && !!droppedPin;
-  const lat = spot ? spot.latitude : droppedPin?.latitude ?? 0;
-  const lng = spot ? spot.longitude : droppedPin?.longitude ?? 0;
-  const name = spot ? spot.name : 'Dropped Pin';
+  const lat = spot?.latitude ?? 0;
+  const lng = spot?.longitude ?? 0;
+  const name = spot?.name ?? t('spot.regular', 'Fishing Spot');
   const depthM = spot ? `${spot.depthM} m` : 'Depth ~55 m';
-  const pinColor = spot ? spot.color : '#EF4444';
+
+  const isSheetOpen = isOpen !== undefined ? isOpen : spot !== null;
 
   const handleShare = async () => {
     const dmsLat = toDms(lat, 'N', 'S');
@@ -55,127 +71,157 @@ export function SpotBottomSheet({
     }
   };
 
-  return (
-    <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 14) + 6 }]}>
-      <View style={styles.handle} />
+  const getBadge = () => {
+    if (isFavorite) {
+      return (
+        <View style={styles.badgeYellow}>
+          <Text style={styles.badgeYellowText}>{t('spot.favorite', 'FAVORITE SPOT')}</Text>
+        </View>
+      );
+    }
+    return (
+      <View style={[styles.badgeCyan, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
+        <Text style={[styles.badgeCyanText, { color: colors.accent }]}>{t('spot.regular', 'FISHING SPOT')}</Text>
+      </View>
+    );
+  };
 
-      {/* Header Row */}
-      <View style={styles.header}>
-        <View style={[styles.pinBadge, { backgroundColor: pinColor }]}>
-          <Ionicons
-            name={isDroppedPin ? 'pin' : 'location'}
-            size={22}
-            color="#FFFFFF"
+  return (
+    <SlidingSheetContainer
+      isOpen={isSheetOpen}
+      title={name}
+      subtitle={`${formatLatitude(lat)} • ${formatLongitude(lng)}`}
+      badge={getBadge()}
+      onClose={onClose}
+    >
+      <ScrollView
+        style={styles.scrollBody}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: Math.max(insets.bottom, 16) + 110 },
+        ]}
+        showsVerticalScrollIndicator={false}
+        bounces={true}
+      >
+        {/* 1. Primary Big "GO TO" Action Button (Top Prominence!) */}
+        <Pressable
+          style={[styles.goBtn, { backgroundColor: colors.accent }]}
+          onPress={onGoTo}
+        >
+          <Ionicons name="navigate" size={19} color={isLight ? '#FFFFFF' : '#020B14'} />
+          <Text style={[styles.goText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>{t('spot.start_nav', 'Navigate')}</Text>
+        </Pressable>
+
+        {/* 2. Nautical Stats Grid (Distance, Bearing, ETA, Depth) */}
+        <View style={[styles.statsGrid, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Stat
+            icon={
+              <MaterialCommunityIcons
+                name="arrow-top-right-bottom-left"
+                size={18}
+                color={colors.accent}
+              />
+            }
+            label={t('cockpit.distance', 'Distance')}
+            value={distanceLabel}
+          />
+          <Stat
+            icon={<Ionicons name="compass-outline" size={18} color={colors.accent} />}
+            label={t('hud.bearing', 'Bearing')}
+            value={bearingLabel}
+          />
+          <Stat
+            icon={<Ionicons name="time-outline" size={18} color={colors.accent} />}
+            label={t('cockpit.eta', 'ETA (12kt)')}
+            value={etaLabel}
+          />
+          <Stat
+            icon={<MaterialCommunityIcons name="waves" size={18} color={colors.accent} />}
+            label={t('spot.depth', 'Depth')}
+            value={depthM}
           />
         </View>
 
-        <View style={styles.headerText}>
-          <View style={styles.nameRow}>
-            <Text style={styles.name} numberOfLines={1}>
-              {name}
-            </Text>
-            {isFavorite ? (
-              <Ionicons name="star" size={18} color={MapColors.yellow} />
-            ) : null}
+        {/* 3. Marine Weather & Sea Condition Strip */}
+        <View style={[styles.seaStrip, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
+          <View style={styles.seaItem}>
+            <MaterialCommunityIcons name="weather-windy" size={16} color="#38BDF8" />
+            <Text style={[styles.seaText, { color: colors.text }]}>Wind 12 kts NW</Text>
           </View>
-          <Text style={styles.coords}>
-            {formatLatitude(lat)} • {formatLongitude(lng)}
-          </Text>
-          <Text style={styles.coordsDec}>
-            {lat.toFixed(4)}°, {lng.toFixed(4)}°
-          </Text>
+          <View style={[styles.seaDivider, { backgroundColor: colors.divider }]} />
+          <View style={styles.seaItem}>
+            <MaterialCommunityIcons name="waves" size={16} color="#60A5FA" />
+            <Text style={[styles.seaText, { color: colors.text }]}>Swell 0.8 m</Text>
+          </View>
+          <View style={[styles.seaDivider, { backgroundColor: colors.divider }]} />
+          <View style={styles.seaItem}>
+            <MaterialCommunityIcons name="thermometer" size={16} color="#FBBF24" />
+            <Text style={[styles.seaText, { color: colors.text }]}>Sea 28°C</Text>
+          </View>
         </View>
 
-        <Pressable onPress={onClose} hitSlop={10} style={styles.closeBtn}>
-          <Ionicons name="close" size={20} color={MapColors.textSecondary} />
-        </Pressable>
-      </View>
-
-      {/* Marine Weather / Sea Condition Strip */}
-      <View style={styles.seaStrip}>
-        <View style={styles.seaItem}>
-          <MaterialCommunityIcons name="weather-windy" size={15} color="#38BDF8" />
-          <Text style={styles.seaText}>Wind 12 kts NW</Text>
-        </View>
-        <View style={styles.seaDivider} />
-        <View style={styles.seaItem}>
-          <MaterialCommunityIcons name="waves" size={15} color="#60A5FA" />
-          <Text style={styles.seaText}>Swell 0.8 m</Text>
-        </View>
-        <View style={styles.seaDivider} />
-        <View style={styles.seaItem}>
-          <MaterialCommunityIcons name="thermometer" size={15} color="#FBBF24" />
-          <Text style={styles.seaText}>Sea 28°C</Text>
-        </View>
-      </View>
-
-      {/* Nautical Stats Grid */}
-      <View style={styles.stats}>
-        <Stat
-          icon={
-            <MaterialCommunityIcons
-              name="arrow-top-right-bottom-left"
-              size={16}
-              color={MapColors.accent}
-            />
-          }
-          label="Distance"
-          value={distanceLabel}
-        />
-        <Stat
-          icon={<Ionicons name="compass-outline" size={16} color={MapColors.accent} />}
-          label="Bearing"
-          value={bearingLabel}
-        />
-        <Stat
-          icon={<Ionicons name="time-outline" size={16} color={MapColors.accent} />}
-          label="ETA (12kt)"
-          value={etaLabel}
-        />
-        <Stat
-          icon={<MaterialCommunityIcons name="waves" size={16} color={MapColors.accent} />}
-          label="Depth"
-          value={depthM}
-        />
-      </View>
-
-      {/* Google Maps Style Action Buttons Row */}
-      <View style={styles.quickActionsRow}>
-        {isDroppedPin ? (
-          <Pressable style={styles.quickActionBtn} onPress={onSaveSpot}>
-            <Ionicons name="bookmark-outline" size={18} color={MapColors.text} />
-            <Text style={styles.quickActionText}>Save Spot</Text>
-          </Pressable>
-        ) : (
-          <Pressable style={styles.quickActionBtn} onPress={onToggleFavorite}>
+        {/* 4. Quick Action Tools Row */}
+        <View style={styles.quickActionsRow}>
+          <Pressable
+            style={[styles.quickActionBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+            onPress={onToggleFavorite}
+          >
             <Ionicons
               name={isFavorite ? 'star' : 'star-outline'}
-              size={18}
-              color={isFavorite ? MapColors.yellow : MapColors.text}
+              size={16}
+              color={isFavorite ? MapColors.yellow : colors.text}
             />
-            <Text style={styles.quickActionText}>
-              {isFavorite ? 'Saved' : 'Favorite'}
+            <Text style={[styles.quickActionText, { color: colors.text }]} numberOfLines={1}>
+              {isFavorite ? t('spot.saved', 'Saved') : t('spot.save', 'Favorite')}
             </Text>
           </Pressable>
-        )}
 
-        <Pressable style={styles.quickActionBtn} onPress={onMeasureFromHere}>
-          <MaterialCommunityIcons name="ruler" size={18} color={MapColors.text} />
-          <Text style={styles.quickActionText}>Measure</Text>
-        </Pressable>
+          <Pressable
+            style={[styles.quickActionBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+            onPress={handleShare}
+          >
+            <Ionicons name="share-social-outline" size={16} color={colors.text} />
+            <Text style={[styles.quickActionText, { color: colors.text }]} numberOfLines={1}>{t('spot.share', 'Share')}</Text>
+          </Pressable>
+        </View>
 
-        <Pressable style={styles.quickActionBtn} onPress={handleShare}>
-          <Ionicons name="share-social-outline" size={18} color={MapColors.text} />
-          <Text style={styles.quickActionText}>Share</Text>
-        </Pressable>
-      </View>
-
-      {/* Primary Big "NAVIGATE / GO TO" Button */}
-      <Pressable style={styles.goBtn} onPress={onGoTo}>
-        <Ionicons name="navigate" size={20} color="#FFFFFF" />
-        <Text style={styles.goText}>START NAVIGATION</Text>
-      </Pressable>
-    </View>
+        {/* 5. Full Coordinates & Waypoint Details Card */}
+        <View style={[styles.geoCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Text style={[styles.geoCardTitle, { color: colors.textSecondary }]}>{t('hub.coords', 'GPS COORDINATES & DETAILS')}</Text>
+          <View style={styles.geoRow}>
+            <Text style={[styles.geoLabel, { color: colors.textSecondary }]}>DMS Format</Text>
+            <Text style={[styles.geoVal, { color: colors.text }]}>
+              {formatLatitude(lat)} • {formatLongitude(lng)}
+            </Text>
+          </View>
+          <View style={[styles.geoDivider, { backgroundColor: colors.divider }]} />
+          <View style={styles.geoRow}>
+            <Text style={[styles.geoLabel, { color: colors.textSecondary }]}>Decimal Degree</Text>
+            <Text style={[styles.geoVal, { color: colors.text }]}>
+              {lat.toFixed(5)}°, {lng.toFixed(5)}°
+            </Text>
+          </View>
+          {spot?.category ? (
+            <>
+              <View style={[styles.geoDivider, { backgroundColor: colors.divider }]} />
+              <View style={styles.geoRow}>
+                <Text style={[styles.geoLabel, { color: colors.textSecondary }]}>Category</Text>
+                <Text style={[styles.geoVal, { color: colors.text }]}>{spot.category.toUpperCase()}</Text>
+              </View>
+            </>
+          ) : null}
+          {spot?.notes ? (
+            <>
+              <View style={[styles.geoDivider, { backgroundColor: colors.divider }]} />
+              <View style={styles.geoRow}>
+                <Text style={[styles.geoLabel, { color: colors.textSecondary }]}>Spot Notes</Text>
+                <Text style={[styles.geoVal, { color: colors.text }]}>{spot.notes}</Text>
+              </View>
+            </>
+          ) : null}
+        </View>
+      </ScrollView>
+    </SlidingSheetContainer>
   );
 }
 
@@ -188,98 +234,125 @@ function Stat({
   label: string;
   value: string;
 }) {
+  const { colors } = useAppTheme();
   return (
     <View style={styles.stat}>
       <View style={styles.statIcon}>{icon}</View>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statValue}>{value}</Text>
+      <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{label}</Text>
+      <Text style={[styles.statValue, { color: colors.text }]}>{value}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  sheet: {
-    backgroundColor: MapColors.navyPanel,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 18,
+  scrollBody: {
+    flexGrow: 0,
+    flexShrink: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 12,
     paddingTop: 8,
-    borderTopWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: -5 },
-    elevation: 14,
+    gap: 10,
   },
-  handle: {
-    alignSelf: 'center',
-    width: 38,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    marginBottom: 12,
+  badgeCyan: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  pinBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.35,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  headerText: {
-    flex: 1,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  name: {
-    color: MapColors.text,
-    fontSize: 18,
+  badgeCyanText: {
+    color: '#38BDF8',
+    fontSize: 10,
     fontWeight: '800',
   },
-  coords: {
-    color: MapColors.textSecondary,
-    fontSize: 12,
-    marginTop: 2,
-    fontWeight: '500',
+  badgeAmber: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.35)',
   },
-  coordsDec: {
-    color: MapColors.textMuted,
-    fontSize: 11,
-    marginTop: 1,
+  badgeAmberText: {
+    color: '#F59E0B',
+    fontSize: 10,
+    fontWeight: '800',
   },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+  badgeYellow: {
+    backgroundColor: 'rgba(234, 179, 8, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(234, 179, 8, 0.35)',
+  },
+  badgeYellowText: {
+    color: '#EAB308',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  goBtn: {
+    backgroundColor: '#0284C7',
+    borderRadius: 14,
+    height: 44,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
+    shadowColor: '#0284C7',
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
+  },
+  goText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#041728',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  stat: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statIcon: {
+    marginBottom: 3,
+  },
+  statLabel: {
+    color: '#64748B',
+    fontSize: 9.5,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  statValue: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 1,
   },
   seaStrip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: MapColors.navyGlass,
-    borderRadius: 10,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    marginBottom: 12,
+    justifyContent: 'space-around',
+    backgroundColor: 'rgba(56, 189, 248, 0.08)',
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(56, 189, 248, 0.2)',
   },
   seaItem: {
     flexDirection: 'row',
@@ -287,81 +360,70 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   seaText: {
-    color: MapColors.textSecondary,
+    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '600',
   },
   seaDivider: {
     width: 1,
-    height: 14,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  stats: {
-    flexDirection: 'row',
-    marginBottom: 14,
-  },
-  stat: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 4,
-  },
-  statIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: MapColors.accentSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statLabel: {
-    color: MapColors.textMuted,
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  statValue: {
-    color: MapColors.text,
-    fontSize: 14,
-    fontWeight: '700',
+    height: 16,
+    backgroundColor: 'rgba(56, 189, 248, 0.25)',
   },
   quickActionsRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
-    marginBottom: 12,
   },
   quickActionBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: MapColors.navyGlass,
+    gap: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     height: 38,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   quickActionText: {
     color: MapColors.text,
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  geoCard: {
+    backgroundColor: '#041728',
+    borderRadius: 14,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  geoCardTitle: {
+    color: '#64748B',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    marginBottom: 10,
+  },
+  geoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  geoLabel: {
+    color: '#94A3B8',
     fontSize: 12,
     fontWeight: '600',
   },
-  goBtn: {
-    backgroundColor: MapColors.accent,
-    borderRadius: 16,
-    height: 50,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: MapColors.accent,
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-  },
-  goText: {
+  geoVal: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 0.8,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  geoDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    marginVertical: 6,
   },
 });

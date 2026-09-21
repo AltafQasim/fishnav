@@ -1,12 +1,14 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 
 import { buildLeafletHtml } from '@/components/map/leaflet-map-html';
-import { MapStyleId } from '@/components/map/map-style-selector';
-import { FishingSpot } from '@/constants/fishing-spots';
+import { leafletCacheService } from '@/services/leaflet-cache-service';
+import { offlineTileManager } from '@/services/offline-tile-manager';
+import type { MapStyleId } from '@/components/map/map-style-selector';
+import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
-import { UserLocation } from '@/hooks/use-user-location';
+import type { UserLocation } from '@/hooks/use-user-location';
 
 export type MapOverlaysState = {
   seamarks: boolean;
@@ -25,6 +27,7 @@ export type NativeMapHandle = {
   flyTo: (lat: number, lng: number, zoom?: number) => void;
   goToSpot: (spot: FishingSpot) => void;
   fitRoute: (spot: FishingSpot | DroppedPin) => void;
+  fitTrackBounds: (points: { latitude: number; longitude: number }[]) => void;
   setMeasurementMode: (active: boolean) => void;
   undoMeasurement: () => void;
   clearMeasurement: () => void;
@@ -36,13 +39,16 @@ type NativeMapViewProps = {
   mapStyle: MapStyleId;
   overlays: MapOverlaysState;
   location: UserLocation | null;
+  navTarget?: { latitude: number; longitude: number; name?: string } | null;
   heading?: number | null;
   followUser: boolean;
   headingUp: boolean;
   selectedSpotId: string | null;
   spots: FishingSpot[];
-  droppedPin: DroppedPin | null;
+  droppedPin?: DroppedPin | null;
   measurementActive: boolean;
+  activeTrackPoints?: { latitude: number; longitude: number }[];
+  savedTracks?: { id: string; name: string; color: string; visibleOnMap?: boolean; points: { latitude: number; longitude: number }[] }[];
   onSelectSpot: (spot: FishingSpot) => void;
   onMapClick: (lat: number, lng: number) => void;
   onMeasureUpdate?: (totalNm: number, pointsCount: number) => void;
@@ -59,7 +65,11 @@ type MapCommand =
   | { type: 'centerOnUser' }
   | { type: 'flyTo'; lat: number; lng: number; zoom?: number }
   | { type: 'fitRoute'; targetLat: number; targetLng: number }
+  | { type: 'fitTrackBounds'; points: { latitude: number; longitude: number }[] }
+  | { type: 'setActiveTrack'; points: { latitude: number; longitude: number }[] }
+  | { type: 'setSavedTracks'; tracks: { id: string; color: string; points: { latitude: number; longitude: number }[] }[] }
   | { type: 'setSelected'; id: string | null }
+  | { type: 'setNavTarget'; target: { lat: number; lng: number; name?: string } | null }
   | { type: 'setCustomSpots'; spots: { id: string; name: string; lat: number; lng: number; color: string; depthM: number; favorite?: boolean }[] }
   | { type: 'setDroppedPin'; lat: number; lng: number }
   | { type: 'clearDroppedPin' }
@@ -73,6 +83,7 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
       mapStyle,
       overlays,
       location,
+      navTarget,
       heading,
       followUser,
       headingUp,
@@ -80,6 +91,8 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
       spots,
       droppedPin,
       measurementActive,
+      activeTrackPoints,
+      savedTracks,
       onSelectSpot,
       onMapClick,
       onMeasureUpdate,
@@ -88,23 +101,60 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
     ref,
   ) {
     const webRef = useRef<WebView>(null);
+    const iframeRef = useRef<HTMLIFrameElement>(null);
     const readyRef = useRef(false);
     const queueRef = useRef<MapCommand[]>([]);
-    const html = useMemo(() => buildLeafletHtml(), []);
+    const [cachedJs, setCachedJs] = useState<string | null>(null);
+
+    useEffect(() => {
+      let isMounted = true;
+      // 1. Immediately check if Leaflet JS is cached in local filesystem
+      leafletCacheService.getCachedAssets().then(({ js }) => {
+        if (isMounted && js) {
+          setCachedJs(js);
+        }
+      });
+
+      // 2. Pre-cache in background if online (stores permanently on device)
+      leafletCacheService.preCacheAssets().then((downloaded) => {
+        if (downloaded && isMounted) {
+          leafletCacheService.getCachedAssets().then(({ js }) => {
+            if (isMounted && js) setCachedJs(js);
+          });
+        }
+      });
+
+      return () => {
+        isMounted = false;
+      };
+    }, []);
+
+    const html = useMemo(() => {
+      const offlineBaseDir = offlineTileManager.getOfflineTilesBaseDir();
+      return buildLeafletHtml(cachedJs, offlineBaseDir);
+    }, [cachedJs]);
 
     const send = useCallback((cmd: MapCommand) => {
       if (!readyRef.current) {
         queueRef.current.push(cmd);
         return;
       }
-      webRef.current?.postMessage(JSON.stringify(cmd));
+      if (Platform.OS === 'web') {
+        (iframeRef.current as any)?.contentWindow?.postMessage(JSON.stringify(cmd), '*');
+      } else {
+        webRef.current?.postMessage(JSON.stringify(cmd));
+      }
     }, []);
 
     const flushQueue = useCallback(() => {
       const queued = queueRef.current;
       queueRef.current = [];
       queued.forEach((cmd) => {
-        webRef.current?.postMessage(JSON.stringify(cmd));
+        if (Platform.OS === 'web') {
+          (iframeRef.current as any)?.contentWindow?.postMessage(JSON.stringify(cmd), '*');
+        } else {
+          webRef.current?.postMessage(JSON.stringify(cmd));
+        }
       });
     }, []);
 
@@ -120,6 +170,9 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
           targetLat: 'latitude' in target ? target.latitude : (target as any).latitude,
           targetLng: 'longitude' in target ? target.longitude : (target as any).longitude,
         });
+      },
+      fitTrackBounds: (points) => {
+        send({ type: 'fitTrackBounds', points });
       },
       setMeasurementMode: (active) => send({ type: 'setMeasurementMode', active }),
       undoMeasurement: () => send({ type: 'undoMeasurement' }),
@@ -157,6 +210,22 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
       send({ type: 'setSelected', id: selectedSpotId });
     }, [selectedSpotId, send]);
 
+    // Synchronize navigation destination target for continuous route line
+    useEffect(() => {
+      if (navTarget && Number.isFinite(navTarget.latitude) && Number.isFinite(navTarget.longitude)) {
+        send({
+          type: 'setNavTarget',
+          target: {
+            lat: navTarget.latitude,
+            lng: navTarget.longitude,
+            name: navTarget.name,
+          },
+        });
+      } else {
+        send({ type: 'setNavTarget', target: null });
+      }
+    }, [navTarget, send]);
+
     // Synchronize dropped pin
     useEffect(() => {
       if (droppedPin) {
@@ -170,6 +239,23 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
     useEffect(() => {
       send({ type: 'setMeasurementMode', active: measurementActive });
     }, [measurementActive, send]);
+
+    // Synchronize active tracking polyline
+    useEffect(() => {
+      send({ type: 'setActiveTrack', points: activeTrackPoints || [] });
+    }, [activeTrackPoints, send]);
+
+    // Synchronize saved visible tracks
+    useEffect(() => {
+      const visible = (savedTracks || [])
+        .filter((t) => t.visibleOnMap !== false)
+        .map((t) => ({
+          id: t.id,
+          color: t.color,
+          points: t.points,
+        }));
+      send({ type: 'setSavedTracks', tracks: visible });
+    }, [savedTracks, send]);
 
     // Synchronize user position & heading
     useEffect(() => {
@@ -188,62 +274,94 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
       });
     }, [location, heading, followUser, headingUp, send]);
 
+    const processMessageData = useCallback((data: any) => {
+      if (!data || typeof data !== 'object') return;
+
+      if (data.type === 'ready') {
+        readyRef.current = true;
+        flushQueue();
+        send({ type: 'setStyle', style: mapStyle });
+        send({ type: 'setOverlays', overlays });
+        return;
+      }
+
+      if (data.type === 'selectSpot' && data.id) {
+        const spot = spots.find((s) => s.id === data.id);
+        if (spot) onSelectSpot(spot);
+        return;
+      }
+
+      if (data.type === 'mapClick' && typeof data.lat === 'number' && typeof data.lng === 'number') {
+        onMapClick(data.lat, data.lng);
+        return;
+      }
+
+      if (data.type === 'measureUpdate' && typeof data.totalNm === 'number') {
+        onMeasureUpdate?.(data.totalNm, data.pointsCount ?? 0);
+        return;
+      }
+
+      if (data.type === 'userPanned') {
+        onUserPanned?.();
+        return;
+      }
+    }, [flushQueue, mapStyle, onMapClick, onMeasureUpdate, onSelectSpot, onUserPanned, overlays, send, spots]);
+
     const onMessage = (event: WebViewMessageEvent) => {
       try {
-        const data = JSON.parse(event.nativeEvent.data) as {
-          type: string;
-          id?: string;
-          lat?: number;
-          lng?: number;
-          totalNm?: number;
-          pointsCount?: number;
-        };
-
-        if (data.type === 'ready') {
-          readyRef.current = true;
-          flushQueue();
-          send({ type: 'setStyle', style: mapStyle });
-          send({ type: 'setOverlays', overlays });
-          return;
-        }
-
-        if (data.type === 'selectSpot' && data.id) {
-          const spot = spots.find((s) => s.id === data.id);
-          if (spot) onSelectSpot(spot);
-          return;
-        }
-
-        if (data.type === 'mapClick' && typeof data.lat === 'number' && typeof data.lng === 'number') {
-          onMapClick(data.lat, data.lng);
-          return;
-        }
-
-        if (data.type === 'measureUpdate' && typeof data.totalNm === 'number') {
-          onMeasureUpdate?.(data.totalNm, data.pointsCount ?? 0);
-          return;
-        }
-
-        if (data.type === 'userPanned') {
-          onUserPanned?.();
-          return;
-        }
+        const data = JSON.parse(event.nativeEvent.data);
+        processMessageData(data);
       } catch {
         // Ignore malformed messages
       }
     };
+
+    // Web iframe listener
+    useEffect(() => {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const handleWebMsg = (e: MessageEvent) => {
+          try {
+            const parsed = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+            processMessageData(parsed);
+          } catch {}
+        };
+        window.addEventListener('message', handleWebMsg);
+        return () => window.removeEventListener('message', handleWebMsg);
+      }
+    }, [processMessageData]);
+
+    if (Platform.OS === 'web') {
+      return (
+        <View style={styles.wrap}>
+          <iframe
+            ref={iframeRef as any}
+            srcDoc={html}
+            style={{
+              width: '100%',
+              height: '100%',
+              border: 'none',
+              backgroundColor: MapColors.navyDeep,
+            }}
+          />
+        </View>
+      );
+    }
 
     return (
       <View style={styles.wrap}>
         <WebView
           ref={webRef}
           originWhitelist={['*']}
-          source={{ html }}
+          source={{ html, baseUrl: 'file:///' }}
           style={styles.map}
           onMessage={onMessage}
           javaScriptEnabled
           domStorageEnabled
           mixedContentMode="always"
           allowsInlineMediaPlayback
+          allowFileAccess
+          allowFileAccessFromFileURLs
+          allowUniversalAccessFromFileURLs
           setSupportMultipleWindows={false}
           startInLoadingState
           renderLoading={() => (
@@ -260,10 +378,14 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
 const styles = StyleSheet.create({
   wrap: {
     flex: 1,
+    width: '100%',
+    height: '100%',
     backgroundColor: MapColors.navyDeep,
   },
   map: {
     flex: 1,
+    width: '100%',
+    height: '100%',
     backgroundColor: MapColors.navyDeep,
   },
   loading: {

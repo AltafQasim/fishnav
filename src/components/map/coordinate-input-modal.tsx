@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapColors } from '@/constants/map-theme';
+import { useAppTheme } from '@/context/theme-context';
 import { parseCoordinates } from '@/utils/geo';
 
 type CoordinateInputModalProps = {
@@ -27,6 +28,9 @@ export function CoordinateInputModal({
   onPlot,
 }: CoordinateInputModalProps) {
   const insets = useSafeAreaInsets();
+  const { colors, activeTheme } = useAppTheme();
+  const isLight = activeTheme === 'light';
+
   const [latText, setLatText] = useState('');
   const [lngText, setLngText] = useState('');
   const [singleText, setSingleText] = useState('');
@@ -61,37 +65,73 @@ export function CoordinateInputModal({
     onClose();
   };
 
+  const inputStyle = [
+    styles.input,
+    {
+      backgroundColor: isLight ? '#F1F5F9' : colors.surfaceSubtle,
+      borderColor: colors.border,
+      color: colors.text,
+    },
+  ];
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.backdrop}>
         <Pressable style={styles.backdropPress} onPress={onClose} />
-        <View style={[styles.card, { paddingBottom: Math.max(insets.bottom, 20) + 12 }]}>
-          <View style={styles.handle} />
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.border,
+              paddingBottom: Math.max(insets.bottom, 20) + 12,
+            },
+          ]}>
+          <View style={[styles.handle, { backgroundColor: isLight ? '#CBD5E1' : 'rgba(255,255,255,0.2)' }]} />
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>
-              <Ionicons name="navigate-circle" size={22} color={MapColors.accent} />
-              <Text style={styles.title}>Go to GPS Coordinates</Text>
+              <Ionicons name="navigate-circle" size={22} color={colors.accent} />
+              <Text style={[styles.title, { color: colors.text }]}>Go to GPS Coordinates</Text>
             </View>
-            <Pressable onPress={onClose} hitSlop={10} style={styles.closeBtn}>
-              <Ionicons name="close" size={22} color={MapColors.textSecondary} />
+            <Pressable
+              onPress={onClose}
+              hitSlop={10}
+              style={[styles.closeBtn, { backgroundColor: isLight ? '#E2E8F0' : 'rgba(255,255,255,0.08)' }]}>
+              <Ionicons name="close" size={22} color={colors.textSecondary} />
             </Pressable>
           </View>
 
           {/* Mode Switcher Tabs */}
-          <View style={styles.tabsRow}>
+          <View style={[styles.tabsRow, { backgroundColor: isLight ? '#E2E8F0' : colors.surfaceSubtle }]}>
             <Pressable
-              style={[styles.tab, mode === 'single' && styles.tabActive]}
+              style={[
+                styles.tab,
+                mode === 'single' && [styles.tabActive, { backgroundColor: colors.accent }],
+              ]}
               onPress={() => { setMode('single'); setError(null); }}>
-              <Text style={[styles.tabText, mode === 'single' && styles.tabTextActive]}>
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: colors.textSecondary },
+                  mode === 'single' && styles.tabTextActive,
+                ]}>
                 Quick Paste / Raw
               </Text>
             </Pressable>
             <Pressable
-              style={[styles.tab, mode === 'pair' && styles.tabActive]}
+              style={[
+                styles.tab,
+                mode === 'pair' && [styles.tabActive, { backgroundColor: colors.accent }],
+              ]}
               onPress={() => { setMode('pair'); setError(null); }}>
-              <Text style={[styles.tabText, mode === 'pair' && styles.tabTextActive]}>
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: colors.textSecondary },
+                  mode === 'pair' && styles.tabTextActive,
+                ]}>
                 Separate Lat & Lng
               </Text>
             </Pressable>
@@ -99,39 +139,39 @@ export function CoordinateInputModal({
 
           {mode === 'single' ? (
             <View style={styles.fieldBlock}>
-              <Text style={styles.label}>ENTER COORDINATE PAIR</Text>
+              <Text style={[styles.label, { color: colors.textMuted }]}>ENTER COORDINATE PAIR</Text>
               <TextInput
-                style={styles.input}
+                style={inputStyle}
                 placeholder="e.g. 20.3875, 70.8783 or 20° 23' N, 70° 52' E"
-                placeholderTextColor={MapColors.textMuted}
+                placeholderTextColor={colors.textMuted}
                 value={singleText}
                 onChangeText={setSingleText}
                 autoCapitalize="none"
               />
-              <Text style={styles.hint}>
+              <Text style={[styles.hint, { color: colors.textSecondary }]}>
                 Accepts decimal (20.35, 70.82) or standard nautical notation.
               </Text>
             </View>
           ) : (
             <View style={styles.pairRow}>
               <View style={styles.pairCol}>
-                <Text style={styles.label}>LATITUDE</Text>
+                <Text style={[styles.label, { color: colors.textMuted }]}>LATITUDE</Text>
                 <TextInput
-                  style={styles.input}
+                  style={inputStyle}
                   keyboardType="numeric"
                   placeholder="e.g. 20.3875"
-                  placeholderTextColor={MapColors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   value={latText}
                   onChangeText={setLatText}
                 />
               </View>
               <View style={styles.pairCol}>
-                <Text style={styles.label}>LONGITUDE</Text>
+                <Text style={[styles.label, { color: colors.textMuted }]}>LONGITUDE</Text>
                 <TextInput
-                  style={styles.input}
+                  style={inputStyle}
                   keyboardType="numeric"
                   placeholder="e.g. 70.8783"
-                  placeholderTextColor={MapColors.textMuted}
+                  placeholderTextColor={colors.textMuted}
                   value={lngText}
                   onChangeText={setLngText}
                 />
@@ -142,7 +182,7 @@ export function CoordinateInputModal({
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           {/* Action button */}
-          <Pressable style={styles.plotBtn} onPress={handlePlot}>
+          <Pressable style={[styles.plotBtn, { backgroundColor: colors.accent }]} onPress={handlePlot}>
             <Ionicons name="compass" size={20} color="#FFFFFF" />
             <Text style={styles.plotText}>PLOT ON CHART</Text>
           </Pressable>

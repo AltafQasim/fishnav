@@ -6,12 +6,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FISHING_SPOTS, FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
 import { BottomTabInset } from '@/constants/theme';
+import { useLanguage } from '@/context/language-context';
 import { formatLatitude, formatLongitude, useUserLocation } from '@/hooks/use-user-location';
 import { distanceNm, formatNm } from '@/utils/geo';
 
 export default function SpotsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useLanguage();
   const { location } = useUserLocation();
 
   const handleSpotPress = (_spot: FishingSpot) => {
@@ -22,8 +24,8 @@ export default function SpotsScreen() {
     <View style={[styles.screen, { paddingTop: insets.top + 16, paddingBottom: BottomTabInset }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Fishing Waypoints</Text>
-        <Text style={styles.subtitle}>Gujarat Coastal Hotspots & Recorded Catch Zones</Text>
+        <Text style={styles.title}>{t('waypoints.title', 'Fishing Waypoints')}</Text>
+        <Text style={styles.subtitle}>{t('waypoints.subtitle', 'Coastal Hotspots & Recorded Catch Zones')}</Text>
       </View>
 
       {/* List of Spots */}

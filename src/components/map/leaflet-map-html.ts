@@ -3,8 +3,9 @@ import {
   DEFAULT_MAP_REGION,
   FISHING_SPOTS,
 } from '@/constants/fishing-spots';
+import { BUNDLED_LEAFLET_CSS } from '@/constants/leaflet-css';
 
-export function buildLeafletHtml() {
+export function buildLeafletHtml(cachedJs?: string | null, offlineTilesDir?: string | null) {
   const initialSpots = JSON.stringify(
     FISHING_SPOTS.map((s) => ({
       id: s.id,
@@ -29,17 +30,49 @@ export function buildLeafletHtml() {
     zoom: 11,
   });
 
+  const offlineDirJson = JSON.stringify(offlineTilesDir || '');
+
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+${BUNDLED_LEAFLET_CSS}
+  </style>
+  ${
+    cachedJs
+      ? `<script>\n${cachedJs}\n</script>`
+      : `<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>`
+  }
   <style>
     * { box-sizing: border-box; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
     html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #00162B; overflow: hidden; }
     
+    /* 🌊 High-Performance Tile Rendering & Smooth Transitions */
+    .leaflet-tile {
+      transition: opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      will-change: opacity;
+    }
+    .leaflet-tile-container img, .leaflet-tile-container canvas {
+      image-rendering: auto;
+    }
+    
+    /* 🌫️ Overzoom / Parent Tile Fallback with Soft Nautical Blur */
+    .tile-fallback-blur {
+      filter: blur(1.8px) contrast(1.08) saturate(1.1) !important;
+      opacity: 0.92 !important;
+      transition: opacity 0.25s ease-in, filter 0.25s ease !important;
+      background-color: #00162B !important;
+    }
+    
+    /* ⚓ Uncharted Deep-Water Bathymetric Blurred Canvas Fallback */
+    .tile-ocean-fallback {
+      filter: blur(1.5px) !important;
+      opacity: 0.9 !important;
+      background-color: #00162B !important;
+    }
+
     .leaflet-control-attribution {
       font-size: 8px !important;
       background: rgba(0, 22, 43, 0.75) !important;
@@ -175,14 +208,42 @@ export function buildLeafletHtml() {
 
     /* Route info chip */
     .route-chip {
-      background: #0084FF;
+      background: #0891B2;
       color: #FFFFFF;
-      padding: 5px 9px;
-      border-radius: 8px;
-      font: 700 11px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 5px 10px;
+      border-radius: 9px;
+      font: 800 11px/1.2 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       white-space: nowrap;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.45);
-      border: 1px solid rgba(255,255,255,0.25);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.55);
+      border: 1.5px solid #00F0FF;
+      letter-spacing: 0.2px;
+    }
+    .nav-target-beacon {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .beacon-pulse {
+      position: absolute;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 2.5px solid #00F0FF;
+      animation: beaconPulse 1.8s infinite ease-out;
+      background: rgba(0, 240, 255, 0.22);
+    }
+    @keyframes beaconPulse {
+      0% { transform: scale(0.6); opacity: 1; }
+      100% { transform: scale(1.8); opacity: 0; }
+    }
+    .beacon-center {
+      font-size: 24px;
+      line-height: 1;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.85));
     }
     
     /* Measure vertex */
@@ -212,6 +273,7 @@ export function buildLeafletHtml() {
     let SPOTS = ${initialSpots};
     let DANGER = ${initialDanger};
     const DEFAULT = ${defaultCenter};
+    const OFFLINE_BASE_DIR = ${offlineDirJson};
 
     let map = null;
     let baseLayer = null;
@@ -222,6 +284,10 @@ export function buildLeafletHtml() {
     let droppedPinMarker = null;
     let routeLine = null;
     let routeChipMarker = null;
+    let navTarget = null;
+    let navTargetMarker = null;
+    let activeTrackPolyline = null;
+    let savedTracksGroup = null;
 
     let followUser = true;
     let headingUp = false;
@@ -238,30 +304,305 @@ export function buildLeafletHtml() {
 
     const spotMarkers = {};
 
-    // Available tile sets
+    // Fast in-memory cache for loaded parent images & missing state
+    var tileMemoryCache = {};
+    var missingTileCache = {};
+
+    function getLocalTilePath(z, x, y) {
+      if (!OFFLINE_BASE_DIR) return null;
+      var base = OFFLINE_BASE_DIR;
+      if (!base.startsWith('file://') && !base.startsWith('http') && !base.startsWith('/')) {
+        base = 'file://' + base;
+      }
+      return base + z + '_' + x + '_' + y + '.png';
+    }
+
+    function drawBlurredOceanTile(canvas, coords, style) {
+      var ctx = canvas.getContext('2d');
+      var isNight = style === 'night';
+      
+      // Base marine deep bathymetric gradient
+      var grad = ctx.createLinearGradient(0, 0, 256, 256);
+      if (isNight) {
+        grad.addColorStop(0, '#010912');
+        grad.addColorStop(0.5, '#031728');
+        grad.addColorStop(1, '#020C17');
+      } else {
+        grad.addColorStop(0, '#001428');
+        grad.addColorStop(0.5, '#002547');
+        grad.addColorStop(1, '#001021');
+      }
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 256, 256);
+
+      // Subtle bathymetric contour curves (soft blurred oceanic ripples)
+      ctx.save();
+      ctx.strokeStyle = isNight ? 'rgba(0, 240, 255, 0.05)' : 'rgba(56, 189, 248, 0.07)';
+      ctx.lineWidth = 1.6;
+      
+      var seed = (Math.abs(coords.x) * 31 + Math.abs(coords.y) * 17 + coords.z * 13) % 100;
+      var offsetY = (seed / 100) * 40;
+
+      ctx.beginPath();
+      ctx.moveTo(0, 50 + offsetY);
+      ctx.bezierCurveTo(80, 30 + offsetY, 160, 80 + offsetY, 256, 60 + offsetY);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(0, 150 + offsetY);
+      ctx.bezierCurveTo(90, 180 + offsetY, 170, 130 + offsetY, 256, 160 + offsetY);
+      ctx.stroke();
+
+      // Subtle nautical coordinate grid cross at tile center
+      ctx.strokeStyle = isNight ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 240, 255, 0.05)';
+      ctx.beginPath();
+      ctx.moveTo(124, 128); ctx.lineTo(132, 128);
+      ctx.moveTo(128, 124); ctx.lineTo(128, 132);
+      ctx.stroke();
+
+      ctx.restore();
+
+      canvas.className = 'leaflet-tile tile-ocean-fallback';
+      canvas.style.filter = 'blur(1.6px)';
+      canvas.style.opacity = '0.92';
+    }
+
+    function renderBlurredFallback(coords, done, canvas) {
+      if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+      }
+
+      // 1. Attempt Parent Tile at z - 1 (Overzoom upscale with soft nautical blur)
+      if (coords.z > 4) {
+        var pZ = coords.z - 1;
+        var pX = Math.floor(coords.x / 2);
+        var pY = Math.floor(coords.y / 2);
+        var parentKey = pZ + '_' + pX + '_' + pY;
+        var parentPath = getLocalTilePath(pZ, pX, pY);
+
+        var drawParentToCanvas = function(img) {
+          try {
+            var ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            var subX = coords.x % 2;
+            var subY = coords.y % 2;
+            ctx.drawImage(img, subX * 128, subY * 128, 128, 128, 0, 0, 256, 256);
+            canvas.className = 'leaflet-tile tile-fallback-blur';
+            canvas.style.filter = 'blur(1.6px)';
+            canvas.style.opacity = '0.92';
+            done(null, canvas);
+            return true;
+          } catch (e) {
+            return false;
+          }
+        };
+
+        // Check memory cache first
+        if (tileMemoryCache[parentKey]) {
+          if (drawParentToCanvas(tileMemoryCache[parentKey])) {
+            return;
+          }
+        }
+
+        if (parentPath && !missingTileCache[parentKey]) {
+          var pImg = new Image();
+          pImg.crossOrigin = 'anonymous';
+          var handled = false;
+
+          pImg.onload = function() {
+            if (handled) return;
+            handled = true;
+            tileMemoryCache[parentKey] = pImg;
+            if (!drawParentToCanvas(pImg)) {
+              drawBlurredOceanTile(canvas, coords, activeStyle);
+              done(null, canvas);
+            }
+          };
+
+          pImg.onerror = function() {
+            if (handled) return;
+            handled = true;
+            missingTileCache[parentKey] = true;
+
+            // 2. Attempt Grandparent Tile at z - 2
+            if (coords.z > 5) {
+              var gpZ = coords.z - 2;
+              var gpX = Math.floor(coords.x / 4);
+              var gpY = Math.floor(coords.y / 4);
+              var gpKey = gpZ + '_' + gpX + '_' + gpY;
+              var gpPath = getLocalTilePath(gpZ, gpX, gpY);
+
+              if (gpPath && !missingTileCache[gpKey]) {
+                var gpImg = new Image();
+                gpImg.crossOrigin = 'anonymous';
+                gpImg.onload = function() {
+                  try {
+                    tileMemoryCache[gpKey] = gpImg;
+                    var ctx2 = canvas.getContext('2d');
+                    ctx2.imageSmoothingEnabled = true;
+                    ctx2.imageSmoothingQuality = 'high';
+                    var gpSubX = coords.x % 4;
+                    var gpSubY = coords.y % 4;
+                    ctx2.drawImage(gpImg, gpSubX * 64, gpSubY * 64, 64, 64, 0, 0, 256, 256);
+                    canvas.className = 'leaflet-tile tile-fallback-blur';
+                    canvas.style.filter = 'blur(2.2px)';
+                    canvas.style.opacity = '0.88';
+                    done(null, canvas);
+                  } catch (e) {
+                    drawBlurredOceanTile(canvas, coords, activeStyle);
+                    done(null, canvas);
+                  }
+                };
+                gpImg.onerror = function() {
+                  missingTileCache[gpKey] = true;
+                  drawBlurredOceanTile(canvas, coords, activeStyle);
+                  done(null, canvas);
+                };
+                gpImg.src = gpPath;
+                return;
+              }
+            }
+
+            drawBlurredOceanTile(canvas, coords, activeStyle);
+            done(null, canvas);
+          };
+
+          pImg.src = parentPath;
+          return;
+        }
+      }
+
+      // Default: Beautiful blurred ocean bathymetry canvas
+      drawBlurredOceanTile(canvas, coords, activeStyle);
+      done(null, canvas);
+    }
+
+    function createOfflineAwareTileLayer(onlineUrl, options, isOfflineEligible) {
+      var mergedOptions = Object.assign({
+        maxZoom: 19,
+        minZoom: 3,
+        keepBuffer: 8,
+        updateWhenIdle: false,
+        updateWhenZooming: false,
+        updateInterval: 50,
+      }, options || {});
+
+      var LayerClass = L.TileLayer.extend({
+        createTile: function(coords, done) {
+          var tile = document.createElement('img');
+          tile.setAttribute('role', 'presentation');
+          tile.alt = '';
+          tile.className = 'leaflet-tile';
+
+          var onlineSrc = this.getTileUrl(coords);
+          var localPath = getLocalTilePath(coords.z, coords.x, coords.y);
+          var tileKey = coords.z + '_' + coords.x + '_' + coords.y;
+
+          // 1. Web Browser CacheStorage Check (for PWA / Web offline)
+          if (typeof window !== 'undefined' && 'caches' in window) {
+            window.caches.open('fishnav_offline_tiles').then(function(cache) {
+              cache.match(onlineSrc).then(function(matchResp) {
+                if (matchResp && matchResp.ok) {
+                  matchResp.blob().then(function(blob) {
+                    tile.onload = function() { done(null, tile); };
+                    tile.onerror = function() { renderBlurredFallback(coords, done); };
+                    tile.src = URL.createObjectURL(blob);
+                  }).catch(function() {
+                    proceedWithNativeOrOnline();
+                  });
+                } else {
+                  proceedWithNativeOrOnline();
+                }
+              }).catch(function() {
+                proceedWithNativeOrOnline();
+              });
+            }).catch(function() {
+              proceedWithNativeOrOnline();
+            });
+            return tile;
+          }
+
+          proceedWithNativeOrOnline();
+          return tile;
+
+          function proceedWithNativeOrOnline() {
+            // 2. Native Offline Filesystem Check
+            if (localPath && isOfflineEligible && !missingTileCache[tileKey]) {
+              tile.onload = function() {
+                done(null, tile);
+              };
+
+              tile.onerror = function() {
+                // Local tile not found on disk: mark key in missing cache
+                missingTileCache[tileKey] = true;
+
+                // If online network is available, attempt online tile
+                if (navigator.onLine !== false) {
+                  tile.onload = function() {
+                    done(null, tile);
+                  };
+                  tile.onerror = function() {
+                    // Online failed too (e.g. at sea or poor signal) -> smooth blur fallback!
+                    renderBlurredFallback(coords, done);
+                  };
+                  tile.src = onlineSrc;
+                } else {
+                  // Offline -> immediately show smooth blur fallback!
+                  renderBlurredFallback(coords, done);
+                }
+              };
+
+              tile.src = localPath;
+              return;
+            }
+
+            // 3. Online fallback or direct load
+            tile.onload = function() {
+              done(null, tile);
+            };
+            tile.onerror = function() {
+              // Online tile failed (offline or network error) -> smooth blur fallback!
+              renderBlurredFallback(coords, done);
+            };
+            tile.src = onlineSrc;
+          }
+        }
+      });
+
+      return new LayerClass(onlineUrl, mergedOptions);
+    }
+
+    // Available tile sets (3 Distinct Layers: Standard Chart, Satellite View, Nautical Vector Chart)
     const baseLayers = {
-      standard: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap'
-      }),
-      satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 19,
-        attribution: 'Tiles &copy; Esri'
-      }),
-      marine: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OSM &copy; CARTO'
-      }),
-      night: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OSM &copy; CARTO'
-      })
+      google: createOfflineAwareTileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        maxZoom: 20
+      }, true),
+      satellite: createOfflineAwareTileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+        maxZoom: 20
+      }, false),
+      standard: createOfflineAwareTileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19
+      }, true)
     };
+    // Graceful aliases for legacy/cached styles
+    baseLayers.terrain = baseLayers.google;
+    baseLayers.marine = baseLayers.google;
+    baseLayers.night = baseLayers.google;
 
     function post(msg) {
       if (window.ReactNativeWebView) {
         window.ReactNativeWebView.postMessage(JSON.stringify(msg));
       }
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage(JSON.stringify(msg), '*');
+        }
+      } catch (e) {}
     }
 
     function toRad(deg) { return (deg * Math.PI) / 180; }
@@ -339,11 +680,18 @@ export function buildLeafletHtml() {
     function initMap() {
       map = L.map('map', {
         zoomControl: false,
-        attributionControl: true,
-        preferCanvas: true
+        attributionControl: false,
+        preferCanvas: true,
+        fadeAnimation: true,
+        zoomAnimation: true,
+        markerZoomAnimation: true,
+        inertia: true,
+        inertiaDeceleration: 3000,
+        inertiaMaxSpeed: 2000,
+        worldCopyJump: false
       }).setView([DEFAULT.lat, DEFAULT.lng], DEFAULT.zoom);
 
-      setBaseStyle('standard');
+      setBaseStyle('google');
 
       // Danger zone
       setDangerZone(true);
@@ -351,7 +699,7 @@ export function buildLeafletHtml() {
       // Render spots
       renderSpots();
 
-      // Map Click event for Dropped Pin or Ruler measurement
+      // Map Click event: Clicking empty water/chart deselects any active item (no dropped pin)
       map.on('click', function(e) {
         const lat = e.latlng.lat;
         const lng = e.latlng.lng;
@@ -361,8 +709,7 @@ export function buildLeafletHtml() {
           return;
         }
 
-        // Drop pin at clicked location
-        setDroppedPin(lat, lng);
+        clearDroppedPin();
         post({ type: 'mapClick', lat: lat, lng: lng });
       });
 
@@ -376,7 +723,7 @@ export function buildLeafletHtml() {
 
     function setBaseStyle(style) {
       if (baseLayer) map.removeLayer(baseLayer);
-      baseLayer = baseLayers[style] || baseLayers.standard;
+      baseLayer = baseLayers[style] || baseLayers.google || baseLayers.standard;
       baseLayer.addTo(map);
       activeStyle = style;
     }
@@ -509,17 +856,47 @@ export function buildLeafletHtml() {
       clearRoute();
     }
 
+    function updateNavTargetMarker() {
+      if (!navTarget) {
+        clearNavTargetMarker();
+        return;
+      }
+      if (!navTargetMarker) {
+        navTargetMarker = L.marker([navTarget.lat, navTarget.lng], {
+          icon: L.divIcon({
+            className: '',
+            html: '<div class="nav-target-beacon"><div class="beacon-pulse"></div><div class="beacon-center">🎯</div></div>',
+            iconSize: [44, 44],
+            iconAnchor: [22, 22]
+          }),
+          zIndexOffset: 920
+        }).addTo(map);
+      } else {
+        navTargetMarker.setLatLng([navTarget.lat, navTarget.lng]);
+      }
+    }
+
+    function clearNavTargetMarker() {
+      if (navTargetMarker) {
+        map.removeLayer(navTargetMarker);
+        navTargetMarker = null;
+      }
+    }
+
     function updateRoute() {
       if (!userLatLng) {
         clearRoute();
         return;
       }
 
-      // Find target: selected spot or dropped pin
+      // Find target: navTarget has priority during active navigation
       let target = null;
       let targetName = '';
 
-      if (selectedSpotId) {
+      if (navTarget) {
+        target = { lat: navTarget.lat, lng: navTarget.lng };
+        targetName = navTarget.name || 'Destination';
+      } else if (selectedSpotId) {
         const s = SPOTS.find(function(sp) { return sp.id === selectedSpotId; });
         if (s) {
           target = { lat: s.lat, lng: s.lng };
@@ -539,12 +916,12 @@ export function buildLeafletHtml() {
       const pts = [[userLatLng.lat, userLatLng.lng], [target.lat, target.lng]];
       const dist = distanceNm(userLatLng, target);
       const brg = bearingDeg(userLatLng, target);
-      const chipLabel = formatNm(dist) + ' | ' + Math.round(brg) + '°';
+      const chipLabel = formatNm(dist) + ' • ' + Math.round(brg) + '° BRG';
 
       if (!routeLine) {
         routeLine = L.polyline(pts, {
-          color: '#0084FF',
-          weight: 3.5,
+          color: '#00E5FF',
+          weight: 4.5,
           dashArray: '8 6',
           opacity: 0.95
         }).addTo(map);
@@ -558,8 +935,8 @@ export function buildLeafletHtml() {
           icon: L.divIcon({
             className: '',
             html: '<div class="route-chip">' + chipLabel + '</div>',
-            iconSize: [120, 26],
-            iconAnchor: [60, 13]
+            iconSize: [130, 26],
+            iconAnchor: [65, 13]
           }),
           interactive: false
         }).addTo(map);
@@ -568,8 +945,8 @@ export function buildLeafletHtml() {
         routeChipMarker.setIcon(L.divIcon({
           className: '',
           html: '<div class="route-chip">' + chipLabel + '</div>',
-          iconSize: [120, 26],
-          iconAnchor: [60, 13]
+          iconSize: [130, 26],
+          iconAnchor: [65, 13]
         }));
       }
     }
@@ -583,6 +960,56 @@ export function buildLeafletHtml() {
         map.removeLayer(routeChipMarker);
         routeChipMarker = null;
       }
+    }
+
+    // Active trip breadcrumb trail
+    function updateActiveTrack(points) {
+      if (!points || points.length === 0) {
+        if (activeTrackPolyline) {
+          map.removeLayer(activeTrackPolyline);
+          activeTrackPolyline = null;
+        }
+        return;
+      }
+      const latlngs = points.map(function(p) { return [p.latitude || p.lat, p.longitude || p.lng]; });
+      if (!activeTrackPolyline) {
+        activeTrackPolyline = L.polyline(latlngs, {
+          color: '#00F0FF',
+          weight: 4.5,
+          opacity: 0.95,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(map);
+      } else {
+        activeTrackPolyline.setLatLngs(latlngs);
+      }
+    }
+
+    // Saved historical trips layer
+    function updateSavedTracks(tracks) {
+      if (!savedTracksGroup) {
+        savedTracksGroup = L.layerGroup().addTo(map);
+      }
+      savedTracksGroup.clearLayers();
+      if (!Array.isArray(tracks)) return;
+
+      tracks.forEach(function(t) {
+        if (!t.points || t.points.length < 2) return;
+        const pts = t.points.map(function(p) { return [p.latitude || p.lat, p.longitude || p.lng]; });
+        const poly = L.polyline(pts, {
+          color: t.color || '#38BDF8',
+          weight: 3.5,
+          opacity: 0.8,
+          dashArray: '5 5'
+        });
+        savedTracksGroup.addLayer(poly);
+      });
+    }
+
+    function fitTrackBounds(points) {
+      if (!points || points.length === 0) return;
+      const latlngs = points.map(function(p) { return [p.latitude || p.lat, p.longitude || p.lng]; });
+      map.fitBounds(L.latLngBounds(latlngs).pad(0.2));
     }
 
     // Measurement functions
@@ -721,6 +1148,16 @@ export function buildLeafletHtml() {
           highlightSelectedSpot();
           updateRoute();
           break;
+        case 'setNavTarget':
+          if (cmd.target && isFinite(cmd.target.lat) && isFinite(cmd.target.lng)) {
+            navTarget = { lat: cmd.target.lat, lng: cmd.target.lng, name: cmd.target.name || '' };
+            updateNavTargetMarker();
+          } else {
+            navTarget = null;
+            clearNavTargetMarker();
+          }
+          updateRoute();
+          break;
         case 'setCustomSpots':
           if (Array.isArray(cmd.spots)) {
             SPOTS = cmd.spots;
@@ -744,6 +1181,15 @@ export function buildLeafletHtml() {
           break;
         case 'clearMeasurement':
           clearMeasurement();
+          break;
+        case 'setActiveTrack':
+          updateActiveTrack(cmd.points);
+          break;
+        case 'setSavedTracks':
+          updateSavedTracks(cmd.tracks);
+          break;
+        case 'fitTrackBounds':
+          fitTrackBounds(cmd.points);
           break;
       }
     }
