@@ -41,9 +41,9 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
 
     // Search & Location
     'search.placeholder': 'Search spots, coords, weather, ports...',
-    'location.detecting': 'Detecting City...',
+    'location.detecting': 'Acquiring GPS...',
     'location.off': 'Location Off',
-    'location.acquiring': 'Acquiring GPS Fix...',
+    'location.acquiring': 'Acquiring GPS...',
 
     // Map Styles & Overlays
     'map.layers.title': 'Map Layers & Nautical Details',
@@ -631,7 +631,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
 
     // Search & Location
     'search.placeholder': 'स्थल, मौसम, बंदरगाह खोजें...',
-    'location.detecting': 'शहर खोज रहे हैं...',
+    'location.detecting': 'जीपीएस कनेक्ट हो रहा है...',
     'location.off': 'लोकेशन बंद है',
     'location.acquiring': 'जीपीएस कनेक्ट हो रहा है...',
 
@@ -1221,7 +1221,7 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
 
     // Search & Location
     'search.placeholder': 'સ્થળ, હવામાન, બંદર શોધો...',
-    'location.detecting': 'શહેર શોધી રહ્યા છીએ...',
+    'location.detecting': 'જીપીએસ કનેક્ટ થાય છે...',
     'location.off': 'લોકેશન બંધ છે',
     'location.acquiring': 'જીપીએસ કનેક્ટ થાય છે...',
 
