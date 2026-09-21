@@ -8,6 +8,11 @@
     "icon": "./assets/images/icon.png",
     "scheme": "fishnavpro",
     "userInterfaceStyle": "automatic",
+    "extra": {
+      "eas": {
+        "projectId": "57528087-0703-4765-aed9-cf2397456623"
+      }
+    },
     "ios": {
       "icon": "./assets/expo.icon",
       "infoPlist": {
