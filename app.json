@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "FishNavPro",
-    "slug": "FishNavPro",
-    "owner": "akking24",
+    "slug": "fishnavpro",
+    "owner": "ak2424",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -10,7 +10,7 @@
     "userInterfaceStyle": "automatic",
     "extra": {
       "eas": {
-        "projectId": "57528087-0703-4765-aed9-cf2397456623"
+        "projectId": "ba0d985f-c3d2-4efc-829f-dcce3a82284a"
       }
     },
     "ios": {
