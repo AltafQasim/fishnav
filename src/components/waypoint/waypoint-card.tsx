@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
+import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import { formatLatitude, formatLongitude, UserLocation } from '@/hooks/use-user-location';
 import { bearingDegrees, distanceNm, formatBearing, formatNm } from '@/utils/geo';
@@ -40,6 +41,7 @@ export function WaypointCard({
   onStartNavigation,
 }: WaypointCardProps) {
   const { colors, isLight } = useAppTheme();
+  const { t } = useLanguage();
   const dist = userLocation
     ? distanceNm(userLocation.latitude, userLocation.longitude, spot.latitude, spot.longitude)
     : null;
@@ -81,7 +83,9 @@ export function WaypointCard({
                     },
                   ]}
                 >
-                  <Text style={[styles.categoryText, { color: colors.accent }]}>{spot.category}</Text>
+                  <Text style={[styles.categoryText, { color: colors.accent }]}>
+                    {t(`category.${spot.category.toLowerCase().replace(/\s+/g, '_')}`, spot.category)}
+                  </Text>
                 </View>
               ) : null}
             </View>
@@ -111,7 +115,9 @@ export function WaypointCard({
         <View style={styles.metaRow}>
           <View style={[styles.badge, { backgroundColor: colors.chipBg }]}>
             <MaterialCommunityIcons name="waves" size={13} color={colors.accent} />
-            <Text style={[styles.badgeText, { color: colors.text }]}>{spot.depthM} m depth</Text>
+            <Text style={[styles.badgeText, { color: colors.text }]}>
+              {spot.depthM} m {t('spot.depth', 'depth')}
+            </Text>
           </View>
 
           {dist != null && (
@@ -151,10 +157,12 @@ export function WaypointCard({
               }
             }}
             accessibilityRole="button"
-            accessibilityLabel={`Start navigation to ${spot.name}`}
+            accessibilityLabel={`${t('btn.navigate', 'Navigate')} to ${spot.name}`}
           >
             <Ionicons name="navigate" size={13} color={colors.accent} />
-            <Text style={[styles.mapActionText, { color: colors.accent }]} numberOfLines={1}>Navigate</Text>
+            <Text style={[styles.mapActionText, { color: colors.accent }]} numberOfLines={1}>
+              {t('btn.navigate', 'Navigate')}
+            </Text>
           </Pressable>
 
           <View style={styles.crudBtns}>
@@ -163,7 +171,7 @@ export function WaypointCard({
               onPress={() => onEdit(spot)}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Edit waypoint"
+              accessibilityLabel={t('waypoints.edit_title', 'Edit Waypoint')}
             >
               <Ionicons name="pencil" size={16} color={colors.textSecondary} />
             </Pressable>
@@ -173,7 +181,7 @@ export function WaypointCard({
               onPress={() => onDelete(spot)}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Delete waypoint"
+              accessibilityLabel={t('waypoints.delete_title', 'Delete Waypoint')}
             >
               <Ionicons name="trash-outline" size={16} color="#EF4444" />
             </Pressable>

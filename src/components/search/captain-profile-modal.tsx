@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -91,6 +92,9 @@ const HARBOR_OPTIONS = [
 export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalProps) => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  const isSmall = windowWidth < 365;
+  const isVerySmall = windowWidth < 335;
   const { theme, colors, isLight } = useAppTheme();
   const { t } = useLanguage();
   const {
@@ -266,289 +270,201 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
         animationType="slide"
         onRequestClose={onClose}
       >
-      <View style={styles.backdrop}>
-        <Pressable style={styles.backdropTouch} onPress={onClose} />
+        <View style={styles.backdrop}>
+          <Pressable style={styles.backdropTouch} onPress={onClose} />
 
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.cardBorder,
-              paddingBottom: Math.max(insets.bottom, 20) + 12,
-            },
-          ]}
-        >
           <View
             style={[
-              styles.dragHandle,
-              { backgroundColor: isLight ? '#CBD5E1' : 'rgba(255, 255, 255, 0.3)' },
+              styles.card,
+              isSmall && { paddingHorizontal: 12, paddingTop: 8 },
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.cardBorder,
+                paddingBottom: Math.max(insets.bottom, 20) + 12,
+              },
             ]}
-          />
-
-          {/* Top Bar with Close Button */}
-          <View style={[styles.topBar, { borderBottomColor: colors.divider }]}>
-            <View style={styles.topBarLeft}>
-              <MaterialCommunityIcons name="badge-account-horizontal" size={22} color={colors.accent} />
-              <Text style={[styles.headerTitle, { color: colors.text }]}>{t('profile.title', 'Captain & Vessel Dossier')}</Text>
-            </View>
-            <Pressable
-              onPress={onClose}
-              hitSlop={12}
-              style={[styles.closeBtn, { backgroundColor: colors.chipBg }]}
-            >
-              <Ionicons name="close" size={20} color={colors.textSecondary} />
-            </Pressable>
-          </View>
-
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
           >
-            {/* 1. CAPTAIN HERO HEADER WITH PHOTO & CAMERA BADGE */}
             <View
               style={[
-                styles.heroCard,
-                {
-                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
-                  borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
-                  shadowColor: isLight ? '#64748B' : '#00F0FF',
-                  shadowOffset: { width: 0, height: 3 },
-                  shadowOpacity: isLight ? 0.08 : 0.25,
-                  shadowRadius: 10,
-                  elevation: isLight ? 2 : 4,
-                },
+                styles.dragHandle,
+                { backgroundColor: isLight ? '#CBD5E1' : 'rgba(255, 255, 255, 0.3)' },
               ]}
-            >
-              <View style={styles.avatarContainer}>
-                <Pressable
-                  style={[
-                    styles.avatarWrap,
-                    {
-                      borderColor: colors.accent,
-                      backgroundColor: colors.chipBg,
-                    },
-                  ]}
-                  onPress={() => setShowPhotoPicker(true)}
-                  accessibilityRole="button"
-                  accessibilityLabel="Change profile photo"
-                >
-                  {captain?.avatarUrl ? (
-                    <Image source={{ uri: captain.avatarUrl }} style={styles.avatarImg} />
-                  ) : (
-                    <MaterialCommunityIcons name="ship-wheel" size={38} color={colors.accent} />
-                  )}
-                </Pressable>
+            />
 
-                {/* Floating Camera Edit Badge */}
-                <Pressable
-                  style={[styles.cameraBadge, { backgroundColor: colors.accent, borderColor: isLight ? '#FFFFFF' : colors.surface }]}
-                  onPress={() => setShowPhotoPicker(true)}
-                  hitSlop={8}
-                >
-                  <Ionicons name="camera" size={14} color="#FFFFFF" />
-                </Pressable>
+            {/* Top Bar with Close Button */}
+            <View style={[styles.topBar, { borderBottomColor: colors.divider }]}>
+              <View style={styles.topBarLeft}>
+                <MaterialCommunityIcons name="badge-account-horizontal" size={isSmall ? 19 : 22} color={colors.accent} />
+                <Text style={[styles.headerTitle, isSmall && { fontSize: 15 }, { color: colors.text }]}>{t('profile.title', 'Captain & Vessel Dossier')}</Text>
               </View>
-
-              <Text style={[styles.captainName, { color: colors.text }]}>
-                {captain?.name || 'Capt. Vikram Rathore'}
-              </Text>
-              <View style={[styles.rankBadge, isLight && { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]}>
-                <Ionicons name="shield-checkmark" size={12} color={isLight ? '#16A34A' : '#10B981'} />
-                <Text style={[styles.rankText, isLight && { color: '#16A34A' }]}>{t('pro.master_license', 'LICENSED MASTER MARINER')}</Text>
-              </View>
-              <Text style={[styles.captainContact, { color: colors.textSecondary }]}>
-                {captain?.emailOrPhone || '+91 98765 43210'}
-              </Text>
-
               <Pressable
-                style={[styles.changePhotoLink, isLight && { backgroundColor: '#E0F2FE' }]}
-                onPress={() => setShowPhotoPicker(true)}
+                onPress={onClose}
+                hitSlop={12}
+                style={[styles.closeBtn, isSmall && { width: 28, height: 28, borderRadius: 14 }, { backgroundColor: colors.chipBg }]}
               >
-                <Ionicons name="image-outline" size={13} color={colors.accent} />
-                <Text style={[styles.changePhotoText, { color: colors.accent }]}>{t('profile.choose_photo', 'Change Profile Photo')}</Text>
+                <Ionicons name="close" size={isSmall ? 17 : 20} color={colors.textSecondary} />
               </Pressable>
             </View>
 
-            {/* Stats Overview */}
-            <View style={styles.statsRow}>
-              <View
-                style={[
-                  styles.statBox,
-                  {
-                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
-                    borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
-                    shadowColor: isLight ? '#64748B' : 'transparent',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: isLight ? 0.06 : 0,
-                    shadowRadius: 6,
-                    elevation: isLight ? 2 : 0,
-                  },
-                ]}
-              >
-                <Ionicons name="location" size={18} color={colors.accent} />
-                <Text style={[styles.statVal, { color: colors.text }]}>{waypoints.length}</Text>
-                <Text style={[styles.statLbl, { color: colors.textMuted }]}>{t('waypoints.title', 'HOTSPOTS').toUpperCase()}</Text>
-              </View>
-              <Pressable
-                style={[
-                  styles.statBox,
-                  {
-                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
-                    borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
-                    shadowColor: isLight ? '#64748B' : 'transparent',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: isLight ? 0.06 : 0,
-                    shadowRadius: 6,
-                    elevation: isLight ? 2 : 0,
-                  },
-                ]}
-                onPress={handleOpenTrips}
-              >
-                <MaterialCommunityIcons name="map-marker-path" size={18} color={isLight ? colors.accent : '#38BDF8'} />
-                <Text style={[styles.statVal, { color: colors.text }]}>{savedTrips.length}</Text>
-                <Text style={[styles.statLbl, { color: colors.textMuted }]}>{t('tab.trips', 'VOYAGES').toUpperCase()} ›</Text>
-              </Pressable>
-              <View
-                style={[
-                  styles.statBox,
-                  {
-                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
-                    borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
-                    shadowColor: isLight ? '#64748B' : 'transparent',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: isLight ? 0.06 : 0,
-                    shadowRadius: 6,
-                    elevation: isLight ? 2 : 0,
-                  },
-                ]}
-              >
-                <Ionicons name="navigate" size={18} color={isLight ? '#16A34A' : '#10B981'} />
-                <Text style={[styles.statVal, { color: colors.text }]}>3D FIX</Text>
-                <Text style={[styles.statLbl, { color: colors.textMuted }]}>{t('overlay.gps', 'GPS LOCK').toUpperCase()}</Text>
-              </View>
-            </View>
-
-            {/* 👑 PRO MEMBERSHIP & VESSEL LICENSE MANAGEMENT */}
-            <View style={styles.sectionHeaderBetween}>
-              <View style={styles.sectionHeaderLeft}>
-                <MaterialCommunityIcons name="crown" size={18} color="#F59E0B" />
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                  {t('pro.title', 'PRO MEMBERSHIP')} & {t('settings.vessel', 'VESSEL LICENSE')}
-                </Text>
-              </View>
-
-              <View
-                style={[
-                  styles.statusBadgePill,
-                  {
-                    backgroundColor: isPro
-                      ? 'rgba(245, 158, 11, 0.15)'
-                      : hasReferralBonus
-                        ? 'rgba(34, 197, 94, 0.15)'
-                        : isTrialExpired
-                          ? 'rgba(239, 68, 68, 0.15)'
-                          : 'rgba(0, 240, 255, 0.12)',
-                    borderColor: isPro
-                      ? '#F59E0B'
-                      : hasReferralBonus
-                        ? '#22C55E'
-                        : isTrialExpired
-                          ? '#EF4444'
-                          : colors.accent,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.statusBadgePillText,
-                    {
-                      color: isPro
-                        ? '#F59E0B'
-                        : hasReferralBonus
-                          ? '#22C55E'
-                          : isTrialExpired
-                            ? '#EF4444'
-                            : colors.accent,
-                    },
-                  ]}
-                >
-                  {isPro
-                    ? 'PRO ACTIVE 👑'
-                    : hasReferralBonus
-                      ? `${bonusProDaysRemaining}D BONUS 🎁`
-                      : isTrialExpired
-                        ? 'TRIAL EXPIRED 🚨'
-                        : `${trialDaysRemaining}D TRIAL ⚡`}
-                </Text>
-              </View>
-            </View>
-
-            {/* Pro Plan Card: Same Modern HUD Console As Settings */}
-            <View
-              style={[
-                styles.proCardContainer,
-                {
-                  backgroundColor: isLight ? '#FFFFFF' : colors.card,
-                  borderColor: isPro
-                    ? isExpiringSoon
-                      ? '#EF4444'
-                      : isLight
-                        ? '#FDE68A'
-                        : 'rgba(245, 158, 11, 0.35)'
-                    : hasReferralBonus
-                      ? isLight
-                        ? '#BBF7D0'
-                        : 'rgba(34, 197, 94, 0.35)'
-                      : isTrialExpired
-                        ? '#EF4444'
-                        : isLight
-                          ? '#BAE6FD'
-                          : colors.accent,
-                  shadowColor: isPro ? '#F59E0B' : '#00F0FF',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: isLight ? 0.08 : 0.25,
-                  shadowRadius: 10,
-                  elevation: 4,
-                },
-              ]}
+            <ScrollView
+              style={styles.scroll}
+              contentContainerStyle={[styles.scrollContent, isSmall && { paddingTop: 10, gap: 10 }]}
+              showsVerticalScrollIndicator={false}
             >
-              {/* Top Stripe */}
-              <LinearGradient
-                colors={
-                  isPro
-                    ? ['#F59E0B', '#FBBF24']
-                    : hasReferralBonus
-                      ? ['#22C55E', '#4ADE80']
-                      : ['#00F0FF', '#38BDF8']
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.cardTopStripe}
-              />
+              {/* 1. CAPTAIN HERO HEADER WITH PHOTO & CAMERA BADGE */}
+              <View
+                style={[
+                  styles.heroCard,
+                  isSmall && { padding: 12, borderRadius: 16 },
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
+                    borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
+                    shadowColor: isLight ? '#64748B' : '#00F0FF',
+                    shadowOffset: { width: 0, height: 3 },
+                    shadowOpacity: isLight ? 0.08 : 0.25,
+                    shadowRadius: 10,
+                    elevation: isLight ? 2 : 4,
+                  },
+                ]}
+              >
+                <View style={styles.avatarContainer}>
+                  <Pressable
+                    style={[
+                      styles.avatarWrap,
+                      isSmall && { width: 62, height: 62, borderRadius: 31, borderWidth: 2 },
+                      {
+                        borderColor: colors.accent,
+                        backgroundColor: colors.chipBg,
+                      },
+                    ]}
+                    onPress={() => setShowPhotoPicker(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Change profile photo"
+                  >
+                    {captain?.avatarUrl ? (
+                      <Image source={{ uri: captain.avatarUrl }} style={[styles.avatarImg, isSmall && { borderRadius: 31 }]} />
+                    ) : (
+                      <MaterialCommunityIcons name="ship-wheel" size={isSmall ? 28 : 38} color={colors.accent} />
+                    )}
+                  </Pressable>
 
-              {/* Membership Row */}
-              <View style={styles.proMembershipRow}>
+                  {/* Floating Camera Edit Badge */}
+                  <Pressable
+                    style={[
+                      styles.cameraBadge,
+                      isSmall && { width: 22, height: 22, borderRadius: 11 },
+                      { backgroundColor: colors.accent, borderColor: isLight ? '#FFFFFF' : colors.surface },
+                    ]}
+                    onPress={() => setShowPhotoPicker(true)}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="camera" size={isSmall ? 11 : 14} color="#FFFFFF" />
+                  </Pressable>
+                </View>
+
+                <Text style={[styles.captainName, isSmall && { fontSize: 15, letterSpacing: 0.1 }, { color: colors.text }]}>
+                  {captain?.name || 'Capt. Vikram Rathore'}
+                </Text>
+                <View style={[styles.rankBadge, isSmall && { paddingHorizontal: 6, paddingVertical: 2, marginTop: 4 }, isLight && { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]}>
+                  <Ionicons name="shield-checkmark" size={isSmall ? 11 : 12} color={isLight ? '#16A34A' : '#10B981'} />
+                  <Text style={[styles.rankText, isSmall && { fontSize: 8.5 }, isLight && { color: '#16A34A' }]}>{t('pro.master_license', 'LICENSED MASTER MARINER')}</Text>
+                </View>
+                <Text style={[styles.captainContact, isSmall && { fontSize: 11, marginTop: 4 }, { color: colors.textSecondary }]}>
+                  {captain?.emailOrPhone || '+91 98765 43210'}
+                </Text>
+
+                <Pressable
+                  style={[styles.changePhotoLink, isSmall && { paddingHorizontal: 8, paddingVertical: 3, marginTop: 6 }, isLight && { backgroundColor: '#E0F2FE' }]}
+                  onPress={() => setShowPhotoPicker(true)}
+                >
+                  <Ionicons name="image-outline" size={isSmall ? 11 : 13} color={colors.accent} />
+                  <Text style={[styles.changePhotoText, isSmall && { fontSize: 10 }, { color: colors.accent }]}>{t('profile.choose_photo', 'Change Profile Photo')}</Text>
+                </Pressable>
+              </View>
+
+              {/* Stats Overview */}
+              <View style={[styles.statsRow, isSmall && { gap: 6 }]}>
                 <View
                   style={[
-                    styles.proIconBox,
+                    styles.statBox,
+                    isSmall && { padding: 8, borderRadius: 10 },
+                    {
+                      backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
+                      borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
+                      shadowColor: isLight ? '#64748B' : 'transparent',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: isLight ? 0.06 : 0,
+                      shadowRadius: 6,
+                      elevation: isLight ? 2 : 0,
+                    },
+                  ]}
+                >
+                  <Ionicons name="location" size={isSmall ? 15 : 18} color={colors.accent} />
+                  <Text style={[styles.statVal, isSmall && { fontSize: 13, marginTop: 2 }, { color: colors.text }]}>{waypoints.length}</Text>
+                  <Text style={[styles.statLbl, isSmall && { fontSize: 7.5, letterSpacing: 0.2 }, { color: colors.textMuted }]}>{t('waypoints.title', 'HOTSPOTS').toUpperCase()}</Text>
+                </View>
+                <Pressable
+                  style={[
+                    styles.statBox,
+                    isSmall && { padding: 8, borderRadius: 10 },
+                    {
+                      backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
+                      borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
+                      shadowColor: isLight ? '#64748B' : 'transparent',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: isLight ? 0.06 : 0,
+                      shadowRadius: 6,
+                      elevation: isLight ? 2 : 0,
+                    },
+                  ]}
+                  onPress={handleOpenTrips}
+                >
+                  <MaterialCommunityIcons name="map-marker-path" size={isSmall ? 15 : 18} color={isLight ? colors.accent : '#38BDF8'} />
+                  <Text style={[styles.statVal, isSmall && { fontSize: 13, marginTop: 2 }, { color: colors.text }]}>{savedTrips.length}</Text>
+                  <Text style={[styles.statLbl, isSmall && { fontSize: 7.5, letterSpacing: 0.2 }, { color: colors.textMuted }]}>{t('tab.trips', 'VOYAGES').toUpperCase()} ›</Text>
+                </Pressable>
+                <View
+                  style={[
+                    styles.statBox,
+                    isSmall && { padding: 8, borderRadius: 10 },
+                    {
+                      backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
+                      borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
+                      shadowColor: isLight ? '#64748B' : 'transparent',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: isLight ? 0.06 : 0,
+                      shadowRadius: 6,
+                      elevation: isLight ? 2 : 0,
+                    },
+                  ]}
+                >
+                  <Ionicons name="navigate" size={isSmall ? 15 : 18} color={isLight ? '#16A34A' : '#10B981'} />
+                  <Text style={[styles.statVal, isSmall && { fontSize: 13, marginTop: 2 }, { color: colors.text }]}>3D FIX</Text>
+                  <Text style={[styles.statLbl, isSmall && { fontSize: 7.5, letterSpacing: 0.2 }, { color: colors.textMuted }]}>{t('overlay.gps', 'GPS LOCK').toUpperCase()}</Text>
+                </View>
+              </View>
+
+              {/* 👑 PRO MEMBERSHIP & VESSEL LICENSE MANAGEMENT */}
+              <View style={[styles.sectionHeaderBetween, isSmall && { flexWrap: 'wrap', gap: 6 }]}>
+                <View style={styles.sectionHeaderLeft}>
+                  <MaterialCommunityIcons name="crown" size={isSmall ? 16 : 18} color="#F59E0B" />
+                  <Text style={[styles.sectionTitle, isSmall && { fontSize: 10 }, { color: colors.textSecondary }]}>
+                    {t('pro.title', 'PRO MEMBERSHIP')}
+                  </Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.statusBadgePill,
+                    isSmall && { paddingHorizontal: 6, paddingVertical: 2 },
                     {
                       backgroundColor: isPro
-                        ? isLight
-                          ? '#FEF3C7'
-                          : 'rgba(245, 158, 11, 0.15)'
+                        ? 'rgba(245, 158, 11, 0.15)'
                         : hasReferralBonus
-                          ? isLight
-                            ? '#DCFCE7'
-                            : 'rgba(34, 197, 94, 0.15)'
+                          ? 'rgba(34, 197, 94, 0.15)'
                           : isTrialExpired
-                            ? isLight
-                              ? '#FEE2E2'
-                              : 'rgba(239, 68, 68, 0.15)'
-                            : isLight
-                              ? '#E0F2FE'
-                              : 'rgba(0, 240, 255, 0.15)',
+                            ? 'rgba(239, 68, 68, 0.15)'
+                            : 'rgba(0, 240, 255, 0.12)',
                       borderColor: isPro
                         ? '#F59E0B'
                         : hasReferralBonus
@@ -559,73 +475,159 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                     },
                   ]}
                 >
-                  <MaterialCommunityIcons
-                    name={
-                      isPro
-                        ? proPlan === 'lifetime'
-                          ? 'shield-crown'
-                          : 'crown'
-                        : hasReferralBonus
-                          ? 'gift'
-                          : isTrialExpired
-                            ? 'alert-octagon'
-                            : 'compass-outline'
-                    }
-                    size={22}
-                    color={
-                      isPro
-                        ? '#F59E0B'
-                        : hasReferralBonus
-                          ? '#22C55E'
-                          : isTrialExpired
-                            ? '#EF4444'
-                            : colors.accent
-                    }
-                  />
-                </View>
-
-                <View style={{ flex: 1 }}>
-                  <View style={styles.planTitleBadgeRow}>
-                    <Text style={[styles.proMembershipTitle, { color: colors.text }]}>
-                      {isPro
-                        ? planDisplayName
-                        : hasReferralBonus
-                          ? t('settings.status_referral_pass', 'Captain Referral Pass')
-                          : isTrialExpired
-                            ? t('settings.trial_ended', 'Evaluation Trial Ended')
-                            : t('settings.status_active_trial', '3-Day Free Vessel Trial')}
-                    </Text>
-
-                    <View
-                      style={[
-                        styles.statusPill,
-                        {
-                          backgroundColor: isPro
-                            ? isExpiringSoon
-                              ? 'rgba(239, 68, 68, 0.15)'
-                              : 'rgba(16, 185, 129, 0.15)'
-                            : hasReferralBonus
-                              ? 'rgba(34, 197, 94, 0.15)'
-                              : isTrialExpired
-                                ? 'rgba(239, 68, 68, 0.15)'
-                                : 'rgba(0, 240, 255, 0.15)',
-                          borderColor: isPro
-                            ? isExpiringSoon
+                  <Text
+                    style={[
+                      styles.statusBadgePillText,
+                      {
+                        color: isPro
+                          ? '#F59E0B'
+                          : hasReferralBonus
+                            ? '#22C55E'
+                            : isTrialExpired
                               ? '#EF4444'
-                              : '#10B981'
-                            : hasReferralBonus
-                              ? '#22C55E'
-                              : isTrialExpired
-                                ? '#EF4444'
-                                : colors.accent,
-                        },
-                      ]}
-                    >
-                      <Text
+                              : colors.accent,
+                      },
+                    ]}
+                  >
+                    {isPro
+                      ? 'PRO ACTIVE 👑'
+                      : hasReferralBonus
+                        ? `${bonusProDaysRemaining}D BONUS 🎁`
+                        : isTrialExpired
+                          ? 'TRIAL EXPIRED 🚨'
+                          : `${trialDaysRemaining}D TRIAL ⚡`}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Pro Plan Card: Same Modern HUD Console As Settings */}
+              <View
+                style={[
+                  styles.proCardContainer,
+                  isSmall && { padding: 10, gap: 8, borderRadius: 14 },
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : colors.card,
+                    borderColor: isPro
+                      ? isExpiringSoon
+                        ? '#EF4444'
+                        : isLight
+                          ? '#FDE68A'
+                          : 'rgba(245, 158, 11, 0.35)'
+                      : hasReferralBonus
+                        ? isLight
+                          ? '#BBF7D0'
+                          : 'rgba(34, 197, 94, 0.35)'
+                        : isTrialExpired
+                          ? '#EF4444'
+                          : isLight
+                            ? '#BAE6FD'
+                            : colors.accent,
+                    shadowColor: isPro ? '#F59E0B' : '#00F0FF',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: isLight ? 0.08 : 0.25,
+                    shadowRadius: 10,
+                    elevation: 4,
+                  },
+                ]}
+              >
+                {/* Top Stripe */}
+                <LinearGradient
+                  colors={
+                    isPro
+                      ? ['#F59E0B', '#FBBF24']
+                      : hasReferralBonus
+                        ? ['#22C55E', '#4ADE80']
+                        : ['#00F0FF', '#38BDF8']
+                  }
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[styles.cardTopStripe, isSmall && { marginHorizontal: -10, marginTop: -10 }]}
+                />
+
+                {/* Membership Row */}
+                <View style={[styles.proMembershipRow, isSmall && { gap: 8 }]}>
+                  <View
+                    style={[
+                      styles.proIconBox,
+                      isSmall && { width: 36, height: 36, borderRadius: 10 },
+                      {
+                        backgroundColor: isPro
+                          ? isLight
+                            ? '#FEF3C7'
+                            : 'rgba(245, 158, 11, 0.15)'
+                          : hasReferralBonus
+                            ? isLight
+                              ? '#DCFCE7'
+                              : 'rgba(34, 197, 94, 0.15)'
+                            : isTrialExpired
+                              ? isLight
+                                ? '#FEE2E2'
+                                : 'rgba(239, 68, 68, 0.15)'
+                              : isLight
+                                ? '#E0F2FE'
+                                : 'rgba(0, 240, 255, 0.15)',
+                        borderColor: isPro
+                          ? '#F59E0B'
+                          : hasReferralBonus
+                            ? '#22C55E'
+                            : isTrialExpired
+                              ? '#EF4444'
+                              : colors.accent,
+                      },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name={
+                        isPro
+                          ? proPlan === 'lifetime'
+                            ? 'shield-crown'
+                            : 'crown'
+                          : hasReferralBonus
+                            ? 'gift'
+                            : isTrialExpired
+                              ? 'alert-octagon'
+                              : 'compass-outline'
+                      }
+                      size={isSmall ? 18 : 22}
+                      color={
+                        isPro
+                          ? '#F59E0B'
+                          : hasReferralBonus
+                            ? '#22C55E'
+                            : isTrialExpired
+                              ? '#EF4444'
+                              : colors.accent
+                      }
+                    />
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <View style={[styles.planTitleBadgeRow, isSmall && { flexWrap: 'wrap', gap: 4 }]}>
+                      <Text style={[styles.proMembershipTitle, isSmall && { fontSize: 12.5 }, { color: colors.text }]}>
+                        {isPro
+                          ? planDisplayName
+                          : hasReferralBonus
+                            ? t('settings.status_referral_pass', 'Captain Referral Pass')
+                            : isTrialExpired
+                              ? t('settings.trial_ended', 'Evaluation Trial Ended')
+                              : t('settings.status_active_trial', '3-Day Free Vessel Trial')}
+                      </Text>
+
+                      <View
                         style={[
-                          styles.statusPillText,
+                          styles.statusPill,
+                          isSmall && { paddingHorizontal: 5, paddingVertical: 1.5 },
                           {
-                            color: isPro
+                            backgroundColor: isPro
+                              ? isExpiringSoon
+                                ? 'rgba(239, 68, 68, 0.15)'
+                                : 'rgba(16, 185, 129, 0.15)'
+                              : hasReferralBonus
+                                ? 'rgba(34, 197, 94, 0.15)'
+                                : isTrialExpired
+                                  ? 'rgba(239, 68, 68, 0.15)'
+                                  : 'rgba(0, 240, 255, 0.15)',
+                            borderColor: isPro
                               ? isExpiringSoon
                                 ? '#EF4444'
                                 : '#10B981'
@@ -637,588 +639,622 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                           },
                         ]}
                       >
-                        {isPro
-                          ? isExpiringSoon
-                            ? t('settings.status_expiring_soon', 'EXPIRING SOON')
-                            : t('settings.status_active', 'ACTIVE')
-                          : hasReferralBonus
-                            ? t('settings.status_referral_pass', 'REFERRAL PASS')
-                            : isTrialExpired
-                              ? t('settings.status_expired', 'EXPIRED')
-                              : t('settings.status_active_trial', 'ACTIVE TRIAL')}
-                      </Text>
+                        <Text
+                          style={[
+                            styles.statusPillText,
+                            isSmall && { fontSize: 8 },
+                            {
+                              color: isPro
+                                ? isExpiringSoon
+                                  ? '#EF4444'
+                                  : '#10B981'
+                                : hasReferralBonus
+                                  ? '#22C55E'
+                                  : isTrialExpired
+                                    ? '#EF4444'
+                                    : colors.accent,
+                            },
+                          ]}
+                        >
+                          {isPro
+                            ? isExpiringSoon
+                              ? t('settings.status_expiring_soon', 'EXPIRING SOON')
+                              : t('settings.status_active', 'ACTIVE')
+                            : hasReferralBonus
+                              ? t('settings.status_referral_pass', 'REFERRAL PASS')
+                              : isTrialExpired
+                                ? t('settings.status_expired', 'EXPIRED')
+                                : t('settings.status_active_trial', 'ACTIVE TRIAL')}
+                        </Text>
+                      </View>
                     </View>
+
+                    <Text style={[styles.proMembershipSub, isSmall && { fontSize: 10, lineHeight: 14 }, { color: colors.textSecondary }]}>
+                      {isPro
+                        ? proPlan === 'lifetime'
+                          ? t('pro.perpetual_desc', 'Perpetual master license. High-res bathymetry & AIS radar unlocked forever.')
+                          : t('pro.active_desc', 'Official vessel license active with full offshore bathymetry & AIS radar.')
+                        : hasReferralBonus
+                          ? t('pro.referral_active_desc', 'Unlocked via Captain referral invitations. Zero recurring charges.')
+                          : isTrialExpired
+                            ? t('settings.trial_ended_desc', 'Free trial has ended. Upgrade to continue high-res navigation.')
+                            : t('settings.trial_eval_desc', 'Unrestricted Pro evaluation pass. All features active.')}
+                    </Text>
                   </View>
-
-                  <Text style={[styles.proMembershipSub, { color: colors.textSecondary }]}>
-                    {isPro
-                      ? proPlan === 'lifetime'
-                        ? t('pro.perpetual_desc', 'Perpetual master license. High-res bathymetry & AIS radar unlocked forever.')
-                        : t('pro.active_desc', 'Official vessel license active with full offshore bathymetry & AIS radar.')
-                      : hasReferralBonus
-                        ? t('pro.referral_active_desc', 'Unlocked via Captain referral invitations. Zero recurring charges.')
-                        : isTrialExpired
-                          ? t('settings.trial_ended_desc', 'Free trial has ended. Upgrade to continue high-res navigation.')
-                          : t('settings.trial_eval_desc', 'Unrestricted Pro evaluation pass. All features active.')}
-                  </Text>
                 </View>
-              </View>
 
-              {/* ⚡ Glowing Expiry & Countdown HUD Console */}
-              <View
-                style={[
-                  styles.expiryHudConsole,
-                  {
-                    backgroundColor: isLight ? '#F8FAFC' : 'rgba(2, 12, 23, 0.85)',
-                    borderColor: isPro
-                      ? isExpiringSoon
-                        ? '#EF4444'
-                        : isLight
-                          ? '#FDE68A'
-                          : 'rgba(245, 158, 11, 0.35)'
-                      : hasReferralBonus
-                        ? 'rgba(34, 197, 94, 0.3)'
-                        : isTrialExpired
-                          ? 'rgba(239, 68, 68, 0.35)'
+                {/* ⚡ Glowing Expiry & Countdown HUD Console */}
+                <View
+                  style={[
+                    styles.expiryHudConsole,
+                    isSmall && { padding: 8, marginVertical: 2 },
+                    {
+                      backgroundColor: isLight ? '#F8FAFC' : 'rgba(2, 12, 23, 0.85)',
+                      borderColor: isPro
+                        ? isExpiringSoon
+                          ? '#EF4444'
                           : isLight
-                            ? '#E0F2FE'
-                            : 'rgba(0, 240, 255, 0.25)',
-                  },
-                ]}
-              >
-                {isPro ? (
-                  proPlan === 'lifetime' ? (
-                    // Lifetime View
-                    <View style={styles.hudLifetimeWrap}>
-                      <View style={styles.hudLifetimeLeft}>
-                        <Text style={[styles.hudHugeInfinity, { color: '#F59E0B' }]}>♾️</Text>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.hudHeadline, { color: colors.text }]}>
-                            {t('pro.perpetual_access', 'PERPETUAL LIFETIME ACCESS')}
+                            ? '#FDE68A'
+                            : 'rgba(245, 158, 11, 0.35)'
+                        : hasReferralBonus
+                          ? 'rgba(34, 197, 94, 0.3)'
+                          : isTrialExpired
+                            ? 'rgba(239, 68, 68, 0.35)'
+                            : isLight
+                              ? '#E0F2FE'
+                              : 'rgba(0, 240, 255, 0.25)',
+                    },
+                  ]}
+                >
+                  {isPro ? (
+                    proPlan === 'lifetime' ? (
+                      // Lifetime View
+                      <View style={styles.hudLifetimeWrap}>
+                        <View style={styles.hudLifetimeLeft}>
+                          <Text style={[styles.hudHugeInfinity, isSmall && { fontSize: 24 }, { color: '#F59E0B' }]}>♾️</Text>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.hudHeadline, isSmall && { fontSize: 12 }, { color: colors.text }]}>
+                              {t('pro.perpetual_access', 'PERPETUAL LIFETIME ACCESS')}
+                            </Text>
+                            <Text style={[styles.hudSubtitle, isSmall && { fontSize: 10, lineHeight: 13 }, { color: colors.textSecondary }]}>
+                              {t('pro.perpetual_desc', 'Never expires • All bathymetry, radar & offline charts guaranteed')}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    ) : (
+                      // Annual or Quarterly Pro View
+                      <View>
+                        <View style={[styles.hudTopRow, isSmall && { flexDirection: 'column', alignItems: 'flex-start', gap: 6 }]}>
+                          <View style={styles.hudCountdownBox}>
+                            <Text style={[styles.hudSmallLabel, isSmall && { fontSize: 8 }, { color: colors.textSecondary }]}>
+                              {t('pro.time_remaining', 'TIME REMAINING')}
+                            </Text>
+                            <View style={styles.hudDaysRow}>
+                              <Text
+                                style={[
+                                  styles.hudBigNumber,
+                                  isSmall && { fontSize: 20 },
+                                  { color: isExpiringSoon ? '#EF4444' : '#F59E0B' },
+                                ]}
+                              >
+                                {proDaysRemaining}
+                              </Text>
+                              <Text
+                                style={[
+                                  styles.hudBigUnit,
+                                  isSmall && { fontSize: 10 },
+                                  { color: isExpiringSoon ? '#EF4444' : '#F59E0B' },
+                                ]}
+                              >
+                                {t('pro.days_left', 'DAYS LEFT')}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View style={[styles.hudDateInfoBox, isSmall && { alignItems: 'flex-start' }]}>
+                            <View style={[styles.hudDatePill, isSmall && { paddingHorizontal: 6, paddingVertical: 3 }, { backgroundColor: isLight ? '#FFFFFF' : 'rgba(0, 0, 0, 0.25)', borderColor: isLight ? '#E2E8F0' : 'transparent', borderWidth: isLight ? 1 : 0 }]}>
+                              <Ionicons name="calendar" size={isSmall ? 11 : 13} color={isExpiringSoon ? '#EF4444' : '#F59E0B'} />
+                              <Text style={[styles.hudDateText, isSmall && { fontSize: 9.5 }, { color: colors.text }]}>
+                                {t('pro.valid_until', 'Expires:')} <Text style={{ fontWeight: '800' }}>{proFormattedExpiry}</Text>
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+
+                        {/* Visual Expiry Timeline Progress Bar */}
+                        <View style={styles.hudProgressWrap}>
+                          <View style={[styles.hudProgressTrack, { backgroundColor: isLight ? '#E2E8F0' : 'rgba(255, 255, 255, 0.1)' }]}>
+                            <View
+                              style={[
+                                styles.hudProgressFill,
+                                {
+                                  width: `${Math.max(5, 100 - proProgressPercent)}%`,
+                                  backgroundColor: isExpiringSoon ? '#EF4444' : '#F59E0B',
+                                },
+                              ]}
+                            />
+                          </View>
+                          <View style={styles.hudProgressLabels}>
+                            <Text style={[styles.hudProgressLabelText, isSmall && { fontSize: 9 }, { color: colors.textMuted }]}>
+                              {t('settings.cycle', 'Cycle')}: {proPlan === 'quarterly' ? t('pro.cycle_90', '90 Days') : t('pro.cycle_365', '365 Days')}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.hudProgressLabelText,
+                                isSmall && { fontSize: 9 },
+                                { color: isExpiringSoon ? '#EF4444' : '#F59E0B', fontWeight: '700' },
+                              ]}
+                            >
+                              {proDaysRemaining} {t('settings.days_remaining', 'days left')}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    )
+                  ) : hasReferralBonus ? (
+                    // Referral Bonus View
+                    <View>
+                      <View style={[styles.hudTopRow, isSmall && { flexDirection: 'column', alignItems: 'flex-start', gap: 6 }]}>
+                        <View style={styles.hudCountdownBox}>
+                          <Text style={[styles.hudSmallLabel, isSmall && { fontSize: 8 }, { color: colors.textSecondary }]}>
+                            {t('settings.referral_pass_remaining', 'REFERRAL PASS REMAINING')}
                           </Text>
-                          <Text style={[styles.hudSubtitle, { color: colors.textSecondary }]}>
-                            {t('pro.perpetual_desc', 'Never expires • All bathymetry, radar & offline charts guaranteed')}
+                          <View style={styles.hudDaysRow}>
+                            <Text style={[styles.hudBigNumber, isSmall && { fontSize: 20 }, { color: '#22C55E' }]}>
+                              {bonusProDaysRemaining}
+                            </Text>
+                            <Text style={[styles.hudBigUnit, isSmall && { fontSize: 10 }, { color: '#22C55E' }]}>
+                              {bonusProDaysRemaining === 1 ? t('settings.day_free', 'DAY FREE') : t('settings.days_free', 'DAYS FREE')}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={[styles.hudDateInfoBox, isSmall && { alignItems: 'flex-start' }]}>
+                          <View style={[styles.hudDatePill, isSmall && { paddingHorizontal: 6, paddingVertical: 3 }, { backgroundColor: isLight ? '#FFFFFF' : 'rgba(0, 0, 0, 0.25)', borderColor: isLight ? '#BBF7D0' : 'transparent', borderWidth: isLight ? 1 : 0 }]}>
+                            <Ionicons name="gift" size={isSmall ? 11 : 13} color="#22C55E" />
+                            <Text style={[styles.hudDateText, isSmall && { fontSize: 9.5 }, { color: colors.text }]}>
+                              {t('pro.valid_until', 'Valid Until:')} <Text style={{ fontWeight: '800' }}>{bonusProFormattedExpiry}</Text>
+                            </Text>
+                          </View>
+                          <Text style={[styles.hudSubInfo, isSmall && { fontSize: 9 }, { color: colors.textSecondary }]}>
+                            +{referralDaysEarned}d {t('settings.invite_crew', 'earned from crew invites')}
                           </Text>
                         </View>
                       </View>
                     </View>
                   ) : (
-                    // Annual or Quarterly Pro View
+                    // Free Trial or Expired View
                     <View>
-                      <View style={styles.hudTopRow}>
+                      <View style={[styles.hudTopRow, isSmall && { flexDirection: 'column', alignItems: 'flex-start', gap: 6 }]}>
                         <View style={styles.hudCountdownBox}>
-                          <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
-                            {t('pro.time_remaining', 'TIME REMAINING')}
+                          <Text style={[styles.hudSmallLabel, isSmall && { fontSize: 8 }, { color: colors.textSecondary }]}>
+                            {isTrialExpired ? t('settings.status_expired', 'TRIAL STATUS') : t('settings.free_evaluation', 'FREE EVALUATION PERIOD')}
                           </Text>
                           <View style={styles.hudDaysRow}>
                             <Text
                               style={[
                                 styles.hudBigNumber,
-                                { color: isExpiringSoon ? '#EF4444' : '#F59E0B' },
+                                isSmall && { fontSize: 20 },
+                                { color: isTrialExpired ? '#EF4444' : colors.accent },
                               ]}
                             >
-                              {proDaysRemaining}
+                              {isTrialExpired ? '0h' : `${trialHoursRemaining}h`}
                             </Text>
                             <Text
                               style={[
                                 styles.hudBigUnit,
-                                { color: isExpiringSoon ? '#EF4444' : '#F59E0B' },
+                                isSmall && { fontSize: 10 },
+                                { color: isTrialExpired ? '#EF4444' : colors.accent },
                               ]}
                             >
-                              {t('pro.days_left', 'DAYS LEFT')}
+                              {isTrialExpired ? t('settings.status_expired', 'EXPIRED') : `${t('pro.days_left', 'LEFT')} (${trialDaysRemaining}d)`}
                             </Text>
                           </View>
                         </View>
-
-                        <View style={styles.hudDateInfoBox}>
-                          <View style={[styles.hudDatePill, { backgroundColor: isLight ? '#FFFFFF' : 'rgba(0, 0, 0, 0.25)', borderColor: isLight ? '#E2E8F0' : 'transparent', borderWidth: isLight ? 1 : 0 }]}>
-                            <Ionicons name="calendar" size={13} color={isExpiringSoon ? '#EF4444' : '#F59E0B'} />
-                            <Text style={[styles.hudDateText, { color: colors.text }]}>
-                              {t('pro.valid_until', 'Expires:')} <Text style={{ fontWeight: '800' }}>{proFormattedExpiry}</Text>
+                        <View style={[styles.hudDateInfoBox, isSmall && { alignItems: 'flex-start' }]}>
+                          <View style={[styles.hudDatePill, isSmall && { paddingHorizontal: 6, paddingVertical: 3 }, { backgroundColor: isLight ? '#FFFFFF' : 'rgba(0, 0, 0, 0.25)', borderColor: isLight ? '#E2E8F0' : 'transparent', borderWidth: isLight ? 1 : 0 }]}>
+                            <Ionicons
+                              name={isTrialExpired ? 'alert-circle' : 'time'}
+                              size={isSmall ? 11 : 13}
+                              color={isTrialExpired ? '#EF4444' : colors.accent}
+                            />
+                            <Text style={[styles.hudDateText, isSmall && { fontSize: 9.5 }, { color: colors.text }]}>
+                              {isTrialExpired ? t('settings.trial_ended', 'Trial Ended') : `${t('settings.trial_ends', 'Trial Ends')}: ${trialFormattedExpiry}`}
+                            </Text>
+                          </View>
+                          <Text style={[styles.hudSubInfo, isSmall && { fontSize: 9 }, { color: colors.textSecondary }]}>
+                            {isTrialExpired
+                              ? t('settings.charts_locked', 'Offshore charts locked')
+                              : t('settings.upgrade_anytime', 'Upgrade anytime for permanent access')}
+                          </Text>
+                        </View>
+                      </View>
+                      {!isTrialExpired && (
+                        <View style={styles.hudProgressWrap}>
+                          <View style={[styles.hudProgressTrack, { backgroundColor: isLight ? '#E2E8F0' : 'rgba(255, 255, 255, 0.1)' }]}>
+                            <View
+                              style={[
+                                styles.hudProgressFill,
+                                {
+                                  width: `${Math.max(5, 100 - trialProgressPercent)}%`,
+                                  backgroundColor: colors.accent,
+                                },
+                              ]}
+                            />
+                          </View>
+                          <View style={styles.hudProgressLabels}>
+                            <Text style={[styles.hudProgressLabelText, isSmall && { fontSize: 9 }, { color: colors.textMuted }]}>
+                              72 Hours {t('settings.free_evaluation', 'Free Evaluation')}
+                            </Text>
+                            <Text style={[styles.hudProgressLabelText, isSmall && { fontSize: 9 }, { color: colors.accent, fontWeight: '700' }]}>
+                              {trialHoursRemaining} {t('weather.hours_left', 'hours left')}
                             </Text>
                           </View>
                         </View>
-                      </View>
+                      )}
+                    </View>
+                  )}
 
-                      {/* Visual Expiry Timeline Progress Bar */}
-                      <View style={styles.hudProgressWrap}>
-                        <View style={[styles.hudProgressTrack, { backgroundColor: isLight ? '#E2E8F0' : 'rgba(255, 255, 255, 0.1)' }]}>
-                          <View
-                            style={[
-                              styles.hudProgressFill,
-                              {
-                                width: `${Math.max(5, 100 - proProgressPercent)}%`,
-                                backgroundColor: isExpiringSoon ? '#EF4444' : '#F59E0B',
-                              },
-                            ]}
-                          />
-                        </View>
-                        <View style={styles.hudProgressLabels}>
-                          <Text style={[styles.hudProgressLabelText, { color: colors.textMuted }]}>
-                            {t('settings.cycle', 'Cycle')}: {proPlan === 'quarterly' ? t('pro.cycle_90', '90 Days') : t('pro.cycle_365', '365 Days')}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.hudProgressLabelText,
-                              { color: isExpiringSoon ? '#EF4444' : '#F59E0B', fontWeight: '700' },
-                            ]}
-                          >
-                            {proDaysRemaining} {t('settings.days_remaining', 'days remaining')} ({Math.max(1, 100 - proProgressPercent)}%)
-                          </Text>
-                        </View>
-                      </View>
+                  {/* License Certificate & Copy Bar */}
+                  <View style={[styles.hudCertRow, isSmall && { flexWrap: 'wrap', gap: 6, paddingTop: 6 }, { borderTopColor: isLight ? '#E2E8F0' : colors.divider }]}>
+                    <View style={[styles.hudCertLeft, isSmall && { flexShrink: 1, flexWrap: 'wrap', gap: 4 }]}>
+                      <MaterialCommunityIcons name="certificate" size={isSmall ? 13 : 14} color="#F59E0B" />
+                      <Text style={[styles.hudCertLabel, isSmall && { fontSize: 8 }, { color: isLight ? '#64748B' : colors.textMuted }]}>
+                        {t('settings.license_id', 'LICENSE ID:')}
+                      </Text>
+                      <Text style={[styles.hudCertValue, isSmall && { fontSize: 10 }, { color: colors.text }]}>
+                        {licenseCertificateId}
+                      </Text>
                     </View>
-                  )
-                ) : hasReferralBonus ? (
-                  // Referral Bonus View
-                  <View>
-                    <View style={styles.hudTopRow}>
-                      <View style={styles.hudCountdownBox}>
-                        <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
-                          {t('settings.referral_pass_remaining', 'REFERRAL PASS REMAINING')}
-                        </Text>
-                        <View style={styles.hudDaysRow}>
-                          <Text style={[styles.hudBigNumber, { color: '#22C55E' }]}>
-                            {bonusProDaysRemaining}
-                          </Text>
-                          <Text style={[styles.hudBigUnit, { color: '#22C55E' }]}>
-                            {bonusProDaysRemaining === 1 ? t('settings.day_free', 'DAY FREE') : t('settings.days_free', 'DAYS FREE')}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.hudDateInfoBox}>
-                        <View style={[styles.hudDatePill, { backgroundColor: isLight ? '#FFFFFF' : 'rgba(0, 0, 0, 0.25)', borderColor: isLight ? '#BBF7D0' : 'transparent', borderWidth: isLight ? 1 : 0 }]}>
-                          <Ionicons name="gift" size={13} color="#22C55E" />
-                          <Text style={[styles.hudDateText, { color: colors.text }]}>
-                            {t('pro.valid_until', 'Valid Until:')} <Text style={{ fontWeight: '800' }}>{bonusProFormattedExpiry}</Text>
-                          </Text>
-                        </View>
-                        <Text style={[styles.hudSubInfo, { color: colors.textSecondary }]}>
-                          +{referralDaysEarned}d {t('settings.invite_crew', 'earned from crew invites')}
-                        </Text>
-                      </View>
-                    </View>
+                    <Pressable style={[styles.hudCopyBtn, isSmall && { paddingHorizontal: 5, paddingVertical: 2 }]} onPress={handleCopyLicenseKey} hitSlop={8}>
+                      <Ionicons name="copy-outline" size={isSmall ? 11 : 12} color={colors.accent} />
+                      <Text style={[styles.hudCopyBtnText, isSmall && { fontSize: 8.5 }, { color: colors.accent }]}>COPY</Text>
+                    </Pressable>
                   </View>
-                ) : (
-                  // Free Trial or Expired View
-                  <View>
-                    <View style={styles.hudTopRow}>
-                      <View style={styles.hudCountdownBox}>
-                        <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
-                          {isTrialExpired ? t('settings.status_expired', 'TRIAL STATUS') : t('settings.free_evaluation', 'FREE EVALUATION PERIOD')}
-                        </Text>
-                        <View style={styles.hudDaysRow}>
-                          <Text
-                            style={[
-                              styles.hudBigNumber,
-                              { color: isTrialExpired ? '#EF4444' : colors.accent },
-                            ]}
-                          >
-                            {isTrialExpired ? '0h' : `${trialHoursRemaining}h`}
-                          </Text>
-                          <Text
-                            style={[
-                              styles.hudBigUnit,
-                              { color: isTrialExpired ? '#EF4444' : colors.accent },
-                            ]}
-                          >
-                            {isTrialExpired ? t('settings.status_expired', 'EXPIRED') : `${t('pro.days_left', 'LEFT')} (${trialDaysRemaining}d)`}
-                          </Text>
-                        </View>
-                      </View>
-                      <View style={styles.hudDateInfoBox}>
-                        <View style={[styles.hudDatePill, { backgroundColor: isLight ? '#FFFFFF' : 'rgba(0, 0, 0, 0.25)', borderColor: isLight ? '#E2E8F0' : 'transparent', borderWidth: isLight ? 1 : 0 }]}>
-                          <Ionicons
-                            name={isTrialExpired ? 'alert-circle' : 'time'}
-                            size={13}
-                            color={isTrialExpired ? '#EF4444' : colors.accent}
-                          />
-                          <Text style={[styles.hudDateText, { color: colors.text }]}>
-                            {isTrialExpired ? t('settings.trial_ended', 'Trial Ended') : `${t('settings.trial_ends', 'Trial Ends')}: ${trialFormattedExpiry}`}
-                          </Text>
-                        </View>
-                        <Text style={[styles.hudSubInfo, { color: colors.textSecondary }]}>
-                          {isTrialExpired
-                            ? t('settings.charts_locked', 'Offshore charts locked')
-                            : t('settings.upgrade_anytime', 'Upgrade anytime for permanent access')}
-                        </Text>
-                      </View>
+                </View>
+
+                {/* ⚠️ Expiring Soon Urgent Alert Bar */}
+                {isExpiringSoon && (
+                  <View style={[styles.expiringSoonAlertBox, isSmall && { padding: 8, gap: 8 }]}>
+                    <Ionicons name="warning" size={isSmall ? 16 : 18} color="#EF4444" />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.expiringSoonAlertTitle, isSmall && { fontSize: 10 }]}>
+                        {t('settings.status_expiring_soon', 'LICENSE EXPIRING SOON')} ({proDaysRemaining} {t('pro.days_left', 'Days Left')})
+                      </Text>
+                      <Text style={[styles.expiringSoonAlertDesc, isSmall && { fontSize: 9.5, lineHeight: 13 }]}>
+                        Your vessel license will expire on {proFormattedExpiry}. Renew now to avoid offshore chart blackout & radar shutdown.
+                      </Text>
                     </View>
-                    {!isTrialExpired && (
-                      <View style={styles.hudProgressWrap}>
-                        <View style={[styles.hudProgressTrack, { backgroundColor: isLight ? '#E2E8F0' : 'rgba(255, 255, 255, 0.1)' }]}>
-                          <View
-                            style={[
-                              styles.hudProgressFill,
-                              {
-                                width: `${Math.max(5, 100 - trialProgressPercent)}%`,
-                                backgroundColor: colors.accent,
-                              },
-                            ]}
-                          />
-                        </View>
-                        <View style={styles.hudProgressLabels}>
-                          <Text style={[styles.hudProgressLabelText, { color: colors.textMuted }]}>
-                            72 Hours {t('settings.free_evaluation', 'Free Evaluation')}
-                          </Text>
-                          <Text style={[styles.hudProgressLabelText, { color: colors.accent, fontWeight: '700' }]}>
-                            {trialHoursRemaining} {t('weather.hours_left', 'hours left')}
-                          </Text>
-                        </View>
-                      </View>
-                    )}
                   </View>
                 )}
 
-                {/* License Certificate & Copy Bar */}
-                <View style={[styles.hudCertRow, { borderTopColor: isLight ? '#E2E8F0' : colors.divider }]}>
-                  <View style={styles.hudCertLeft}>
-                    <MaterialCommunityIcons name="certificate" size={14} color="#F59E0B" />
-                    <Text style={[styles.hudCertLabel, { color: isLight ? '#64748B' : colors.textMuted }]}>
-                      {t('settings.license_id', 'LICENSE ID:')}
-                    </Text>
-                    <Text style={[styles.hudCertValue, { color: colors.text }]}>
-                      {licenseCertificateId}
-                    </Text>
+                {/* Unlocked Capabilities Grid (4 Pills) */}
+                <View style={[styles.unlockedGrid, isSmall && { gap: 6 }]}>
+                  <View style={[styles.unlockedItem, isSmall && { paddingHorizontal: 7, paddingVertical: 4, gap: 4, borderRadius: 7 }, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#E2E8F0' : colors.chipBorder }]}>
+                    <Ionicons name="cloud-offline" size={isSmall ? 12 : 13} color={isLight ? '#16A34A' : '#10B981'} />
+                    <Text style={[styles.unlockedText, isSmall && { fontSize: 9.5 }, { color: colors.text }]}>{t('hub.offline', 'Offline Charts')}</Text>
                   </View>
-                  <Pressable style={styles.hudCopyBtn} onPress={handleCopyLicenseKey} hitSlop={8}>
-                    <Ionicons name="copy-outline" size={12} color={colors.accent} />
-                    <Text style={[styles.hudCopyBtnText, { color: colors.accent }]}>COPY</Text>
-                  </Pressable>
-                </View>
-              </View>
-
-              {/* ⚠️ Expiring Soon Urgent Alert Bar */}
-              {isExpiringSoon && (
-                <View style={styles.expiringSoonAlertBox}>
-                  <Ionicons name="warning" size={18} color="#EF4444" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.expiringSoonAlertTitle}>
-                      {t('settings.status_expiring_soon', 'LICENSE EXPIRING SOON')} ({proDaysRemaining} {t('pro.days_left', 'Days Left')})
-                    </Text>
-                    <Text style={styles.expiringSoonAlertDesc}>
-                      Your vessel license will expire on {proFormattedExpiry}. Renew now to avoid offshore chart blackout & radar shutdown.
-                    </Text>
+                  <View style={[styles.unlockedItem, isSmall && { paddingHorizontal: 7, paddingVertical: 4, gap: 4, borderRadius: 7 }, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#E2E8F0' : colors.chipBorder }]}>
+                    <Ionicons name="fish" size={isSmall ? 12 : 13} color={isLight ? colors.accent : '#00F0FF'} />
+                    <Text style={[styles.unlockedText, isSmall && { fontSize: 9.5 }, { color: colors.text }]}>{t('hub.spots', 'AI Hotspots')}</Text>
+                  </View>
+                  <View style={[styles.unlockedItem, isSmall && { paddingHorizontal: 7, paddingVertical: 4, gap: 4, borderRadius: 7 }, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#E2E8F0' : colors.chipBorder }]}>
+                    <Ionicons name="radio" size={isSmall ? 12 : 13} color={isLight ? '#D97706' : '#F59E0B'} />
+                    <Text style={[styles.unlockedText, isSmall && { fontSize: 9.5 }, { color: colors.text }]}>{t('pro.feat_ais_title', 'AIS Radar')}</Text>
+                  </View>
+                  <View style={[styles.unlockedItem, isSmall && { paddingHorizontal: 7, paddingVertical: 4, gap: 4, borderRadius: 7 }, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#E2E8F0' : colors.chipBorder }]}>
+                    <Ionicons name="location" size={isSmall ? 12 : 13} color={isLight ? '#9333EA' : '#A855F7'} />
+                    <Text style={[styles.unlockedText, isSmall && { fontSize: 9.5 }, { color: colors.text }]}>{t('hub.waypoints', 'Waypoints Sync')}</Text>
                   </View>
                 </View>
-              )}
 
-              {/* Unlocked Capabilities Grid (4 Pills) */}
-              <View style={styles.unlockedGrid}>
-                <View style={[styles.unlockedItem, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#E2E8F0' : colors.chipBorder }]}>
-                  <Ionicons name="cloud-offline" size={13} color={isLight ? '#16A34A' : '#10B981'} />
-                  <Text style={[styles.unlockedText, { color: colors.text }]}>{t('hub.offline', 'Offline Charts')}</Text>
-                </View>
-                <View style={[styles.unlockedItem, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#E2E8F0' : colors.chipBorder }]}>
-                  <Ionicons name="fish" size={13} color={isLight ? colors.accent : '#00F0FF'} />
-                  <Text style={[styles.unlockedText, { color: colors.text }]}>{t('hub.spots', 'AI Hotspots')}</Text>
-                </View>
-                <View style={[styles.unlockedItem, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#E2E8F0' : colors.chipBorder }]}>
-                  <Ionicons name="radio" size={13} color={isLight ? '#D97706' : '#F59E0B'} />
-                  <Text style={[styles.unlockedText, { color: colors.text }]}>{t('pro.feat_ais_title', 'AIS Radar')}</Text>
-                </View>
-                <View style={[styles.unlockedItem, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#E2E8F0' : colors.chipBorder }]}>
-                  <Ionicons name="location" size={13} color={isLight ? '#9333EA' : '#A855F7'} />
-                  <Text style={[styles.unlockedText, { color: colors.text }]}>{t('hub.waypoints', 'Waypoints Sync')}</Text>
-                </View>
-              </View>
-
-              {/* Quick Action Buttons for Subscription Management */}
-              {isPro ? (
-                <View style={styles.proActionBtnGrid}>
-                  <Pressable
-                    style={[styles.proManageBtn, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#CBD5E1' : colors.chipBorder }]}
-                    onPress={() => setShowReceiptModal(true)}
-                  >
-                    <Ionicons name="receipt-outline" size={14} color={isLight ? colors.accent : colors.textSecondary} />
-                    <Text style={[styles.proManageBtnText, { color: colors.text }]}>{t('profile.tax_invoice', 'Tax Invoice')}</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <View style={styles.trialActionRow}>
-                  <Pressable
-                    style={styles.upgradeCtaBtn}
-                    onPress={() => {
-                      onClose();
-                      openProModal('profile_card');
-                    }}
-                  >
-                    <LinearGradient
-                      colors={isLight ? ['#0284C7', '#0369A1'] : ['#00F0FF', '#0284C7']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.upgradeCtaGrad}
+                {/* Quick Action Buttons for Subscription Management */}
+                {isPro ? (
+                  <View style={styles.proActionBtnGrid}>
+                    <Pressable
+                      style={[styles.proManageBtn, isSmall && { paddingHorizontal: 9, paddingVertical: 7 }, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg, borderColor: isLight ? '#CBD5E1' : colors.chipBorder }]}
+                      onPress={() => setShowReceiptModal(true)}
                     >
-                      <MaterialCommunityIcons name="crown" size={17} color="#FFFFFF" />
-                      <Text style={[styles.upgradeCtaText, { color: '#FFFFFF' }]}>{t('pro.upgrade_btn', 'UPGRADE TO FISHNAV PRO')}</Text>
-                    </LinearGradient>
-                  </Pressable>
+                      <Ionicons name="receipt-outline" size={14} color={isLight ? colors.accent : colors.textSecondary} />
+                      <Text style={[styles.proManageBtnText, isSmall && { fontSize: 10.5 }, { color: colors.text }]}>{t('profile.tax_invoice', 'Tax Invoice')}</Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <View style={[styles.trialActionRow, isSmall && { flexDirection: 'column', gap: 8 }]}>
+                    <Pressable
+                      style={[styles.upgradeCtaBtn, isSmall && { width: '100%' }]}
+                      onPress={() => {
+                        onClose();
+                        openProModal('profile_card');
+                      }}
+                    >
+                      <LinearGradient
+                        colors={isLight ? ['#0284C7', '#0369A1'] : ['#00F0FF', '#0284C7']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={[styles.upgradeCtaGrad, isSmall && { paddingVertical: 8 }]}
+                      >
+                        <MaterialCommunityIcons name="crown" size={isSmall ? 15 : 17} color="#FFFFFF" />
+                        <Text style={[styles.upgradeCtaText, isSmall && { fontSize: 11 }, { color: '#FFFFFF' }]}>{t('pro.upgrade_btn', 'UPGRADE TO FISHNAV PRO')}</Text>
+                      </LinearGradient>
+                    </Pressable>
 
-                  <Pressable
-                    style={[styles.referralCtaBtn, { borderColor: isLight ? '#16A34A' : '#22C55E', backgroundColor: isLight ? '#DCFCE7' : 'rgba(34, 197, 94, 0.1)' }]}
-                    onPress={() => {
-                      onClose();
-                      openReferralModal();
-                    }}
-                  >
-                    <Ionicons name="people" size={14} color={isLight ? '#16A34A' : '#22C55E'} />
-                    <Text style={[styles.referralCtaText, { color: isLight ? '#16A34A' : '#22C55E' }]}>{t('referral.share_btn', 'Invite')} (+10d)</Text>
-                  </Pressable>
+                    <Pressable
+                      style={[
+                        styles.referralCtaBtn,
+                        isSmall && { width: '100%', justifyContent: 'center', paddingVertical: 8 },
+                        { borderColor: isLight ? '#16A34A' : '#22C55E', backgroundColor: isLight ? '#DCFCE7' : 'rgba(34, 197, 94, 0.1)' },
+                      ]}
+                      onPress={() => {
+                        onClose();
+                        openReferralModal();
+                      }}
+                    >
+                      <Ionicons name="people" size={isSmall ? 13 : 14} color={isLight ? '#16A34A' : '#22C55E'} />
+                      <Text style={[styles.referralCtaText, isSmall && { fontSize: 11 }, { color: isLight ? '#16A34A' : '#22C55E' }]}>{t('referral.share_btn', 'Invite')} (+10d)</Text>
+                    </Pressable>
+                  </View>
+                )}
+
+                {/* Referral Bonus Bar if active */}
+                {referralDaysEarned > 0 && (
+                  <View style={[styles.refBonusRow, isSmall && { paddingHorizontal: 8, paddingVertical: 4 }, isLight && { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
+                    <Ionicons name="gift" size={13} color={isLight ? '#16A34A' : '#22C55E'} />
+                    <Text style={[styles.refBonusText, isSmall && { fontSize: 10 }, isLight && { color: '#166534' }]}>
+                      +{referralDaysEarned} Days Free added from Captain Invites
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* 🚀 TRIPS & ROUTES LOGBOOK SHORTCUT */}
+              <Pressable
+                style={[
+                  styles.tripsShortcutCard,
+                  isSmall && { padding: 9, gap: 8, borderRadius: 13 },
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
+                    borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
+                    shadowColor: isLight ? '#64748B' : '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isLight ? 0.06 : 0.2,
+                    shadowRadius: 8,
+                    elevation: isLight ? 2 : 0,
+                  },
+                ]}
+                onPress={handleOpenTrips}
+              >
+                <View
+                  style={[
+                    styles.tripsIconWrap,
+                    isSmall && { width: 36, height: 36, borderRadius: 18 },
+                    {
+                      backgroundColor: isLight ? '#E0F2FE' : 'rgba(0, 240, 255, 0.12)',
+                      borderColor: isLight ? '#BAE6FD' : 'rgba(0, 240, 255, 0.25)',
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons name="map-marker-path" size={isSmall ? 19 : 22} color={colors.accent} />
                 </View>
-              )}
-
-              {/* Referral Bonus Bar if active */}
-              {referralDaysEarned > 0 && (
-                <View style={[styles.refBonusRow, isLight && { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
-                  <Ionicons name="gift" size={13} color={isLight ? '#16A34A' : '#22C55E'} />
-                  <Text style={[styles.refBonusText, isLight && { color: '#166534' }]}>
-                    +{referralDaysEarned} Days Free added from Captain Invites
+                <View style={styles.tripsTextWrap}>
+                  <View style={[styles.tripsTitleRow, isSmall && { gap: 4, flexWrap: 'wrap' }]}>
+                    <Text style={[styles.tripsTitle, isSmall && { fontSize: 12.5 }, { color: colors.text }]}>{t('trips.title', 'Trips & Routes Logbook')}</Text>
+                    <View
+                      style={[
+                        styles.tripsBadge,
+                        isSmall && { paddingHorizontal: 5, paddingVertical: 1.5 },
+                        {
+                          backgroundColor: isLight ? '#E0F2FE' : colors.chipBg,
+                          borderColor: isLight ? '#BAE6FD' : colors.chipBorder,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.tripsBadgeText, isSmall && { fontSize: 8 }, { color: colors.accent }]}>
+                        {savedTrips.length} {t('tab.trips', 'VOYAGES').toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.tripsSubtitle, isSmall && { fontSize: 10, lineHeight: 13 }, { color: colors.textSecondary }]}>
+                    {t('trips.subtitle', 'View GPS voyage tracks, distance & backtrack routes')}
                   </Text>
                 </View>
-              )}
-            </View>
+                <Ionicons name="chevron-forward" size={isSmall ? 16 : 18} color={colors.textSecondary} />
+              </Pressable>
 
-            {/* 🚀 TRIPS & ROUTES LOGBOOK SHORTCUT */}
-            <Pressable
-              style={[
-                styles.tripsShortcutCard,
-                {
-                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
-                  borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
-                  shadowColor: isLight ? '#64748B' : '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: isLight ? 0.06 : 0.2,
-                  shadowRadius: 8,
-                  elevation: isLight ? 2 : 0,
-                },
-              ]}
-              onPress={handleOpenTrips}
-            >
+              {/* 2. REGISTERED BOAT & VESSEL TELEMETRY */}
+              <View style={styles.sectionHeaderBetween}>
+                <View style={styles.sectionHeaderLeft}>
+                  <MaterialCommunityIcons name="sail-boat" size={isSmall ? 14 : 16} color={colors.accent} />
+                  <Text style={[styles.sectionTitle, isSmall && { fontSize: 10, letterSpacing: 0.5 }, { color: colors.textSecondary }]}>{t('profile.vessel_specs', 'VESSEL & BOAT SPECIFICATIONS')}</Text>
+                </View>
+
+                <Pressable
+                  style={[styles.editSpecsBtn, isSmall && { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 }, { backgroundColor: isLight ? '#E0F2FE' : colors.chipBg, borderColor: isLight ? '#BAE6FD' : colors.chipBorder }]}
+                  onPress={() => setShowVesselEditor(true)}
+                >
+                  <Ionicons name="create-outline" size={isSmall ? 12 : 14} color={colors.accent} />
+                  <Text style={[styles.editSpecsText, isSmall && { fontSize: 10 }, { color: colors.accent }]}>{t('btn.edit', 'Update')}</Text>
+                </Pressable>
+              </View>
+
               <View
                 style={[
-                  styles.tripsIconWrap,
+                  styles.infoCard,
+                  isSmall && { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14 },
                   {
-                    backgroundColor: isLight ? '#E0F2FE' : 'rgba(0, 240, 255, 0.12)',
-                    borderColor: isLight ? '#BAE6FD' : 'rgba(0, 240, 255, 0.25)',
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
+                    borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
+                    shadowColor: isLight ? '#64748B' : '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isLight ? 0.06 : 0.2,
+                    shadowRadius: 8,
+                    elevation: isLight ? 2 : 0,
                   },
                 ]}
               >
-                <MaterialCommunityIcons name="map-marker-path" size={22} color={colors.accent} />
-              </View>
-              <View style={styles.tripsTextWrap}>
-                <View style={styles.tripsTitleRow}>
-                  <Text style={[styles.tripsTitle, { color: colors.text }]}>{t('trips.title', 'Trips & Routes Logbook')}</Text>
-                  <View
-                    style={[
-                      styles.tripsBadge,
-                      {
-                        backgroundColor: isLight ? '#E0F2FE' : colors.chipBg,
-                        borderColor: isLight ? '#BAE6FD' : colors.chipBorder,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.tripsBadgeText, { color: colors.accent }]}>
-                      {savedTrips.length} {t('tab.trips', 'VOYAGES').toUpperCase()}
-                    </Text>
-                  </View>
+                <View style={[styles.infoRow, isSmall && { paddingVertical: 7, gap: 6 }]}>
+                  <Text style={[styles.infoLabel, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>{t('profile.boat_name', 'Vessel Name')}</Text>
+                  <Text style={[styles.infoValue, isSmall && { fontSize: 12, maxWidth: '60%', textAlign: 'right' }, { color: colors.accent, fontWeight: '800' }]}>
+                    {captain?.vesselName || 'Sea Hunter II'}
+                  </Text>
                 </View>
-                <Text style={[styles.tripsSubtitle, { color: colors.textSecondary }]}>
-                  {t('trips.subtitle', 'View GPS voyage tracks, distance & backtrack routes')}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-            </Pressable>
+                <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
+                <View style={[styles.infoRow, isSmall && { paddingVertical: 7, gap: 6 }]}>
+                  <Text style={[styles.infoLabel, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>{t('profile.registration', 'Call Sign / Reg No')}</Text>
+                  <Text style={[styles.infoValue, isSmall && { fontSize: 12, maxWidth: '60%', textAlign: 'right' }, { color: colors.accent, fontWeight: '800' }]}>
+                    {captain?.callSign || 'IND-GJ-8821'}
+                  </Text>
+                </View>
+                <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
+                <View style={[styles.infoRow, isSmall && { paddingVertical: 7, gap: 6 }]}>
+                  <Text style={[styles.infoLabel, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>{t('profile.vessel_type', 'Vessel Class')}</Text>
+                  <Text style={[styles.infoValue, isSmall && { fontSize: 11.5, maxWidth: '60%', textAlign: 'right' }, { color: colors.text }]}>{captain?.vesselType || 'Deep Sea Trawler (42ft)'}</Text>
+                </View>
+                <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
+                <View style={[styles.infoRow, isSmall && { paddingVertical: 7, gap: 6 }]}>
+                  <Text style={[styles.infoLabel, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>{t('profile.home_port', 'Home Harbor')}</Text>
+                  <Text style={[styles.infoValue, isSmall && { fontSize: 11.5, maxWidth: '60%', textAlign: 'right' }, { color: colors.text }]}>{captain?.homeHarbor || 'Veraval Fishing Port'}</Text>
+                </View>
 
-            {/* 2. REGISTERED BOAT & VESSEL TELEMETRY */}
-            <View style={styles.sectionHeaderBetween}>
-              <View style={styles.sectionHeaderLeft}>
-                <MaterialCommunityIcons name="sail-boat" size={16} color={colors.accent} />
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('profile.vessel_specs', 'VESSEL & BOAT SPECIFICATIONS')}</Text>
+                <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
+                <View style={[styles.infoRow, isSmall && { paddingVertical: 7, gap: 6 }]}>
+                  <Text style={[styles.infoLabel, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>{t('profile.cruise_speed', 'Cruising Speed')}</Text>
+                  <Text style={[styles.infoValue, isSmall && { fontSize: 12 }, { color: colors.text }]}>{captain?.cruiseSpeedKnots || '12'} knots</Text>
+                </View>
+                <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
+                <View style={[styles.infoRow, isSmall && { paddingVertical: 7, gap: 6 }]}>
+                  <Text style={[styles.infoLabel, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>{t('pro.master_license', 'Maritime License')}</Text>
+                  <Text style={[styles.infoValue, isSmall && { fontSize: 11.5, maxWidth: '60%', textAlign: 'right' }, { color: colors.text }]}>{captain?.licenseNumber || 'IND-MF-2026-991'}</Text>
+                </View>
               </View>
 
-              <Pressable
-                style={[styles.editSpecsBtn, { backgroundColor: isLight ? '#E0F2FE' : colors.chipBg, borderColor: isLight ? '#BAE6FD' : colors.chipBorder }]}
-                onPress={() => setShowVesselEditor(true)}
+              {/* 3. LOGIN & SECURITY CREDENTIALS SECTION */}
+              <View style={styles.sectionHeaderRow}>
+                <Ionicons name="key-outline" size={isSmall ? 13 : 15} color={colors.accent} />
+                <Text style={[styles.sectionTitle, isSmall && { fontSize: 10, letterSpacing: 0.5 }, { color: colors.textSecondary }]}>{t('profile.auth_details', 'LOGIN & AUTHENTICATION DETAILS')}</Text>
+              </View>
+
+              <View
+                style={[
+                  styles.infoCard,
+                  isSmall && { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 14 },
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
+                    borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
+                    shadowColor: isLight ? '#64748B' : '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isLight ? 0.06 : 0.2,
+                    shadowRadius: 8,
+                    elevation: isLight ? 2 : 0,
+                  },
+                ]}
               >
-                <Ionicons name="create-outline" size={14} color={colors.accent} />
-                <Text style={[styles.editSpecsText, { color: colors.accent }]}>{t('btn.edit', 'Update')}</Text>
-              </Pressable>
-            </View>
-
-            <View
-              style={[
-                styles.infoCard,
-                {
-                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
-                  borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
-                  shadowColor: isLight ? '#64748B' : '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: isLight ? 0.06 : 0.2,
-                  shadowRadius: 8,
-                  elevation: isLight ? 2 : 0,
-                },
-              ]}
-            >
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('profile.boat_name', 'Vessel Name')}</Text>
-                <Text style={[styles.infoValue, { color: colors.accent, fontWeight: '800' }]}>
-                  {captain?.vesselName || 'Sea Hunter II'}
-                </Text>
-              </View>
-              <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('profile.registration', 'Call Sign / Reg No')}</Text>
-                <Text style={[styles.infoValue, { color: colors.accent, fontWeight: '800' }]}>
-                  {captain?.callSign || 'IND-GJ-8821'}
-                </Text>
-              </View>
-              <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('profile.vessel_type', 'Vessel Class')}</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>{captain?.vesselType || 'Deep Sea Trawler (42ft)'}</Text>
-              </View>
-              <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('profile.home_port', 'Home Harbor')}</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>{captain?.homeHarbor || 'Veraval Fishing Port'}</Text>
-              </View>
-
-              <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('profile.cruise_speed', 'Cruising Speed')}</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>{captain?.cruiseSpeedKnots || '12'} knots</Text>
-              </View>
-              <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('pro.master_license', 'Maritime License')}</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>{captain?.licenseNumber || 'IND-MF-2026-991'}</Text>
-              </View>
-            </View>
-
-            {/* 3. LOGIN & SECURITY CREDENTIALS SECTION */}
-            <View style={styles.sectionHeaderRow}>
-              <Ionicons name="key-outline" size={15} color={colors.accent} />
-              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('profile.auth_details', 'LOGIN & AUTHENTICATION DETAILS')}</Text>
-            </View>
-
-            <View
-              style={[
-                styles.infoCard,
-                {
-                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
-                  borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
-                  shadowColor: isLight ? '#64748B' : '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: isLight ? 0.06 : 0.2,
-                  shadowRadius: 8,
-                  elevation: isLight ? 2 : 0,
-                },
-              ]}
-            >
-              {/* Auth Provider Banner */}
-              <View style={styles.authProviderRow}>
-                <View style={styles.authBadgeLeft}>
-                  {isGoogle ? (
-                    <View style={styles.providerGoogleBox}>
-                      <GoogleLogoSvg size={18} />
+                {/* Auth Provider Banner */}
+                <View style={[styles.authProviderRow, isSmall && { paddingVertical: 8, gap: 6 }]}>
+                  <View style={[styles.authBadgeLeft, isSmall && { gap: 8 }]}>
+                    {isGoogle ? (
+                      <View style={[styles.providerGoogleBox, isSmall && { width: 28, height: 28, borderRadius: 14 }]}>
+                        <GoogleLogoSvg size={isSmall ? 15 : 18} />
+                      </View>
+                    ) : isPhone ? (
+                      <View style={[styles.providerIconBox, isSmall && { width: 28, height: 28, borderRadius: 14 }, { backgroundColor: isLight ? '#E0F2FE' : colors.chipBg }]}>
+                        <Ionicons name="call" size={isSmall ? 14 : 16} color={colors.accent} />
+                      </View>
+                    ) : (
+                      <View style={[styles.providerIconBox, isSmall && { width: 28, height: 28, borderRadius: 14 }, { backgroundColor: isLight ? '#FEF3C7' : 'rgba(251, 191, 36, 0.2)' }]}>
+                        <Ionicons name="flash" size={isSmall ? 14 : 16} color={isLight ? '#D97706' : '#FBBF24'} />
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.authProviderName, isSmall && { fontSize: 12 }, { color: colors.text }]} numberOfLines={1}>
+                        {isGoogle
+                          ? 'Google Sign-In'
+                          : isPhone
+                            ? 'Mobile Number OTP'
+                            : 'Fleet Master Demo Access'}
+                      </Text>
+                      <Text style={[styles.authProviderSub, isSmall && { fontSize: 9 }, { color: colors.textMuted }]} numberOfLines={1}>
+                        {captain?.authMethodLabel || 'Authenticated Session'}
+                      </Text>
                     </View>
-                  ) : isPhone ? (
-                    <View style={[styles.providerIconBox, { backgroundColor: isLight ? '#E0F2FE' : colors.chipBg }]}>
-                      <Ionicons name="call" size={16} color={colors.accent} />
-                    </View>
-                  ) : (
-                    <View style={[styles.providerIconBox, { backgroundColor: isLight ? '#FEF3C7' : 'rgba(251, 191, 36, 0.2)' }]}>
-                      <Ionicons name="flash" size={16} color={isLight ? '#D97706' : '#FBBF24'} />
-                    </View>
-                  )}
-                  <View>
-                    <Text style={[styles.authProviderName, { color: colors.text }]}>
-                      {isGoogle
-                        ? 'Google Sign-In'
-                        : isPhone
-                          ? 'Mobile Number OTP'
-                          : 'Fleet Master Demo Access'}
-                    </Text>
-                    <Text style={[styles.authProviderSub, { color: colors.textMuted }]}>
-                      {captain?.authMethodLabel || 'Authenticated Session'}
-                    </Text>
+                  </View>
+
+                  <View style={[styles.activePill, isSmall && { paddingHorizontal: 6, paddingVertical: 2.5 }, isLight && { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]}>
+                    <View style={styles.greenPulse} />
+                    <Text style={[styles.activeText, isSmall && { fontSize: 8 }, isLight && { color: '#16A34A' }]}>{t('profile.verified', 'VERIFIED')}</Text>
                   </View>
                 </View>
 
-                <View style={[styles.activePill, isLight && { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]}>
-                  <View style={styles.greenPulse} />
-                  <Text style={[styles.activeText, isLight && { color: '#16A34A' }]}>{t('profile.verified', 'VERIFIED')}</Text>
+                <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
+
+                <View style={[styles.infoRow, isSmall && { paddingVertical: 7, gap: 6 }]}>
+                  <Text style={[styles.infoLabel, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>{t('profile.account_id', 'Account Identifier')}</Text>
+                  <Text style={[styles.infoValue, isSmall && { fontSize: 11.5, maxWidth: '60%', textAlign: 'right' }, { color: colors.accent, fontWeight: '700' }]}>
+                    {captain?.emailOrPhone || '+91 98765 43210'}
+                  </Text>
+                </View>
+
+                <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
+
+                <View style={[styles.infoRow, isSmall && { paddingVertical: 7, gap: 6 }]}>
+                  <Text style={[styles.infoLabel, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>{t('profile.session_started', 'Session Started')}</Text>
+                  <Text style={[styles.infoValue, isSmall && { fontSize: 11.5, maxWidth: '60%', textAlign: 'right' }, { color: colors.text }]}>
+                    {captain?.loginAt || 'Today, Active'}
+                  </Text>
+                </View>
+
+                <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
+
+                <View style={[styles.infoRow, isSmall && { paddingVertical: 7, gap: 6 }]}>
+                  <Text style={[styles.infoLabel, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>{t('profile.account_security', 'Account Security')}</Text>
+                  <View style={[styles.securityBadge, isSmall && { gap: 3 }]}>
+                    <Ionicons name="shield-checkmark-outline" size={isSmall ? 11 : 13} color="#10B981" />
+                    <Text style={[styles.securityText, isSmall && { fontSize: 10.5 }, { color: isLight ? '#16A34A' : '#10B981' }]}>{t('profile.security_key', '256-Bit Marine Key')}</Text>
+                  </View>
                 </View>
               </View>
 
-              <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
-
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('profile.account_id', 'Account Identifier')}</Text>
-                <Text style={[styles.infoValue, { color: colors.accent, fontWeight: '700' }]}>
-                  {captain?.emailOrPhone || '+91 98765 43210'}
-                </Text>
-              </View>
-
-              <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
-
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('profile.session_started', 'Session Started')}</Text>
-                <Text style={[styles.infoValue, { color: colors.text }]}>
-                  {captain?.loginAt || 'Today, Active'}
-                </Text>
-              </View>
-
-              <View style={[styles.divider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
-
-              <View style={styles.infoRow}>
-                <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('profile.account_security', 'Account Security')}</Text>
-                <View style={styles.securityBadge}>
-                  <Ionicons name="shield-checkmark-outline" size={13} color="#10B981" />
-                  <Text style={[styles.securityText, { color: isLight ? '#16A34A' : '#10B981' }]}>{t('profile.security_key', '256-Bit Marine Key')}</Text>
+              {/* Offline Data Status */}
+              <View
+                style={[
+                  styles.offlineBox,
+                  isSmall && { padding: 9, gap: 8, borderRadius: 12 },
+                  {
+                    backgroundColor: isLight ? '#F0FDF4' : 'rgba(16, 185, 129, 0.08)',
+                    borderColor: isLight ? '#BBF7D0' : 'rgba(16, 185, 129, 0.25)',
+                  },
+                ]}
+              >
+                <Ionicons name="cloud-offline" size={isSmall ? 16 : 18} color="#10B981" />
+                <View style={styles.offlineTextWrap}>
+                  <Text style={[styles.offlineTitle, isSmall && { fontSize: 11 }, { color: isLight ? '#166534' : '#10B981' }]}>
+                    Offline Mode Active
+                  </Text>
+                  <Text style={[styles.offlineSub, isSmall && { fontSize: 9.5, lineHeight: 13 }, { color: isLight ? '#15803D' : '#6EE7B7' }]}>
+                    All waypoints, routes and bathymetric layers are cached locally on this device.
+                  </Text>
                 </View>
               </View>
-            </View>
 
-            {/* Offline Data Status */}
-            <View
-              style={[
-                styles.offlineBox,
-                {
-                  backgroundColor: isLight ? '#F0FDF4' : 'rgba(16, 185, 129, 0.08)',
-                  borderColor: isLight ? '#BBF7D0' : 'rgba(16, 185, 129, 0.25)',
-                },
-              ]}
-            >
-              <Ionicons name="cloud-offline" size={18} color="#10B981" />
-              <View style={styles.offlineTextWrap}>
-                <Text style={[styles.offlineTitle, { color: isLight ? '#166534' : '#10B981' }]}>
-                  Offline Mode Active
-                </Text>
-                <Text style={[styles.offlineSub, { color: isLight ? '#15803D' : '#6EE7B7' }]}>
-                  All waypoints, routes and bathymetric layers are cached locally on this device.
-                </Text>
-              </View>
-            </View>
-
-            {/* Sign Out Button */}
-            <Pressable
-              style={[
-                styles.logoutBtn,
-                {
-                  backgroundColor: isLight ? '#FEE2E2' : 'rgba(239, 68, 68, 0.12)',
-                  borderColor: isLight ? '#FCA5A5' : 'rgba(239, 68, 68, 0.35)',
-                },
-              ]}
-              onPress={handleLogout}
-            >
-              <Ionicons name="log-out-outline" size={18} color="#EF4444" />
-              <Text style={[styles.logoutText, isLight && { color: '#DC2626' }]}>{t('profile.sign_out', 'SIGN OUT').toUpperCase()}</Text>
-            </Pressable>
-          </ScrollView>
+              {/* Sign Out Button */}
+              <Pressable
+                style={[
+                  styles.logoutBtn,
+                  isSmall && { paddingVertical: 10, borderRadius: 12 },
+                  {
+                    backgroundColor: isLight ? '#FEE2E2' : 'rgba(239, 68, 68, 0.12)',
+                    borderColor: isLight ? '#FCA5A5' : 'rgba(239, 68, 68, 0.35)',
+                  },
+                ]}
+                onPress={handleLogout}
+              >
+                <Ionicons name="log-out-outline" size={isSmall ? 16 : 18} color="#EF4444" />
+                <Text style={[styles.logoutText, isSmall && { fontSize: 11.5 }, isLight && { color: '#DC2626' }]}>{t('profile.sign_out', 'SIGN OUT').toUpperCase()}</Text>
+              </Pressable>
+            </ScrollView>
+          </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
 
       {/* 🟢 MODAL A: PROFILE PHOTO SELECTOR */}
       <Modal
@@ -1236,6 +1272,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
           <View
             style={[
               styles.subModalCard,
+              isSmall && { paddingHorizontal: 12, borderTopLeftRadius: 22, borderTopRightRadius: 22 },
               {
                 backgroundColor: colors.surface,
                 borderColor: colors.cardBorder,
@@ -1252,15 +1289,15 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
 
             <View style={[styles.subModalHeader, { borderBottomColor: colors.divider }]}>
               <View style={styles.topBarLeft}>
-                <Ionicons name="camera" size={20} color={colors.accent} />
-                <Text style={[styles.subModalTitle, { color: colors.text }]}>{t('profile.choose_photo', 'Choose Profile Photo')}</Text>
+                <Ionicons name="camera" size={isSmall ? 18 : 20} color={colors.accent} />
+                <Text style={[styles.subModalTitle, isSmall && { fontSize: 14 }, { color: colors.text }]}>{t('profile.choose_photo', 'Choose Profile Photo')}</Text>
               </View>
               <Pressable
                 onPress={() => setShowPhotoPicker(false)}
                 hitSlop={10}
-                style={[styles.closeBtn, { backgroundColor: colors.chipBg }]}
+                style={[styles.closeBtn, isSmall && { width: 28, height: 28, borderRadius: 14 }, { backgroundColor: colors.chipBg }]}
               >
-                <Ionicons name="close" size={20} color={colors.textSecondary} />
+                <Ionicons name="close" size={isSmall ? 17 : 20} color={colors.textSecondary} />
               </Pressable>
             </View>
 
@@ -1269,6 +1306,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               <Pressable
                 style={[
                   styles.uploadBtn,
+                  isSmall && { padding: 10, gap: 9, borderRadius: 12, marginBottom: 12 },
                   {
                     backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.75)',
                     borderColor: isLight ? '#E2E8F0' : colors.cardBorder,
@@ -1276,23 +1314,23 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                 ]}
                 onPress={handlePickDeviceImage}
               >
-                <View style={[styles.uploadIconWrap, { backgroundColor: isLight ? '#E0F2FE' : colors.chipBg }]}>
-                  <Ionicons name="cloud-upload" size={22} color={colors.accent} />
+                <View style={[styles.uploadIconWrap, isSmall && { width: 34, height: 34, borderRadius: 17 }, { backgroundColor: isLight ? '#E0F2FE' : colors.chipBg }]}>
+                  <Ionicons name="cloud-upload" size={isSmall ? 18 : 22} color={colors.accent} />
                 </View>
                 <View style={styles.uploadTextWrap}>
-                  <Text style={[styles.uploadTitle, { color: colors.text }]}>{t('profile.device_gallery', 'Choose from Device / Gallery')}</Text>
-                  <Text style={[styles.uploadSub, { color: colors.textSecondary }]}>
+                  <Text style={[styles.uploadTitle, isSmall && { fontSize: 12 }, { color: colors.text }]}>{t('profile.device_gallery', 'Choose from Device / Gallery')}</Text>
+                  <Text style={[styles.uploadSub, isSmall && { fontSize: 10 }, { color: colors.textSecondary }]}>
                     {t('profile.gallery_desc', 'Select a personal photo from your phone or PC')}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                <Ionicons name="chevron-forward" size={isSmall ? 16 : 18} color={colors.textMuted} />
               </Pressable>
 
               {/* Option 2: Curated Maritime Captain Presets */}
-              <Text style={[styles.presetSectionTitle, { color: colors.textMuted }]}>
+              <Text style={[styles.presetSectionTitle, isSmall && { fontSize: 9.5, marginBottom: 8 }, { color: colors.textMuted }]}>
                 {t('profile.select_avatar', 'OR SELECT MARITIME CAPTAIN AVATAR')}
               </Text>
-              <View style={styles.presetsGrid}>
+              <View style={[styles.presetsGrid, isSmall && { gap: 6, marginBottom: 12 }]}>
                 {CAPTAIN_PHOTO_PRESETS.map((item) => {
                   const isSelected = captain?.avatarUrl === item.url;
                   return (
@@ -1300,6 +1338,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                       key={item.id}
                       style={[
                         styles.presetCard,
+                        isSmall && { padding: 8, gap: 9, borderRadius: 12 },
                         {
                           backgroundColor: isLight ? (isSelected ? '#E0F2FE' : '#FFFFFF') : (isSelected ? colors.chipBg : 'rgba(10, 31, 53, 0.75)'),
                           borderColor: isSelected ? colors.accent : (isLight ? '#E2E8F0' : colors.divider),
@@ -1311,23 +1350,24 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                         setShowPhotoPicker(false);
                       }}
                     >
-                      <Image source={{ uri: item.url }} style={styles.presetImg} />
+                      <Image source={{ uri: item.url }} style={[styles.presetImg, isSmall && { width: 38, height: 38, borderRadius: 19 }]} />
                       <View style={styles.presetInfo}>
                         <Text
                           style={[
                             styles.presetName,
+                            isSmall && { fontSize: 12 },
                             { color: isSelected ? colors.accent : colors.text },
                           ]}
                           numberOfLines={1}
                         >
                           {item.title}
                         </Text>
-                        <Text style={[styles.presetDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+                        <Text style={[styles.presetDesc, isSmall && { fontSize: 10 }, { color: colors.textSecondary }]} numberOfLines={1}>
                           {item.desc}
                         </Text>
                       </View>
                       {isSelected && (
-                        <Ionicons name="checkmark-circle" size={18} color={colors.accent} />
+                        <Ionicons name="checkmark-circle" size={isSmall ? 16 : 18} color={colors.accent} />
                       )}
                     </Pressable>
                   );
@@ -1335,11 +1375,12 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               </View>
 
               {/* Option 3: Custom URL Input */}
-              <Text style={[styles.presetSectionTitle, { color: colors.textMuted }]}>{t('profile.enter_url', 'OR ENTER IMAGE URL')}</Text>
-              <View style={styles.urlInputRow}>
+              <Text style={[styles.presetSectionTitle, isSmall && { fontSize: 9.5, marginBottom: 8 }, { color: colors.textMuted }]}>{t('profile.enter_url', 'OR ENTER IMAGE URL')}</Text>
+              <View style={[styles.urlInputRow, isSmall && { gap: 6, marginBottom: 12 }]}>
                 <TextInput
                   style={[
                     styles.urlTextInput,
+                    isSmall && { fontSize: 11, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10 },
                     {
                       backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.35)',
                       borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
@@ -1353,18 +1394,18 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                   autoCapitalize="none"
                 />
                 <Pressable
-                  style={[styles.urlApplyBtn, { backgroundColor: colors.accent }]}
+                  style={[styles.urlApplyBtn, isSmall && { paddingHorizontal: 12, borderRadius: 10 }, { backgroundColor: colors.accent }]}
                   onPress={handleApplyCustomUrl}
                 >
-                  <Text style={styles.urlApplyText}>{t('btn.update', 'Apply')}</Text>
+                  <Text style={[styles.urlApplyText, isSmall && { fontSize: 11 }]}>{t('btn.update', 'Apply')}</Text>
                 </Pressable>
               </View>
 
               {/* Option 4: Reset / Remove Photo */}
               {captain?.avatarUrl && (
                 <Pressable style={styles.resetPhotoBtn} onPress={handleResetPhoto}>
-                  <Ionicons name="trash-outline" size={16} color="#EF4444" />
-                  <Text style={styles.resetPhotoText}>{t('profile.remove_photo', 'Remove Photo (Use Ship Wheel Icon)')}</Text>
+                  <Ionicons name="trash-outline" size={isSmall ? 14 : 16} color="#EF4444" />
+                  <Text style={[styles.resetPhotoText, isSmall && { fontSize: 11 }]}>{t('profile.remove_photo', 'Remove Photo (Use Ship Wheel Icon)')}</Text>
                 </Pressable>
               )}
             </ScrollView>
@@ -1388,6 +1429,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
           <View
             style={[
               styles.subModalCard,
+              isSmall && { paddingHorizontal: 12, borderTopLeftRadius: 22, borderTopRightRadius: 22 },
               {
                 backgroundColor: colors.surface,
                 borderColor: colors.cardBorder,
@@ -1405,34 +1447,35 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
 
             <View style={[styles.subModalHeader, { borderBottomColor: colors.divider }]}>
               <View style={styles.topBarLeft}>
-                <MaterialCommunityIcons name="sail-boat" size={22} color={colors.accent} />
-                <Text style={[styles.subModalTitle, { color: colors.text }]}>{t('profile.edit_vessel', 'Update Boat & Vessel Specs')}</Text>
+                <MaterialCommunityIcons name="sail-boat" size={isSmall ? 19 : 22} color={colors.accent} />
+                <Text style={[styles.subModalTitle, isSmall && { fontSize: 14 }, { color: colors.text }]}>{t('profile.edit_vessel', 'Update Boat & Vessel Specs')}</Text>
               </View>
               <Pressable
                 onPress={() => setShowVesselEditor(false)}
                 hitSlop={10}
-                style={[styles.closeBtn, { backgroundColor: colors.chipBg }]}
+                style={[styles.closeBtn, isSmall && { width: 28, height: 28, borderRadius: 14 }, { backgroundColor: colors.chipBg }]}
               >
-                <Ionicons name="close" size={20} color={colors.textSecondary} />
+                <Ionicons name="close" size={isSmall ? 17 : 20} color={colors.textSecondary} />
               </Pressable>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.editorContent}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.editorContent, isSmall && { gap: 10 }]}>
               {/* 1. Vessel Name */}
-              <View style={styles.editField}>
-                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>{t('profile.boat_name', 'BOAT / VESSEL NAME').toUpperCase()}</Text>
+              <View style={[styles.editField, isSmall && { gap: 4 }]}>
+                <Text style={[styles.editLabel, isSmall && { fontSize: 9 }, { color: colors.textSecondary }]}>{t('profile.boat_name', 'BOAT / VESSEL NAME').toUpperCase()}</Text>
                 <View
                   style={[
                     styles.editInputWrap,
+                    isSmall && { paddingHorizontal: 8, borderRadius: 10 },
                     {
                       backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.35)',
                       borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
                     },
                   ]}
                 >
-                  <MaterialCommunityIcons name="boat" size={18} color={colors.accent} style={styles.editIcon} />
+                  <MaterialCommunityIcons name="boat" size={isSmall ? 16 : 18} color={colors.accent} style={styles.editIcon} />
                   <TextInput
-                    style={[styles.editTextInput, { color: colors.text }]}
+                    style={[styles.editTextInput, isSmall && { fontSize: 12, paddingVertical: 7 }, { color: colors.text }]}
                     placeholder="e.g. Sea Hunter II"
                     placeholderTextColor={colors.textMuted}
                     value={editVesselName}
@@ -1442,22 +1485,23 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               </View>
 
               {/* 2. Call Sign / Registration */}
-              <View style={styles.editField}>
-                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>
+              <View style={[styles.editField, isSmall && { gap: 4 }]}>
+                <Text style={[styles.editLabel, isSmall && { fontSize: 9 }, { color: colors.textSecondary }]}>
                   {t('profile.registration', 'OFFICIAL REGISTRATION / CALL SIGN').toUpperCase()}
                 </Text>
                 <View
                   style={[
                     styles.editInputWrap,
+                    isSmall && { paddingHorizontal: 8, borderRadius: 10 },
                     {
                       backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.35)',
                       borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
                     },
                   ]}
                 >
-                  <MaterialCommunityIcons name="radio-handheld" size={18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
+                  <MaterialCommunityIcons name="radio-handheld" size={isSmall ? 16 : 18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
                   <TextInput
-                    style={[styles.editTextInput, { color: colors.text }]}
+                    style={[styles.editTextInput, isSmall && { fontSize: 12, paddingVertical: 7 }, { color: colors.text }]}
                     placeholder="e.g. IND-GJ-8821"
                     placeholderTextColor={colors.textMuted}
                     value={editCallSign}
@@ -1467,20 +1511,21 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               </View>
 
               {/* 3. Captain Name */}
-              <View style={styles.editField}>
-                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>{t('profile.title', 'CAPTAIN / MASTER NAME').toUpperCase()}</Text>
+              <View style={[styles.editField, isSmall && { gap: 4 }]}>
+                <Text style={[styles.editLabel, isSmall && { fontSize: 9 }, { color: colors.textSecondary }]}>{t('profile.title', 'CAPTAIN / MASTER NAME').toUpperCase()}</Text>
                 <View
                   style={[
                     styles.editInputWrap,
+                    isSmall && { paddingHorizontal: 8, borderRadius: 10 },
                     {
                       backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.35)',
                       borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
                     },
                   ]}
                 >
-                  <Ionicons name="person" size={18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
+                  <Ionicons name="person" size={isSmall ? 16 : 18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
                   <TextInput
-                    style={[styles.editTextInput, { color: colors.text }]}
+                    style={[styles.editTextInput, isSmall && { fontSize: 12, paddingVertical: 7 }, { color: colors.text }]}
                     placeholder="e.g. Capt. Vikram Rathore"
                     placeholderTextColor={colors.textMuted}
                     value={editCaptainName}
@@ -1490,20 +1535,21 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               </View>
 
               {/* 4. Vessel Type Selector */}
-              <View style={styles.editField}>
-                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>{t('profile.vessel_type', 'VESSEL CLASS / TYPE').toUpperCase()}</Text>
+              <View style={[styles.editField, isSmall && { gap: 4 }]}>
+                <Text style={[styles.editLabel, isSmall && { fontSize: 9 }, { color: colors.textSecondary }]}>{t('profile.vessel_type', 'VESSEL CLASS / TYPE').toUpperCase()}</Text>
                 <View
                   style={[
                     styles.editInputWrap,
+                    isSmall && { paddingHorizontal: 8, borderRadius: 10 },
                     {
                       backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.35)',
                       borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
                     },
                   ]}
                 >
-                  <Ionicons name="construct-outline" size={18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
+                  <Ionicons name="construct-outline" size={isSmall ? 16 : 18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
                   <TextInput
-                    style={[styles.editTextInput, { color: colors.text }]}
+                    style={[styles.editTextInput, isSmall && { fontSize: 12, paddingVertical: 7 }, { color: colors.text }]}
                     placeholder="e.g. Deep Sea Trawler (42ft)"
                     placeholderTextColor={colors.textMuted}
                     value={editVesselType}
@@ -1516,6 +1562,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                       key={chip}
                       style={[
                         styles.chip,
+                        isSmall && { paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 },
                         {
                           backgroundColor: isLight ? '#E0F2FE' : 'rgba(255, 255, 255, 0.06)',
                           borderColor: isLight ? '#BAE6FD' : colors.divider,
@@ -1523,29 +1570,30 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                       ]}
                       onPress={() => setEditVesselType(chip)}
                     >
-                      <Text style={[styles.chipText, { color: isLight ? colors.accent : '#38BDF8' }]}>{chip.split(' ')[0]}</Text>
+                      <Text style={[styles.chipText, isSmall && { fontSize: 9 }, { color: isLight ? colors.accent : '#38BDF8' }]}>{chip.split(' ')[0]}</Text>
                     </Pressable>
                   ))}
                 </View>
               </View>
 
               {/* 5. Home Harbor Selector */}
-              <View style={styles.editField}>
-                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>
+              <View style={[styles.editField, isSmall && { gap: 4 }]}>
+                <Text style={[styles.editLabel, isSmall && { fontSize: 9 }, { color: colors.textSecondary }]}>
                   {t('profile.home_port', 'HOME HARBOR / PORT OF REGISTRY').toUpperCase()}
                 </Text>
                 <View
                   style={[
                     styles.editInputWrap,
+                    isSmall && { paddingHorizontal: 8, borderRadius: 10 },
                     {
                       backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.35)',
                       borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
                     },
                   ]}
                 >
-                  <Ionicons name="anchor" size={18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
+                  <Ionicons name="anchor" size={isSmall ? 16 : 18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
                   <TextInput
-                    style={[styles.editTextInput, { color: colors.text }]}
+                    style={[styles.editTextInput, isSmall && { fontSize: 12, paddingVertical: 7 }, { color: colors.text }]}
                     placeholder="e.g. Veraval Fishing Port"
                     placeholderTextColor={colors.textMuted}
                     value={editHomeHarbor}
@@ -1558,6 +1606,7 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                       key={chip}
                       style={[
                         styles.chip,
+                        isSmall && { paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6 },
                         {
                           backgroundColor: isLight ? '#E0F2FE' : 'rgba(255, 255, 255, 0.06)',
                           borderColor: isLight ? '#BAE6FD' : colors.divider,
@@ -1565,29 +1614,30 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                       ]}
                       onPress={() => setEditHomeHarbor(chip)}
                     >
-                      <Text style={[styles.chipText, { color: isLight ? colors.accent : '#38BDF8' }]}>{chip.split(' ')[0]}</Text>
+                      <Text style={[styles.chipText, isSmall && { fontSize: 9 }, { color: isLight ? colors.accent : '#38BDF8' }]}>{chip.split(' ')[0]}</Text>
                     </Pressable>
                   ))}
                 </View>
               </View>
 
               {/* 6. Cruising Speed */}
-              <View style={styles.editField}>
-                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>
+              <View style={[styles.editField, isSmall && { gap: 4 }]}>
+                <Text style={[styles.editLabel, isSmall && { fontSize: 9 }, { color: colors.textSecondary }]}>
                   {t('profile.cruise_speed', 'CRUISING SPEED (KNOTS)').toUpperCase()}
                 </Text>
                 <View
                   style={[
                     styles.editInputWrap,
+                    isSmall && { paddingHorizontal: 8, borderRadius: 10 },
                     {
                       backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.35)',
                       borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
                     },
                   ]}
                 >
-                  <Ionicons name="speedometer-outline" size={18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
+                  <Ionicons name="speedometer-outline" size={isSmall ? 16 : 18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
                   <TextInput
-                    style={[styles.editTextInput, { color: colors.text }]}
+                    style={[styles.editTextInput, isSmall && { fontSize: 12, paddingVertical: 7 }, { color: colors.text }]}
                     placeholder="e.g. 12"
                     placeholderTextColor={colors.textMuted}
                     value={editCruiseSpeed}
@@ -1598,22 +1648,23 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               </View>
 
               {/* 7. Maritime License */}
-              <View style={styles.editField}>
-                <Text style={[styles.editLabel, { color: colors.textSecondary }]}>
+              <View style={[styles.editField, isSmall && { gap: 4 }]}>
+                <Text style={[styles.editLabel, isSmall && { fontSize: 9 }, { color: colors.textSecondary }]}>
                   {t('pro.master_license', 'MARITIME LICENSE / PERMIT NO').toUpperCase()}
                 </Text>
                 <View
                   style={[
                     styles.editInputWrap,
+                    isSmall && { paddingHorizontal: 8, borderRadius: 10 },
                     {
                       backgroundColor: isLight ? '#F8FAFC' : 'rgba(0, 0, 0, 0.35)',
                       borderColor: isLight ? '#CBD5E1' : colors.cardBorder,
                     },
                   ]}
                 >
-                  <Ionicons name="document-text-outline" size={18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
+                  <Ionicons name="document-text-outline" size={isSmall ? 16 : 18} color={isLight ? colors.accent : '#38BDF8'} style={styles.editIcon} />
                   <TextInput
-                    style={[styles.editTextInput, { color: colors.text }]}
+                    style={[styles.editTextInput, isSmall && { fontSize: 12, paddingVertical: 7 }, { color: colors.text }]}
                     placeholder="e.g. IND-MF-2026-991"
                     placeholderTextColor={colors.textMuted}
                     value={editLicenseNumber}
@@ -1623,15 +1674,15 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
               </View>
 
               {/* Save Specifications Button */}
-              <Pressable style={styles.saveBtn} onPress={handleSaveVesselSpecs}>
+              <Pressable style={[styles.saveBtn, isSmall && { borderRadius: 12 }]} onPress={handleSaveVesselSpecs}>
                 <LinearGradient
                   colors={isLight ? ['#0284C7', '#0369A1'] : ['#00F0FF', '#0284C7']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
-                  style={styles.saveGradient}
+                  style={[styles.saveGradient, isSmall && { paddingVertical: 11, gap: 6 }]}
                 >
-                  <Ionicons name="checkmark-circle" size={20} color="#FFFFFF" />
-                  <Text style={styles.saveText}>{t('profile.save_changes', 'SAVE BOAT SPECIFICATIONS')}</Text>
+                  <Ionicons name="checkmark-circle" size={isSmall ? 17 : 20} color="#FFFFFF" />
+                  <Text style={[styles.saveText, isSmall && { fontSize: 12 }]}>{t('profile.save_changes', 'SAVE BOAT SPECIFICATIONS')}</Text>
                 </LinearGradient>
               </Pressable>
             </ScrollView>
@@ -1645,11 +1696,12 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
         animationType="fade"
         onRequestClose={() => setShowReceiptModal(false)}
       >
-        <View style={styles.subModalOverlay}>
+        <View style={[styles.subModalOverlay, isSmall && { paddingHorizontal: 10 }]}>
           <Pressable style={styles.subModalTouch} onPress={() => setShowReceiptModal(false)} />
           <View
             style={[
               styles.receiptCard,
+              isSmall && { padding: 13, gap: 10, borderRadius: 16 },
               {
                 backgroundColor: isLight ? '#FFFFFF' : '#031422',
                 borderColor: isLight ? '#E2E8F0' : 'rgba(0, 240, 255, 0.3)',
@@ -1659,66 +1711,66 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
             ]}
           >
             <View style={styles.receiptTopRow}>
-              <View style={styles.receiptLogoRow}>
-                <MaterialCommunityIcons name="ship-wheel" size={24} color={colors.accent} />
+              <View style={[styles.receiptLogoRow, isSmall && { gap: 6 }]}>
+                <MaterialCommunityIcons name="ship-wheel" size={isSmall ? 20 : 24} color={colors.accent} />
                 <View>
-                  <Text style={[styles.receiptBrand, { color: colors.text }]}>FishNav Marine</Text>
-                  <Text style={[styles.receiptSub, { color: colors.textMuted }]}>{t('profile.invoice_title', 'Official Maritime Tax Invoice')}</Text>
+                  <Text style={[styles.receiptBrand, isSmall && { fontSize: 14 }, { color: colors.text }]}>FishNav Marine</Text>
+                  <Text style={[styles.receiptSub, isSmall && { fontSize: 10 }, { color: colors.textMuted }]}>{t('profile.invoice_title', 'Official Maritime Tax Invoice')}</Text>
                 </View>
               </View>
               <Pressable
-                style={[styles.receiptCloseBtn, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg }]}
+                style={[styles.receiptCloseBtn, isSmall && { width: 28, height: 28, borderRadius: 14 }, { backgroundColor: isLight ? '#F1F5F9' : colors.chipBg }]}
                 onPress={() => setShowReceiptModal(false)}
                 hitSlop={8}
               >
-                <Ionicons name="close" size={18} color={colors.textSecondary} />
+                <Ionicons name="close" size={isSmall ? 16 : 18} color={colors.textSecondary} />
               </Pressable>
             </View>
 
             <View style={[styles.receiptDivider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
 
-            <View style={styles.receiptBody}>
-              <View style={styles.receiptRow}>
-                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>{t('profile.invoice_no', 'Invoice No:')}</Text>
-                <Text style={[styles.receiptValue, { color: colors.text }]}>{invoiceNumber}</Text>
+            <View style={[styles.receiptBody, isSmall && { gap: 7 }]}>
+              <View style={[styles.receiptRow, isSmall && { gap: 6 }]}>
+                <Text style={[styles.receiptLabel, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>{t('profile.invoice_no', 'Invoice No:')}</Text>
+                <Text style={[styles.receiptValue, isSmall && { fontSize: 11, maxWidth: '60%', textAlign: 'right' }, { color: colors.text }]}>{invoiceNumber}</Text>
               </View>
-              <View style={styles.receiptRow}>
-                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>{t('profile.invoice_cert', 'License Certificate:')}</Text>
-                <Text style={[styles.receiptValue, { color: '#F59E0B' }]}>{licenseCertificateId}</Text>
+              <View style={[styles.receiptRow, isSmall && { gap: 6 }]}>
+                <Text style={[styles.receiptLabel, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>{t('profile.invoice_cert', 'License Certificate:')}</Text>
+                <Text style={[styles.receiptValue, isSmall && { fontSize: 11, maxWidth: '60%', textAlign: 'right' }, { color: '#F59E0B' }]}>{licenseCertificateId}</Text>
               </View>
-              <View style={styles.receiptRow}>
-                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>{t('profile.invoice_vessel', 'Vessel / Captain:')}</Text>
-                <Text style={[styles.receiptValue, { color: colors.text }]}>
+              <View style={[styles.receiptRow, isSmall && { gap: 6 }]}>
+                <Text style={[styles.receiptLabel, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>{t('profile.invoice_vessel', 'Vessel / Captain:')}</Text>
+                <Text style={[styles.receiptValue, isSmall && { fontSize: 11, maxWidth: '60%', textAlign: 'right' }, { color: colors.text }]}>
                   {captain?.vesselName || 'Sea Hunter II'} ({captain?.callSign || 'IND-GJ-8821'})
                 </Text>
               </View>
-              <View style={styles.receiptRow}>
-                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>{t('profile.invoice_plan', 'Plan Type:')}</Text>
-                <Text style={[styles.receiptValue, { color: colors.text }]}>{planDisplayName}</Text>
+              <View style={[styles.receiptRow, isSmall && { gap: 6 }]}>
+                <Text style={[styles.receiptLabel, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>{t('profile.invoice_plan', 'Plan Type:')}</Text>
+                <Text style={[styles.receiptValue, isSmall && { fontSize: 11, maxWidth: '60%', textAlign: 'right' }, { color: colors.text }]}>{planDisplayName}</Text>
               </View>
-              <View style={styles.receiptRow}>
-                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>{t('profile.invoice_period', 'Billing Period:')}</Text>
-                <Text style={[styles.receiptValue, { color: colors.text }]}>
+              <View style={[styles.receiptRow, isSmall && { gap: 6 }]}>
+                <Text style={[styles.receiptLabel, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>{t('profile.invoice_period', 'Billing Period:')}</Text>
+                <Text style={[styles.receiptValue, isSmall && { fontSize: 11, maxWidth: '60%', textAlign: 'right' }, { color: colors.text }]}>
                   {proPlan === 'lifetime' ? t('pro.forever', 'Perpetual Lifetime') : proFormattedExpiry || '1 Year Active'}
                 </Text>
               </View>
-              <View style={styles.receiptRow}>
-                <Text style={[styles.receiptLabel, { color: colors.textSecondary }]}>{t('profile.invoice_status', 'Payment Status:')}</Text>
-                <View style={[styles.paidBadge, isLight && { backgroundColor: '#DCFCE7' }]}>
-                  <Ionicons name="checkmark-circle" size={13} color={isLight ? '#16A34A' : '#10B981'} />
-                  <Text style={[styles.paidBadgeText, isLight && { color: '#16A34A' }]}>{t('profile.invoice_paid', 'PAID & VERIFIED')}</Text>
+              <View style={[styles.receiptRow, isSmall && { gap: 6 }]}>
+                <Text style={[styles.receiptLabel, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>{t('profile.invoice_status', 'Payment Status:')}</Text>
+                <View style={[styles.paidBadge, isSmall && { paddingHorizontal: 6, paddingVertical: 2 }, isLight && { backgroundColor: '#DCFCE7' }]}>
+                  <Ionicons name="checkmark-circle" size={isSmall ? 11 : 13} color={isLight ? '#16A34A' : '#10B981'} />
+                  <Text style={[styles.paidBadgeText, isSmall && { fontSize: 9 }, isLight && { color: '#16A34A' }]}>{t('profile.invoice_paid', 'PAID & VERIFIED')}</Text>
                 </View>
               </View>
 
               <View style={[styles.receiptDivider, { backgroundColor: isLight ? '#F1F5F9' : colors.divider }]} />
 
-              <View style={styles.receiptRow}>
-                <Text style={[styles.receiptTotalLabel, { color: colors.text }]}>{t('profile.invoice_total', 'Total Amount Paid:')}</Text>
-                <Text style={[styles.receiptTotalVal, { color: colors.accent }]}>
+              <View style={[styles.receiptRow, isSmall && { gap: 6 }]}>
+                <Text style={[styles.receiptTotalLabel, isSmall && { fontSize: 12.5 }, { color: colors.text }]}>{t('profile.invoice_total', 'Total Amount Paid:')}</Text>
+                <Text style={[styles.receiptTotalVal, isSmall && { fontSize: 16 }, { color: colors.accent }]}>
                   {proPlan === 'lifetime' ? '₹3,999.00' : proPlan === 'quarterly' ? '₹499.00' : '₹1,499.00'}
                 </Text>
               </View>
-              <Text style={[styles.receiptGstNote, { color: colors.textMuted }]}>
+              <Text style={[styles.receiptGstNote, isSmall && { fontSize: 9, lineHeight: 12 }, { color: colors.textMuted }]}>
                 {t('profile.invoice_gst', 'Includes 18% Integrated Goods and Services Tax (IGST) for Marine Navigation Software.')}
               </Text>
             </View>
@@ -1731,10 +1783,10 @@ export const CaptainProfileModal = ({ visible, onClose }: CaptainProfileModalPro
                 colors={isLight ? ['#0284C7', '#0369A1'] : ['#00F0FF', '#0284C7']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={styles.receiptDoneGrad}
+                style={[styles.receiptDoneGrad, isSmall && { paddingVertical: 10 }]}
               >
-                <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-                <Text style={styles.receiptDoneText}>{t('profile.close_receipt', 'CLOSE RECEIPT')}</Text>
+                <Ionicons name="checkmark" size={isSmall ? 16 : 18} color="#FFFFFF" />
+                <Text style={[styles.receiptDoneText, isSmall && { fontSize: 11 }]}>{t('profile.close_receipt', 'CLOSE RECEIPT')}</Text>
               </LinearGradient>
             </Pressable>
           </View>
@@ -2104,15 +2156,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 10,
+    gap: 8,
   },
   infoLabel: {
     color: '#94A3B8',
     fontSize: 12,
+    flexShrink: 0,
   },
   infoValue: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '600',
+    flexShrink: 1,
+    textAlign: 'right',
   },
   cyanText: {
     color: '#00F0FF',
@@ -2780,13 +2836,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 8,
   },
   receiptLabel: {
     fontSize: 12,
+    flexShrink: 0,
   },
   receiptValue: {
     fontSize: 12,
     fontWeight: '700',
+    flexShrink: 1,
+    textAlign: 'right',
   },
   paidBadge: {
     flexDirection: 'row',

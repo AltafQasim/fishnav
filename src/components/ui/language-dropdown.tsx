@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Text,
   UIManager,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -26,6 +27,8 @@ type LanguageDropdownProps = {
 export function LanguageDropdown({ compact = false, onLanguageChanged }: LanguageDropdownProps) {
   const { language, setLanguage, availableLanguages, t } = useLanguage();
   const { colors, isLight } = useAppTheme();
+  const { width: windowWidth } = useWindowDimensions();
+  const isSmall = windowWidth < 365;
   const [isOpen, setIsOpen] = useState(false);
 
   const selectedMeta = availableLanguages.find((l) => l.code === language) || availableLanguages[0];
@@ -48,6 +51,7 @@ export function LanguageDropdown({ compact = false, onLanguageChanged }: Languag
       <Pressable
         style={[
           styles.triggerButton,
+          isSmall && { paddingVertical: 9, paddingHorizontal: 10 },
           {
             backgroundColor: isLight ? '#F1F5F9' : 'rgba(255, 255, 255, 0.05)',
             borderColor: isOpen ? colors.accent : isLight ? '#CBD5E1' : 'rgba(255, 255, 255, 0.12)',
@@ -59,30 +63,31 @@ export function LanguageDropdown({ compact = false, onLanguageChanged }: Languag
         accessibilityLabel={`Application language: ${selectedMeta.nativeName}. Tap to toggle dropdown.`}
         accessibilityState={{ expanded: isOpen }}
       >
-        <View style={styles.triggerLeft}>
+        <View style={[styles.triggerLeft, isSmall && { gap: 8 }]}>
           <View
             style={[
               styles.globeIconWrap,
+              isSmall && { width: 32, height: 32, borderRadius: 8 },
               {
                 backgroundColor: isLight ? '#E0F2FE' : 'rgba(0, 240, 255, 0.12)',
                 borderColor: isLight ? '#BAE6FD' : 'rgba(0, 240, 255, 0.25)',
               },
             ]}
           >
-            <Ionicons name="globe-outline" size={compact ? 16 : 18} color={colors.accent} />
+            <Ionicons name="globe-outline" size={compact ? 15 : isSmall ? 16 : 18} color={colors.accent} />
           </View>
           <View style={styles.triggerTexts}>
-            <View style={styles.triggerNameRow}>
-              <Text style={styles.flagEmoji}>{selectedMeta.flag}</Text>
-              <Text style={[styles.nativeNameText, { color: colors.text }]}>
+            <View style={[styles.triggerNameRow, { flexWrap: 'wrap', gap: 4 }]}>
+              <Text style={[styles.flagEmoji, isSmall && { fontSize: 16 }]}>{selectedMeta.flag}</Text>
+              <Text style={[styles.nativeNameText, isSmall && { fontSize: 14 }, { color: colors.text }]}>
                 {selectedMeta.nativeName}
               </Text>
-              <Text style={[styles.englishNameText, { color: colors.textSecondary }]}>
+              <Text style={[styles.englishNameText, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>
                 ({selectedMeta.name})
               </Text>
             </View>
             {!compact && (
-              <Text style={[styles.regionSubtitle, { color: colors.textMuted }]} numberOfLines={1}>
+              <Text style={[styles.regionSubtitle, isSmall && { fontSize: 10 }, { color: colors.textMuted }]} numberOfLines={1}>
                 {selectedMeta.region}
               </Text>
             )}
@@ -93,6 +98,7 @@ export function LanguageDropdown({ compact = false, onLanguageChanged }: Languag
           <View
             style={[
               styles.chevronCircle,
+              isSmall && { width: 24, height: 24, borderRadius: 12 },
               {
                 backgroundColor: isLight ? '#E2E8F0' : 'rgba(255, 255, 255, 0.08)',
               },
@@ -100,7 +106,7 @@ export function LanguageDropdown({ compact = false, onLanguageChanged }: Languag
           >
             <Ionicons
               name={isOpen ? 'chevron-up' : 'chevron-down'}
-              size={18}
+              size={isSmall ? 15 : 18}
               color={isOpen ? colors.accent : colors.textSecondary}
             />
           </View>
@@ -122,13 +128,14 @@ export function LanguageDropdown({ compact = false, onLanguageChanged }: Languag
           <View
             style={[
               styles.menuHeader,
+              isSmall && { paddingHorizontal: 10, paddingVertical: 8 },
               {
                 borderBottomColor: isLight ? '#E2E8F0' : 'rgba(255, 255, 255, 0.08)',
               },
             ]}
           >
             <MaterialCommunityIcons name="translate" size={15} color={colors.accent} />
-            <Text style={[styles.menuHeaderTitle, { color: colors.textSecondary }]}>
+            <Text style={[styles.menuHeaderTitle, isSmall && { fontSize: 10 }, { color: colors.textSecondary }]}>
               {t('settings.language.subtitle', 'Choose your preferred language for the app')}
             </Text>
           </View>
@@ -142,6 +149,7 @@ export function LanguageDropdown({ compact = false, onLanguageChanged }: Languag
                 key={item.code}
                 style={[
                   styles.optionRow,
+                  isSmall && { paddingVertical: 9, paddingHorizontal: 10 },
                   {
                     backgroundColor: isSelected
                       ? isLight
@@ -156,13 +164,14 @@ export function LanguageDropdown({ compact = false, onLanguageChanged }: Languag
                 accessibilityRole="button"
                 accessibilityLabel={`${item.nativeName} (${item.name})`}
               >
-                <View style={styles.optionLeft}>
-                  <Text style={styles.optionFlag}>{item.flag}</Text>
+                <View style={[styles.optionLeft, isSmall && { gap: 8 }]}>
+                  <Text style={[styles.optionFlag, isSmall && { fontSize: 18 }]}>{item.flag}</Text>
                   <View style={styles.optionTextColumn}>
-                    <View style={styles.optionTitleRow}>
+                    <View style={[styles.optionTitleRow, { flexWrap: 'wrap', gap: 4 }]}>
                       <Text
                         style={[
                           styles.optionNativeName,
+                          isSmall && { fontSize: 13.5 },
                           {
                             color: isSelected ? colors.accent : colors.text,
                             fontWeight: isSelected ? '800' : '600',
@@ -171,13 +180,14 @@ export function LanguageDropdown({ compact = false, onLanguageChanged }: Languag
                       >
                         {item.nativeName}
                       </Text>
-                      <Text style={[styles.optionEnglishName, { color: colors.textSecondary }]}>
+                      <Text style={[styles.optionEnglishName, isSmall && { fontSize: 11 }, { color: colors.textSecondary }]}>
                         {item.name}
                       </Text>
                     </View>
                     <Text
                       style={[
                         styles.optionRegion,
+                        isSmall && { fontSize: 10 },
                         { color: isSelected ? colors.accent : colors.textMuted },
                       ]}
                     >

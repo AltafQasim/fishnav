@@ -45,6 +45,7 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
 
   // Responsive device classification
+  const isVerySmallPhone = windowWidth < 340;
   const isSmallPhone = windowWidth < 365;
   const isTablet = windowWidth >= 600;
   const isLandscape = windowWidth > windowHeight;
@@ -110,7 +111,7 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
   const handleCalendar = React.useCallback(() => onTabPress('calendar'), [onTabPress]);
   const handleSettings = React.useCallback(() => onTabPress('settings'), [onTabPress]);
 
-  const activeLabelFontSize = isSmallPhone ? 9.5 : isTablet ? 12 : 11;
+  const activeLabelFontSize = isVerySmallPhone ? 8.5 : isSmallPhone ? 9.5 : isTablet ? 12 : 11;
   const centerSpacerWidth = isSmallPhone ? 58 : isTablet ? 76 : 68;
 
   return (
@@ -284,6 +285,7 @@ export function AppTabs({ activeTab, onTabPress }: AppTabsProps) {
             {activeTab === 'settings' && (
               <Text
                 numberOfLines={1}
+                ellipsizeMode="tail"
                 style={[
                   styles.activeLabel,
                   { color: colors.accent, fontSize: activeLabelFontSize },

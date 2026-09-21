@@ -114,7 +114,7 @@ export function AddSpotModal({
             <Text style={styles.label}>{t('spot.name_label', 'SPOT / REEF NAME')}</Text>
             <TextInput
               style={styles.input}
-              placeholder="e.g. Deep Ghol Hole, North Shoal..."
+              placeholder={t('waypoints.name_placeholder', 'e.g. Deep Ghol Hole, North Shoal...')}
               placeholderTextColor={MapColors.textMuted}
               value={name}
               onChangeText={setName}
@@ -125,6 +125,7 @@ export function AddSpotModal({
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tagScroll}>
               {SPECIES_TAGS.map((tag) => {
                 const active = tag === selectedTag;
+                const tagKey = `category.${tag.toLowerCase().replace(/[\s\/]+/g, '_')}`;
                 return (
                   <Pressable
                     key={tag}
@@ -135,7 +136,7 @@ export function AddSpotModal({
                         setName(`${tag} Spot`);
                       }
                     }}>
-                    <Text style={[styles.tagText, active && styles.tagTextActive]}>{tag}</Text>
+                    <Text style={[styles.tagText, active && styles.tagTextActive]}>{t(tagKey, tag)}</Text>
                   </Pressable>
                 );
               })}
@@ -165,14 +166,14 @@ export function AddSpotModal({
 
             {/* Depth */}
             <Text style={[styles.label, { marginTop: 14 }]}>{t('spot.depth_label', 'WATER DEPTH (METERS)')}</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="number-pad"
-              placeholder="Depth in meters (e.g. 60)"
-              placeholderTextColor={MapColors.textMuted}
-              value={depthStr}
-              onChangeText={setDepthStr}
-            />
+              <TextInput
+                style={styles.input}
+                keyboardType="number-pad"
+                placeholder={t('waypoints.depth_placeholder', 'Depth in meters (e.g. 60)')}
+                placeholderTextColor={MapColors.textMuted}
+                value={depthStr}
+                onChangeText={setDepthStr}
+              />
 
             {/* Marker Color */}
             <Text style={[styles.label, { marginTop: 14 }]}>{t('spot.pin_color', 'CHART PIN COLOR')}</Text>

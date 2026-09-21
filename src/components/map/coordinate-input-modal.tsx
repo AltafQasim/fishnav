@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MapColors } from '@/constants/map-theme';
+import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import { parseCoordinates } from '@/utils/geo';
 
@@ -29,6 +30,7 @@ export function CoordinateInputModal({
 }: CoordinateInputModalProps) {
   const insets = useSafeAreaInsets();
   const { colors, activeTheme } = useAppTheme();
+  const { t } = useLanguage();
   const isLight = activeTheme === 'light';
 
   const [latText, setLatText] = useState('');
@@ -45,7 +47,7 @@ export function CoordinateInputModal({
     if (mode === 'single') {
       const parsed = parseCoordinates(singleText);
       if (!parsed) {
-        setError('Invalid coordinates format. Example: 20.3875, 70.8783');
+        setError(t('coords.invalid_format', 'Invalid coordinates format. Example: 20.3875, 70.8783'));
         return;
       }
       lat = parsed.latitude;
@@ -54,7 +56,7 @@ export function CoordinateInputModal({
       const l = parseFloat(latText);
       const g = parseFloat(lngText);
       if (isNaN(l) || isNaN(g) || l < -90 || l > 90 || g < -180 || g > 180) {
-        setError('Please enter valid Latitude (-90 to 90) and Longitude (-180 to 180).');
+        setError(t('waypoints.val_lat_err', 'Please enter valid Latitude (-90 to 90) and Longitude (-180 to 180).'));
         return;
       }
       lat = l;
@@ -93,12 +95,15 @@ export function CoordinateInputModal({
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>
               <Ionicons name="navigate-circle" size={22} color={colors.accent} />
-              <Text style={[styles.title, { color: colors.text }]}>Go to GPS Coordinates</Text>
+              <Text style={[styles.title, { color: colors.text }]}>{t('coords.goto_title', 'Go to GPS Coordinates')}</Text>
             </View>
             <Pressable
               onPress={onClose}
               hitSlop={10}
-              style={[styles.closeBtn, { backgroundColor: isLight ? '#E2E8F0' : 'rgba(255,255,255,0.08)' }]}>
+              style={[styles.closeBtn, { backgroundColor: isLight ? '#E2E8F0' : 'rgba(255,255,255,0.08)' }]}
+              accessibilityRole="button"
+              accessibilityLabel={t('btn.close', 'Close')}
+            >
               <Ionicons name="close" size={22} color={colors.textSecondary} />
             </Pressable>
           </View>
@@ -117,7 +122,7 @@ export function CoordinateInputModal({
                   { color: colors.textSecondary },
                   mode === 'single' && styles.tabTextActive,
                 ]}>
-                Quick Paste / Raw
+                {t('coords.quick_paste', 'Quick Paste / Raw')}
               </Text>
             </Pressable>
             <Pressable
@@ -132,45 +137,45 @@ export function CoordinateInputModal({
                   { color: colors.textSecondary },
                   mode === 'pair' && styles.tabTextActive,
                 ]}>
-                Separate Lat & Lng
+                {t('coords.separate_fields', 'Separate Lat & Lng')}
               </Text>
             </Pressable>
           </View>
 
           {mode === 'single' ? (
             <View style={styles.fieldBlock}>
-              <Text style={[styles.label, { color: colors.textMuted }]}>ENTER COORDINATE PAIR</Text>
+              <Text style={[styles.label, { color: colors.textMuted }]}>{t('coords.pair_label', 'ENTER COORDINATE PAIR')}</Text>
               <TextInput
                 style={inputStyle}
-                placeholder="e.g. 20.3875, 70.8783 or 20° 23' N, 70° 52' E"
+                placeholder={t('coords.pair_placeholder', "e.g. 20.3875, 70.8783 or 20° 23' N, 70° 52' E")}
                 placeholderTextColor={colors.textMuted}
                 value={singleText}
                 onChangeText={setSingleText}
                 autoCapitalize="none"
               />
               <Text style={[styles.hint, { color: colors.textSecondary }]}>
-                Accepts decimal (20.35, 70.82) or standard nautical notation.
+                {t('coords.pair_hint', 'Accepts decimal (20.35, 70.82) or standard nautical notation.')}
               </Text>
             </View>
           ) : (
             <View style={styles.pairRow}>
               <View style={styles.pairCol}>
-                <Text style={[styles.label, { color: colors.textMuted }]}>LATITUDE</Text>
+                <Text style={[styles.label, { color: colors.textMuted }]}>{t('waypoints.lat_label', 'LATITUDE')}</Text>
                 <TextInput
                   style={inputStyle}
                   keyboardType="numeric"
-                  placeholder="e.g. 20.3875"
+                  placeholder={t('coords.lat_placeholder', 'e.g. 20.3875')}
                   placeholderTextColor={colors.textMuted}
                   value={latText}
                   onChangeText={setLatText}
                 />
               </View>
               <View style={styles.pairCol}>
-                <Text style={[styles.label, { color: colors.textMuted }]}>LONGITUDE</Text>
+                <Text style={[styles.label, { color: colors.textMuted }]}>{t('waypoints.lng_label', 'LONGITUDE')}</Text>
                 <TextInput
                   style={inputStyle}
                   keyboardType="numeric"
-                  placeholder="e.g. 70.8783"
+                  placeholder={t('coords.lng_placeholder', 'e.g. 70.8783')}
                   placeholderTextColor={colors.textMuted}
                   value={lngText}
                   onChangeText={setLngText}
@@ -184,7 +189,7 @@ export function CoordinateInputModal({
           {/* Action button */}
           <Pressable style={[styles.plotBtn, { backgroundColor: colors.accent }]} onPress={handlePlot}>
             <Ionicons name="compass" size={20} color="#FFFFFF" />
-            <Text style={styles.plotText}>PLOT ON CHART</Text>
+            <Text style={styles.plotText}>{t('coords.plot_and_go', 'PLOT ON CHART')}</Text>
           </Pressable>
         </View>
       </KeyboardAvoidingView>

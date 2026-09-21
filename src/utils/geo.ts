@@ -113,6 +113,30 @@ export function parseCoordinates(raw: string): { latitude: number; longitude: nu
     }
   }
 
+  // Pattern 3: Full DMS e.g. 20° 23' 15" N, 70° 52' 30" E or 20 23 15 N, 70 52 30 E
+  const dmsRegex = /(\d{1,2})[°\s]+(\d{1,2})['\s]*(?:(\d{1,2}(?:\.\d+)?)["\s]*)?([NSns])[,\s]+(\d{1,3})[°\s]+(\d{1,2})['\s]*(?:(\d{1,2}(?:\.\d+)?)["\s]*)?([EWew])/i;
+  const dmsMatch = cleaned.match(dmsRegex);
+  if (dmsMatch) {
+    const latDeg = parseFloat(dmsMatch[1]);
+    const latMin = parseFloat(dmsMatch[2]) || 0;
+    const latSec = parseFloat(dmsMatch[3]) || 0;
+    const latDir = dmsMatch[4].toUpperCase();
+
+    const lngDeg = parseFloat(dmsMatch[5]);
+    const lngMin = parseFloat(dmsMatch[6]) || 0;
+    const lngSec = parseFloat(dmsMatch[7]) || 0;
+    const lngDir = dmsMatch[8].toUpperCase();
+
+    let lat = latDeg + latMin / 60 + latSec / 3600;
+    if (latDir === 'S') lat = -lat;
+    let lng = lngDeg + lngMin / 60 + lngSec / 3600;
+    if (lngDir === 'W') lng = -lng;
+
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      return { latitude: lat, longitude: lng };
+    }
+  }
+
   return null;
 }
 

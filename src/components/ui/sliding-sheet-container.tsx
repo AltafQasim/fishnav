@@ -55,6 +55,7 @@ export function SlidingSheetContainer({
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isTablet = windowWidth >= 600;
+  const isSmallPhone = windowWidth < 365;
   const isLandscape = windowWidth > windowHeight;
 
   // Maximum 85% of screen height (or custom maxHeightRatio, 90% in landscape phone)
@@ -180,6 +181,7 @@ export function SlidingSheetContainer({
           {...panResponder.panHandlers}
           style={[
             styles.headerContainer,
+            isSmallPhone && { paddingHorizontal: 10, paddingVertical: 5 },
             {
               backgroundColor: colors.sheetHeaderBg,
               borderBottomColor: colors.divider,
@@ -199,10 +201,14 @@ export function SlidingSheetContainer({
 
           <View style={styles.headerBar}>
             {/* Title & Info */}
-            <View style={styles.titleInfo}>
+            <View style={[styles.titleInfo, isSmallPhone && { paddingRight: 4 }]}>
               <View style={styles.titleWithBadge}>
                 <Text
-                  style={[styles.titleText, { color: colors.text }]}
+                  style={[
+                    styles.titleText,
+                    { color: colors.text },
+                    isSmallPhone && { fontSize: 14 },
+                  ]}
                   numberOfLines={1}
                 >
                   {title}
@@ -211,7 +217,11 @@ export function SlidingSheetContainer({
               </View>
               {subtitle ? (
                 <Text
-                  style={[styles.subtitleText, { color: colors.textSecondary }]}
+                  style={[
+                    styles.subtitleText,
+                    { color: colors.textSecondary },
+                    isSmallPhone && { fontSize: 10 },
+                  ]}
                   numberOfLines={1}
                 >
                   {subtitle}

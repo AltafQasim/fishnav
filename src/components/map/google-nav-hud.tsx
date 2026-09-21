@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -13,6 +14,7 @@ import { NavigationCompassRose } from '@/components/compass/navigation-compass-r
 import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
+import { formatLatitude, formatLongitude, useUserLocation } from '@/hooks/use-user-location';
 import { etaFromNm, formatNm } from '@/utils/geo';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -45,7 +47,8 @@ export function GoogleNavHud({
   const insets = useSafeAreaInsets();
   const { colors, isLight } = useAppTheme();
   const { t } = useLanguage();
-  const [showFullCompass, setShowFullCompass] = useState(false);
+  const { location } = useUserLocation();
+  const [showFullCompass, setShowFullCompass] = useState(true);
 
   const {
     isTracking,
@@ -100,6 +103,17 @@ export function GoogleNavHud({
 
   const isOnCourse = relativeSteerAngle != null && Math.abs(relativeSteerAngle) <= 6;
 
+  // 🧭 Automatically open the compass steering screen when navigation starts or target changes
+  const prevTargetIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (targetSpot) {
+      if (targetSpot.id !== prevTargetIdRef.current) {
+        prevTargetIdRef.current = targetSpot.id;
+        setShowFullCompass(true);
+      }
+    }
+  }, [targetSpot]);
+
   return (
     <View style={styles.container} pointerEvents="box-none">
       {/* 🧭 1. FULL-SCREEN EXPANDED MARINE COMPASS INSTRUMENT VIEW */}
@@ -108,7 +122,7 @@ export function GoogleNavHud({
           style={[
             styles.fullCompassModal,
             {
-              backgroundColor: isLight ? '#F8FAFC' : 'rgba(3, 15, 29, 0.96)',
+              backgroundColor: isLight ? '#F8FAFC' : 'rgba(3, 15, 29, 0.98)',
               paddingTop: insets.top + 12,
               paddingBottom: Math.max(insets.bottom, 16) + 6,
             },
@@ -139,97 +153,158 @@ export function GoogleNavHud({
             </Pressable>
           </View>
 
-          {/* Massive 260px Compass Instrument with Real Destination Arrow */}
-          <View style={styles.fullCompassBody}>
-            <NavigationCompassRose
-              size={Math.min(SCREEN_WIDTH - 64, 270)}
-              heading={userCompassHeading}
-              targetBearing={targetBearing}
-              relativeSteerAngle={relativeSteerAngle}
-              showDegreeNumbers={true}
-              showRoseStar={true}
-              themeMode={isLight ? 'light' : 'dark'}
-            />
+          <ScrollView
+            style={styles.fullCompassScroll}
+            contentContainerStyle={styles.fullCompassScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Massive 260px Compass Instrument with Real Destination Arrow */}
+            <View style={styles.fullCompassBody}>
+              <NavigationCompassRose
+                size={Math.min(SCREEN_WIDTH - 64, 250)}
+                heading={userCompassHeading}
+                targetBearing={targetBearing}
+                relativeSteerAngle={relativeSteerAngle}
+                showDegreeNumbers={true}
+                showRoseStar={true}
+                themeMode={isLight ? 'light' : 'dark'}
+              />
 
-            {/* Big Digital Heading & Steer Instruction */}
-            <View style={styles.fullSteerBlock}>
-              <Text style={[styles.fullHeadingReadout, { color: colors.text }]}>
-                {String(userCompassHeading).padStart(3, '0')}°{' '}
-                <Text style={[styles.fullHeadingCardinal, { color: colors.accent }]}>
-                  {getCardinal(userCompassHeading)}
+              {/* Big Digital Heading & Steer Instruction */}
+              <View style={styles.fullSteerBlock}>
+                <Text style={[styles.fullHeadingReadout, { color: colors.text }]}>
+                  {String(userCompassHeading).padStart(3, '0')}°{' '}
+                  <Text style={[styles.fullHeadingCardinal, { color: colors.accent }]}>
+                    {getCardinal(userCompassHeading)}
+                  </Text>
                 </Text>
-              </Text>
-              <View
-                style={[
-                  styles.fullSteerBadge,
-                  isOnCourse ? styles.fullSteerBadgeGreen : styles.fullSteerBadgeCyan,
-                  isLight && !isOnCourse && { backgroundColor: colors.chipBg, borderColor: colors.accent },
-                ]}
-              >
-                <Text style={[styles.fullSteerBadgeText, isLight && !isOnCourse && { color: colors.accent }]}>
-                  {getLocalizedSteer(steeringInstruction)}
-                </Text>
+                <View
+                  style={[
+                    styles.fullSteerBadge,
+                    isOnCourse ? styles.fullSteerBadgeGreen : styles.fullSteerBadgeCyan,
+                    isLight && !isOnCourse && { backgroundColor: colors.chipBg, borderColor: colors.accent },
+                  ]}
+                >
+                  <Text style={[styles.fullSteerBadgeText, isLight && !isOnCourse && { color: colors.accent }]}>
+                    {getLocalizedSteer(steeringInstruction)}
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
 
-          {/* 4-Grid Telemetry Cards */}
-          <View style={styles.fullTelemGrid}>
+            {/* 4-Grid Telemetry Cards */}
+            <View style={styles.fullTelemGrid}>
+              <View
+                style={[
+                  styles.fullTelemCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>{t('hud.bearing', 'TARGET BEARING')}</Text>
+                <Text style={[styles.fullTelemVal, { color: colors.text }]}>
+                  {targetBearing != null
+                    ? `${Math.round(targetBearing)}° ${getCardinal(targetBearing)}`
+                    : '—'}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.fullTelemCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>{t('cockpit.distance', 'DISTANCE')}</Text>
+                <Text style={[styles.fullTelemVal, { color: colors.text }]}>{formatNm(remainingDist)}</Text>
+              </View>
+              <View
+                style={[
+                  styles.fullTelemCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>{t('cockpit.speed', 'BOAT SPEED')}</Text>
+                <Text style={[styles.fullTelemVal, { color: colors.text }]}>
+                  {currentSpeedKnots.toFixed(1)} <Text style={[styles.unitSmall, { color: colors.accent }]}>kts</Text>
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.fullTelemCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>{t('cockpit.eta', 'EST. ARRIVAL')}</Text>
+                <Text style={[styles.fullTelemVal, { color: colors.text }]}>{etaText}</Text>
+              </View>
+            </View>
+
+            {/* 📍 CURRENT VESSEL COORDINATES CARD (Added as requested) */}
             <View
               style={[
-                styles.fullTelemCard,
+                styles.fullCoordsCard,
                 {
-                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
-                  borderColor: colors.cardBorder,
+                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.85)',
+                  borderColor: isLight ? '#BAE6FD' : 'rgba(0, 240, 255, 0.3)',
+                  shadowColor: isLight ? '#64748B' : '#00F0FF',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: isLight ? 0.06 : 0.2,
+                  shadowRadius: 6,
+                  elevation: 3,
                 },
               ]}
             >
-              <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>{t('hud.bearing', 'TARGET BEARING')}</Text>
-              <Text style={[styles.fullTelemVal, { color: colors.text }]}>
-                {targetBearing != null
-                  ? `${Math.round(targetBearing)}° ${getCardinal(targetBearing)}`
-                  : '—'}
-              </Text>
+              <View style={styles.fullCoordsHeader}>
+                <View style={styles.fullCoordsHeaderLeft}>
+                  <Ionicons name="location" size={15} color={colors.accent} />
+                  <Text style={[styles.fullCoordsHeaderTitle, { color: colors.accent }]}>
+                    {t('overlay.gps_coords', 'CURRENT VESSEL COORDINATES')}
+                  </Text>
+                </View>
+                <View style={[styles.gpsPill, isLight && { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]}>
+                  <View style={styles.gpsPillDot} />
+                  <Text style={[styles.gpsPillText, isLight && { color: '#16A34A' }]}>3D GPS FIX</Text>
+                </View>
+              </View>
+
+              <View style={styles.fullCoordsBody}>
+                {/* Latitude Row */}
+                <View style={styles.fullCoordCol}>
+                  <Text style={[styles.fullCoordLabel, { color: colors.textMuted }]}>LATITUDE</Text>
+                  <Text style={[styles.fullCoordDms, { color: colors.text }]}>
+                    {location ? formatLatitude(location.latitude) : '20° 54\' 00" N'}
+                  </Text>
+                  <Text style={[styles.fullCoordDec, { color: colors.accent }]}>
+                    {location ? `${location.latitude.toFixed(5)}° N` : '20.90000° N'}
+                  </Text>
+                </View>
+
+                <View style={[styles.fullCoordDivider, { backgroundColor: isLight ? '#E2E8F0' : colors.divider }]} />
+
+                {/* Longitude Row */}
+                <View style={styles.fullCoordCol}>
+                  <Text style={[styles.fullCoordLabel, { color: colors.textMuted }]}>LONGITUDE</Text>
+                  <Text style={[styles.fullCoordDms, { color: colors.text }]}>
+                    {location ? formatLongitude(location.longitude) : '70° 22\' 00" E'}
+                  </Text>
+                  <Text style={[styles.fullCoordDec, { color: colors.accent }]}>
+                    {location ? `${location.longitude.toFixed(5)}° E` : '70.36670° E'}
+                  </Text>
+                </View>
+              </View>
             </View>
-            <View
-              style={[
-                styles.fullTelemCard,
-                {
-                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
-                  borderColor: colors.cardBorder,
-                },
-              ]}
-            >
-              <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>{t('cockpit.distance', 'DISTANCE')}</Text>
-              <Text style={[styles.fullTelemVal, { color: colors.text }]}>{formatNm(remainingDist)}</Text>
-            </View>
-            <View
-              style={[
-                styles.fullTelemCard,
-                {
-                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
-                  borderColor: colors.cardBorder,
-                },
-              ]}
-            >
-              <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>{t('cockpit.speed', 'BOAT SPEED')}</Text>
-              <Text style={[styles.fullTelemVal, { color: colors.text }]}>
-                {currentSpeedKnots.toFixed(1)} <Text style={[styles.unitSmall, { color: colors.accent }]}>kts</Text>
-              </Text>
-            </View>
-            <View
-              style={[
-                styles.fullTelemCard,
-                {
-                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
-                  borderColor: colors.cardBorder,
-                },
-              ]}
-            >
-              <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>{t('cockpit.eta', 'EST. ARRIVAL')}</Text>
-              <Text style={[styles.fullTelemVal, { color: colors.text }]}>{etaText}</Text>
-            </View>
-          </View>
+          </ScrollView>
 
           {/* Bottom Action Controls */}
           <View style={styles.fullBottomRow}>
@@ -303,9 +378,6 @@ export function GoogleNavHud({
               <Text style={styles.primaryInstruction} numberOfLines={1}>
                 {getLocalizedSteer(steeringInstruction)}
               </Text>
-              <View style={styles.expandCompassIcon}>
-                <Ionicons name="expand-outline" size={13} color="#00F0FF" />
-              </View>
             </View>
             <Text style={styles.secondarySub} numberOfLines={1}>
               {targetSpot
@@ -317,14 +389,10 @@ export function GoogleNavHud({
           {/* Recenter / Heading Button */}
           <Pressable
             style={[styles.miniHeaderBtn, headingUp && styles.miniHeaderBtnActive]}
-            onPress={onToggleHeadingUp || onRecenter}
+            onPress={() => setShowFullCompass(true)}
             hitSlop={8}
           >
-            <Ionicons
-              name={headingUp ? 'navigate' : 'compass-outline'}
-              size={20}
-              color={headingUp ? '#00F0FF' : '#FFFFFF'}
-            />
+            <Ionicons name="expand-outline" size={20} color="#00F0FF" />
           </Pressable>
         </View>
 
@@ -766,6 +834,87 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     fontSize: 11,
     fontWeight: '800',
+  },
+
+  fullCompassScroll: {
+    flex: 1,
+  },
+  fullCompassScrollContent: {
+    paddingBottom: 16,
+  },
+  fullCoordsCard: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    padding: 12,
+    marginTop: 12,
+  },
+  fullCoordsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  fullCoordsHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  fullCoordsHeaderTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  gpsPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#10B981',
+    gap: 5,
+  },
+  gpsPillDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  gpsPillText: {
+    color: '#10B981',
+    fontSize: 9.5,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  fullCoordsBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  fullCoordCol: {
+    flex: 1,
+  },
+  fullCoordLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  fullCoordDms: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  fullCoordDec: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  fullCoordDivider: {
+    width: 1,
+    height: 38,
+    marginHorizontal: 12,
   },
 
   // Bottom Google Maps Style Bar

@@ -141,12 +141,13 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
   }, [setSelectedSpotId, setActiveNavigationTarget]);
 
   const handleStartNavigationToSpot = useCallback((spot: FishingSpot) => {
+    setActiveNavigationTarget(spot);
     mapRef.current?.fitRoute(spot);
     setFollowUser(true);
     startNavigation(spot);
     setSelectedSpotId(null);
     setActiveTab(null);
-  }, [startNavigation, setSelectedSpotId]);
+  }, [startNavigation, setSelectedSpotId, setActiveNavigationTarget]);
 
   const handleGoPress = useCallback(() => {
     setDirectionsDestination(selectedSpot ?? null);

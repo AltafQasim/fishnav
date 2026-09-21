@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -16,8 +16,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
+import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import { UserLocation } from '@/hooks/use-user-location';
+import { parseCoordinates } from '@/utils/geo';
 
 type WaypointModalProps = {
   visible: boolean;
@@ -37,14 +39,14 @@ const COLOR_OPTIONS = [
 ];
 
 const CATEGORIES = [
-  'Ghol',
-  'Tuna',
-  'King Fish',
-  'Pomfret',
-  'Coral Reef',
-  'Shipwreck',
-  'Harbor',
-  'Hotspot',
+  { id: 'Ghol', key: 'category.ghol', fallback: 'Ghol' },
+  { id: 'Tuna', key: 'category.tuna', fallback: 'Tuna' },
+  { id: 'King Fish', key: 'category.king_fish', fallback: 'King Fish' },
+  { id: 'Pomfret', key: 'category.pomfret', fallback: 'Pomfret' },
+  { id: 'Coral Reef', key: 'category.coral_reef', fallback: 'Coral Reef' },
+  { id: 'Shipwreck', key: 'category.shipwreck', fallback: 'Shipwreck' },
+  { id: 'Harbor', key: 'category.harbor', fallback: 'Harbor' },
+  { id: 'Hotspot', key: 'category.hotspot', fallback: 'Hotspot' },
 ];
 
 export function WaypointModal({
@@ -56,72 +58,140 @@ export function WaypointModal({
 }: WaypointModalProps) {
   const insets = useSafeAreaInsets();
   const { colors, isLight } = useAppTheme();
+  const { t } = useLanguage();
 
   const [name, setName] = useState('');
-  const [latStr, setLatStr] = useState('');
-  const [lngStr, setLngStr] = useState('');
+  const [coordMode, setCoordMode] = useState<'single' | 'pair'>('pair');
+
+  // Coordinates fields matching CoordinateInputModal
+  const [singleText, setSingleText] = useState('');
+  const [latText, setLatText] = useState('');
+  const [lngText, setLngText] = useState('');
+
   const [depthStr, setDepthStr] = useState('50');
-  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [category, setCategory] = useState(CATEGORIES[0].id);
   const [color, setColor] = useState(COLOR_OPTIONS[0]);
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [coordError, setCoordError] = useState<string | null>(null);
 
+  // Sync state when modal opens or spotToEdit changes
   useEffect(() => {
     if (visible) {
+      setCoordError(null);
       if (spotToEdit) {
         setName(spotToEdit.name);
-        setLatStr(spotToEdit.latitude.toFixed(4));
-        setLngStr(spotToEdit.longitude.toFixed(4));
+        const lStr = spotToEdit.latitude.toFixed(4);
+        const gStr = spotToEdit.longitude.toFixed(4);
+        setLatText(lStr);
+        setLngText(gStr);
+        setSingleText(`${lStr}, ${gStr}`);
         setDepthStr(String(spotToEdit.depthM));
-        setCategory(spotToEdit.category || CATEGORIES[0]);
+        setCategory(spotToEdit.category || CATEGORIES[0].id);
         setColor(spotToEdit.color || COLOR_OPTIONS[0]);
         setNotes(spotToEdit.notes || '');
       } else {
         setName('');
-        if (userLocation) {
-          setLatStr(userLocation.latitude.toFixed(4));
-          setLngStr(userLocation.longitude.toFixed(4));
-        } else {
-          setLatStr('20.3500');
-          setLngStr('70.8200');
-        }
+        const initLat = userLocation ? userLocation.latitude.toFixed(4) : '20.3500';
+        const initLng = userLocation ? userLocation.longitude.toFixed(4) : '70.8200';
+        setLatText(initLat);
+        setLngText(initLng);
+        setSingleText(`${initLat}, ${initLng}`);
         setDepthStr('50');
-        setCategory(CATEGORIES[0]);
+        setCategory(CATEGORIES[0].id);
         setColor(COLOR_OPTIONS[0]);
         setNotes('');
       }
     }
   }, [visible, spotToEdit, userLocation]);
 
-  const handleUseCurrentGps = () => {
-    if (userLocation) {
-      setLatStr(userLocation.latitude.toFixed(4));
-      setLngStr(userLocation.longitude.toFixed(4));
-    } else {
-      Alert.alert('GPS Unavailable', 'Current GPS location is not available yet.');
+  // Handle single raw input change -> try to auto-sync to pair fields
+  const handleSingleChange = (text: string) => {
+    setSingleText(text);
+    setCoordError(null);
+    const parsed = parseCoordinates(text);
+    if (parsed) {
+      setLatText(parsed.latitude.toFixed(4));
+      setLngText(parsed.longitude.toFixed(4));
     }
   };
 
+  // Handle lat change in pair mode -> auto-sync to single field
+  const handleLatChange = (text: string) => {
+    setLatText(text);
+    setCoordError(null);
+    setSingleText(`${text}, ${lngText}`);
+  };
+
+  // Handle lng change in pair mode -> auto-sync to single field
+  const handleLngChange = (text: string) => {
+    setLngText(text);
+    setCoordError(null);
+    setSingleText(`${latText}, ${text}`);
+  };
+
+  // Autofill with current GPS location
+  const handleUseCurrentGps = () => {
+    if (userLocation) {
+      const lStr = userLocation.latitude.toFixed(4);
+      const gStr = userLocation.longitude.toFixed(4);
+      setLatText(lStr);
+      setLngText(gStr);
+      setSingleText(`${lStr}, ${gStr}`);
+      setCoordError(null);
+    } else {
+      Alert.alert(
+        t('validation.error', 'GPS Unavailable'),
+        t('waypoints.gps_unavail', 'Current GPS location is not available yet.'),
+      );
+    }
+  };
+
+  // Save handler with dual validation
   const handleSave = async () => {
+    setCoordError(null);
     const trimmedName = name.trim();
     if (!trimmedName) {
-      Alert.alert('Validation Error', 'Please enter a waypoint name.');
+      Alert.alert(
+        t('validation.error', 'Validation Error'),
+        t('waypoints.val_name_err', 'Please enter a waypoint name.'),
+      );
       return;
     }
 
-    const lat = parseFloat(latStr);
-    const lng = parseFloat(lngStr);
+    let lat: number;
+    let lng: number;
+
+    if (coordMode === 'single') {
+      const parsed = parseCoordinates(singleText);
+      if (!parsed) {
+        setCoordError(
+          t('coords.invalid_format', 'Invalid coordinates format. Example: 20.3875, 70.8783'),
+        );
+        return;
+      }
+      lat = parsed.latitude;
+      lng = parsed.longitude;
+    } else {
+      const l = parseFloat(latText);
+      const g = parseFloat(lngText);
+      if (isNaN(l) || l < -90 || l > 90) {
+        setCoordError(
+          t('waypoints.val_lat_err', 'Please enter a valid Latitude between -90 and 90.'),
+        );
+        return;
+      }
+      if (isNaN(g) || g < -180 || g > 180) {
+        setCoordError(
+          t('waypoints.val_lng_err', 'Please enter a valid Longitude between -180 and 180.'),
+        );
+        return;
+      }
+      lat = l;
+      lng = g;
+    }
+
     const depth = parseInt(depthStr, 10) || 40;
-
-    if (isNaN(lat) || lat < -90 || lat > 90) {
-      Alert.alert('Validation Error', 'Please enter a valid Latitude between -90 and 90.');
-      return;
-    }
-
-    if (isNaN(lng) || lng < -180 || lng > 180) {
-      Alert.alert('Validation Error', 'Please enter a valid Longitude between -180 and 180.');
-      return;
-    }
 
     try {
       setIsSaving(true);
@@ -139,12 +209,27 @@ export function WaypointModal({
         spotToEdit?.id,
       );
       onClose();
-    } catch (err) {
-      Alert.alert('Error', 'Failed to save waypoint. Please try again.');
+    } catch {
+      Alert.alert(
+        t('validation.error', 'Error'),
+        t('waypoints.save_err', 'Failed to save waypoint. Please try again.'),
+      );
     } finally {
       setIsSaving(false);
     }
   };
+
+  const previewLat = parseFloat(latText) || 0;
+  const previewLng = parseFloat(lngText) || 0;
+
+  const inputStyle = [
+    styles.input,
+    {
+      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
+      borderColor: colors.cardBorder,
+      color: colors.text,
+    },
+  ];
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -166,12 +251,16 @@ export function WaypointModal({
         >
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: colors.divider }]}>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={[styles.headerTitle, { color: colors.text }]}>
-                {spotToEdit ? 'Edit Waypoint' : 'Add New Waypoint'}
+                {spotToEdit
+                  ? t('waypoints.edit_title', 'Edit Waypoint')
+                  : t('waypoints.add_new_title', 'Add New Waypoint')}
               </Text>
               <Text style={[styles.headerSub, { color: colors.textSecondary }]}>
-                {spotToEdit ? 'Update GPS coords & marine details' : 'Save coastal hotspot to marine logs'}
+                {spotToEdit
+                  ? t('waypoints.edit_sub', 'Update GPS coords & marine details')
+                  : t('waypoints.add_sub', 'Save coastal hotspot to marine logs')}
               </Text>
             </View>
 
@@ -179,6 +268,8 @@ export function WaypointModal({
               onPress={onClose}
               hitSlop={10}
               style={[styles.closeBtn, { backgroundColor: colors.chipBg }]}
+              accessibilityRole="button"
+              accessibilityLabel={t('btn.close', 'Close')}
             >
               <Ionicons name="close" size={20} color={colors.textSecondary} />
             </Pressable>
@@ -187,17 +278,12 @@ export function WaypointModal({
           <ScrollView showsVerticalScrollIndicator={false} style={styles.formScroll}>
             {/* Waypoint Name */}
             <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>WAYPOINT NAME</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                {t('waypoints.name_label', 'WAYPOINT NAME')}
+              </Text>
               <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
-                    borderColor: colors.cardBorder,
-                    color: colors.text,
-                  },
-                ]}
-                placeholder="e.g. Ghol Spot Alpha, Deep Reef"
+                style={inputStyle}
+                placeholder={t('waypoints.name_placeholder', 'e.g. Ghol Spot Alpha, Deep Reef')}
                 placeholderTextColor={colors.textMuted}
                 value={name}
                 onChangeText={setName}
@@ -207,75 +293,149 @@ export function WaypointModal({
             {/* GPS Coordinates Header & Autofill */}
             <View style={styles.fieldGroup}>
               <View style={styles.coordLabelRow}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>GPS COORDINATES</Text>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  {t('waypoints.coords_section', 'GPS COORDINATES')}
+                </Text>
                 <Pressable
-                  style={[
-                    styles.useGpsBtn,
-                    { backgroundColor: colors.chipBg },
-                  ]}
+                  style={[styles.useGpsBtn, { backgroundColor: colors.chipBg, borderColor: colors.accent }]}
                   onPress={handleUseCurrentGps}
                   accessibilityRole="button"
                 >
                   <Ionicons name="locate" size={13} color={colors.accent} />
-                  <Text style={[styles.useGpsText, { color: colors.accent }]}>Use Current GPS</Text>
+                  <Text style={[styles.useGpsText, { color: colors.accent }]}>
+                    {t('waypoints.use_current_gps', 'Use Current GPS')}
+                  </Text>
                 </Pressable>
               </View>
 
-              <View style={styles.coordsRow}>
-                <View style={styles.coordCol}>
-                  <Text style={[styles.coordSub, { color: colors.textMuted }]}>Latitude (°N/S)</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
-                        borderColor: colors.cardBorder,
-                        color: colors.text,
-                      },
-                    ]}
-                    placeholder="20.3500"
-                    placeholderTextColor={colors.textMuted}
-                    keyboardType="numeric"
-                    value={latStr}
-                    onChangeText={setLatStr}
+              {/* Mode Switcher Tabs (Same structure as CoordinateInputModal) */}
+              <View style={[styles.tabsRow, { backgroundColor: isLight ? '#E2E8F0' : 'rgba(0, 0, 0, 0.35)' }]}>
+                <Pressable
+                  style={[
+                    styles.tab,
+                    coordMode === 'pair' && [styles.tabActive, { backgroundColor: colors.accent }],
+                  ]}
+                  onPress={() => {
+                    setCoordMode('pair');
+                    setCoordError(null);
+                  }}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: coordMode === 'pair' }}
+                >
+                  <Ionicons
+                    name="grid-outline"
+                    size={14}
+                    color={coordMode === 'pair' ? '#FFFFFF' : colors.textSecondary}
                   />
-                </View>
+                  <Text
+                    style={[
+                      styles.tabText,
+                      { color: colors.textSecondary },
+                      coordMode === 'pair' && styles.tabTextActive,
+                    ]}
+                  >
+                    {t('coords.separate_fields', 'Separate Lat & Lng')}
+                  </Text>
+                </Pressable>
 
-                <View style={styles.coordCol}>
-                  <Text style={[styles.coordSub, { color: colors.textMuted }]}>Longitude (°E/W)</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
-                        borderColor: colors.cardBorder,
-                        color: colors.text,
-                      },
-                    ]}
-                    placeholder="70.8200"
-                    placeholderTextColor={colors.textMuted}
-                    keyboardType="numeric"
-                    value={lngStr}
-                    onChangeText={setLngStr}
+                <Pressable
+                  style={[
+                    styles.tab,
+                    coordMode === 'single' && [styles.tabActive, { backgroundColor: colors.accent }],
+                  ]}
+                  onPress={() => {
+                    setCoordMode('single');
+                    setCoordError(null);
+                  }}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: coordMode === 'single' }}
+                >
+                  <Ionicons
+                    name="document-text-outline"
+                    size={14}
+                    color={coordMode === 'single' ? '#FFFFFF' : colors.textSecondary}
                   />
-                </View>
+                  <Text
+                    style={[
+                      styles.tabText,
+                      { color: colors.textSecondary },
+                      coordMode === 'single' && styles.tabTextActive,
+                    ]}
+                  >
+                    {t('coords.quick_paste', 'Quick Paste / Raw')}
+                  </Text>
+                </Pressable>
               </View>
+
+              {/* Option 1: Quick Paste / Raw Single Field */}
+              {coordMode === 'single' ? (
+                <View style={styles.fieldBlock}>
+                  <Text style={[styles.subLabel, { color: colors.textMuted }]}>
+                    {t('coords.pair_label', 'ENTER COORDINATE PAIR')}
+                  </Text>
+                  <TextInput
+                    style={inputStyle}
+                    placeholder={t('coords.pair_placeholder', "e.g. 20.3875, 70.8783 or 20° 23' N, 70° 52' E")}
+                    placeholderTextColor={colors.textMuted}
+                    value={singleText}
+                    onChangeText={handleSingleChange}
+                    autoCapitalize="none"
+                  />
+                  <Text style={[styles.hint, { color: colors.textSecondary }]}>
+                    {t('coords.pair_hint', 'Accepts decimal (20.35, 70.82) or standard nautical notation.')}
+                  </Text>
+                </View>
+              ) : (
+                /* Option 2: Separate Lat & Lng Pair Fields */
+                <View style={styles.pairRow}>
+                  <View style={styles.pairCol}>
+                    <Text style={[styles.subLabel, { color: colors.textMuted }]}>
+                      {t('waypoints.lat_label', 'LATITUDE')}
+                    </Text>
+                    <TextInput
+                      style={inputStyle}
+                      keyboardType="numeric"
+                      placeholder={t('coords.lat_placeholder', 'e.g. 20.3875')}
+                      placeholderTextColor={colors.textMuted}
+                      value={latText}
+                      onChangeText={handleLatChange}
+                    />
+                  </View>
+                  <View style={styles.pairCol}>
+                    <Text style={[styles.subLabel, { color: colors.textMuted }]}>
+                      {t('waypoints.lng_label', 'LONGITUDE')}
+                    </Text>
+                    <TextInput
+                      style={inputStyle}
+                      keyboardType="numeric"
+                      placeholder={t('coords.lng_placeholder', 'e.g. 70.8783')}
+                      placeholderTextColor={colors.textMuted}
+                      value={lngText}
+                      onChangeText={handleLngChange}
+                    />
+                  </View>
+                </View>
+              )}
+
+              {/* Validation Error Message */}
+              {coordError ? (
+                <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                  <Text style={styles.errorText}>{coordError}</Text>
+                </View>
+              ) : null}
+
             </View>
 
-            {/* Depth & Category */}
-            <View style={styles.coordsRow}>
-              <View style={styles.coordCol}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>DEPTH (METERS)</Text>
+            {/* Depth & Color Pin */}
+            <View style={styles.pairRow}>
+              <View style={styles.pairCol}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  {t('waypoints.depth_label', 'WATER DEPTH (METERS)')}
+                </Text>
                 <TextInput
-                  style={[
-                    styles.input,
-                    {
-                      backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
-                      borderColor: colors.cardBorder,
-                      color: colors.text,
-                    },
-                  ]}
-                  placeholder="e.g. 65"
+                  style={inputStyle}
+                  placeholder={t('waypoints.depth_placeholder', 'e.g. 65')}
                   placeholderTextColor={colors.textMuted}
                   keyboardType="numeric"
                   value={depthStr}
@@ -283,8 +443,10 @@ export function WaypointModal({
                 />
               </View>
 
-              <View style={styles.coordCol}>
-                <Text style={[styles.label, { color: colors.textSecondary }]}>COLOR TAG</Text>
+              <View style={styles.pairCol}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  {t('waypoints.color_tag', 'COLOR PIN')}
+                </Text>
                 <View style={styles.colorPalette}>
                   {COLOR_OPTIONS.map((c) => (
                     <Pressable
@@ -301,27 +463,29 @@ export function WaypointModal({
               </View>
             </View>
 
-            {/* Category Pills */}
+            {/* Category / Target Species */}
             <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>CATEGORY / SPECIES</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                {t('waypoints.category_label', 'CATEGORY / TARGET SPECIES')}
+              </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagScroll}>
                 {CATEGORIES.map((cat) => {
-                  const isSelected = category === cat;
+                  const isSelected = category === cat.id;
                   return (
                     <Pressable
-                      key={cat}
+                      key={cat.id}
                       style={[
                         styles.tagPill,
                         {
                           backgroundColor: isSelected
                             ? colors.chipBg
                             : isLight
-                            ? '#F1F5F9'
-                            : 'rgba(255, 255, 255, 0.06)',
+                              ? '#F1F5F9'
+                              : 'rgba(255, 255, 255, 0.06)',
                           borderColor: isSelected ? colors.accent : colors.divider,
                         },
                       ]}
-                      onPress={() => setCategory(cat)}
+                      onPress={() => setCategory(cat.id)}
                     >
                       <Text
                         style={[
@@ -330,7 +494,7 @@ export function WaypointModal({
                           isSelected && { fontWeight: '700' },
                         ]}
                       >
-                        {cat}
+                        {t(cat.key, cat.fallback)}
                       </Text>
                     </Pressable>
                   );
@@ -338,20 +502,17 @@ export function WaypointModal({
               </ScrollView>
             </View>
 
-            {/* Notes */}
+            {/* Notes & Catch Logs */}
             <View style={styles.fieldGroup}>
-              <Text style={[styles.label, { color: colors.textSecondary }]}>NOTES & CATCH LOGS (OPTIONAL)</Text>
+              <Text style={[styles.label, { color: colors.textSecondary }]}>
+                {t('waypoints.notes_label', 'NOTES & CATCH LOGS (OPTIONAL)')}
+              </Text>
               <TextInput
-                style={[
-                  styles.input,
-                  styles.notesInput,
-                  {
-                    backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.35)',
-                    borderColor: colors.cardBorder,
-                    color: colors.text,
-                  },
-                ]}
-                placeholder="e.g. Best during high tide, rock bottom"
+                style={[inputStyle, styles.notesInput]}
+                placeholder={t(
+                  'waypoints.notes_placeholder',
+                  'e.g. Best during high tide, rocky reef bottom',
+                )}
                 placeholderTextColor={colors.textMuted}
                 multiline
                 numberOfLines={2}
@@ -361,7 +522,7 @@ export function WaypointModal({
             </View>
           </ScrollView>
 
-          {/* Save Button */}
+          {/* Save / Update Action Buttons */}
           <View style={styles.footerRow}>
             <Pressable
               style={[
@@ -370,8 +531,11 @@ export function WaypointModal({
               ]}
               onPress={onClose}
               disabled={isSaving}
+              accessibilityRole="button"
             >
-              <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
+              <Text style={[styles.cancelText, { color: colors.textSecondary }]}>
+                {t('btn.cancel', 'Cancel')}
+              </Text>
             </Pressable>
 
             <Pressable
@@ -382,9 +546,16 @@ export function WaypointModal({
               ]}
               onPress={handleSave}
               disabled={isSaving}
+              accessibilityRole="button"
             >
               <Ionicons name="checkmark" size={18} color="#FFFFFF" />
-              <Text style={styles.saveText}>{isSaving ? 'Saving...' : 'Save Waypoint'}</Text>
+              <Text style={styles.saveText}>
+                {isSaving
+                  ? t('waypoints.saving', 'Saving...')
+                  : spotToEdit
+                    ? t('waypoints.update_btn', 'Update Waypoint')
+                    : t('waypoints.save_btn', 'Save Waypoint')}
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -410,7 +581,7 @@ const styles = StyleSheet.create({
     paddingTop: 18,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.12)',
-    maxHeight: '85%',
+    maxHeight: '88%',
   },
   header: {
     flexDirection: 'row',
@@ -452,38 +623,79 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 6,
   },
+  subLabel: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
   coordLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 8,
   },
   useGpsBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: 'rgba(56, 189, 248, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#38BDF8',
   },
   useGpsText: {
     color: '#38BDF8',
     fontSize: 11,
     fontWeight: '700',
   },
-  coordsRow: {
+  tabsRow: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    padding: 3,
+    marginBottom: 12,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  tabActive: {
+    backgroundColor: '#0284C7',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  tabText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  tabTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  fieldBlock: {
+    marginBottom: 8,
+  },
+  hint: {
+    fontSize: 11,
+    marginTop: 4,
+    lineHeight: 15,
+  },
+  pairRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 14,
+    marginBottom: 8,
   },
-  coordCol: {
+  pairCol: {
     flex: 1,
-  },
-  coordSub: {
-    color: MapColors.textMuted,
-    fontSize: 11,
-    marginBottom: 4,
   },
   input: {
     backgroundColor: 'rgba(0, 0, 0, 0.35)',
@@ -495,6 +707,43 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
   },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 4,
+    marginBottom: 6,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '600',
+    flex: 1,
+  },
+  previewBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginTop: 4,
+  },
+  previewText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  previewDec: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
   notesInput: {
     height: 60,
     textAlignVertical: 'top',
@@ -503,7 +752,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingTop: 6,
+    paddingTop: 8,
   },
   colorCircle: {
     width: 26,
@@ -527,18 +776,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },
-  tagPillActive: {
-    backgroundColor: 'rgba(56, 189, 248, 0.2)',
-    borderColor: '#38BDF8',
-  },
   tagText: {
     color: MapColors.textSecondary,
     fontSize: 12,
     fontWeight: '600',
-  },
-  tagTextActive: {
-    color: '#38BDF8',
-    fontWeight: '700',
   },
   footerRow: {
     flexDirection: 'row',

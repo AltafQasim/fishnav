@@ -11,6 +11,7 @@ import {
   Switch,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,6 +37,9 @@ import {
 export function SettingsSheetContent() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  const isSmall = windowWidth < 365;
+  const isVerySmall = windowWidth < 335;
   const { theme, setTheme, colors, isLight, isDark, isHighContrast } = useAppTheme();
   const { language, setLanguage, t, availableLanguages } = useLanguage();
   const { captain, updateCaptain } = useAuth();
@@ -223,21 +227,25 @@ export function SettingsSheetContent() {
       style={styles.container}
       contentContainerStyle={[
         styles.content,
-        { paddingBottom: Math.max(insets.bottom, 20) + 110 },
+        {
+          paddingHorizontal: isSmall ? 10 : 16,
+          paddingBottom: Math.max(insets.bottom, 20) + 110,
+        },
       ]}
       showsVerticalScrollIndicator={false} >
       {/* 👑 Section 0: FishNav Pro & Fleet Referral Membership */}
       <View style={styles.section}>
         <View style={styles.sectionHeaderRow}>
-          <View style={styles.sectionHeaderLeft}>
+          <View style={[styles.sectionHeaderLeft, { flexShrink: 1 }]}>
             <MaterialCommunityIcons name="crown" size={15} color="#F59E0B" style={{ marginRight: 5 }} />
-            <Text style={[styles.sectionHeader, { color: '#F59E0B', marginLeft: 0 }]}>
+            <Text style={[styles.sectionHeader, { color: '#F59E0B', marginLeft: 0 }, isSmall && { fontSize: 10 }]}>
               {t('settings.membership_license', 'MEMBERSHIP & VESSEL LICENSE')}
             </Text>
           </View>
           <View
             style={[
               styles.badgeTheme,
+              isSmall && { paddingHorizontal: 6, paddingVertical: 2 },
               {
                 backgroundColor: isPro
                   ? isExpiringSoon
@@ -263,6 +271,7 @@ export function SettingsSheetContent() {
             <Text
               style={[
                 styles.badgeThemeText,
+                isSmall && { fontSize: 9 },
                 {
                   color: isPro
                     ? isExpiringSoon
@@ -291,12 +300,13 @@ export function SettingsSheetContent() {
           </View>
         </View>
 
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <View style={[styles.card, isVerySmall && { padding: 10 }, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           {/* Top Status Header Row */}
-          <View style={styles.proMembershipRow}>
+          <View style={[styles.proMembershipRow, isSmall && { gap: 8, marginBottom: 8 }]}>
             <View
               style={[
                 styles.proIconBox,
+                isSmall && { width: 38, height: 38 },
                 {
                   backgroundColor: isPro
                     ? isExpiringSoon
@@ -321,19 +331,20 @@ export function SettingsSheetContent() {
             >
               <MaterialCommunityIcons
                 name={isPro ? (isExpiringSoon ? 'shield-alert' : 'shield-crown') : hasReferralBonus ? 'gift' : isTrialExpired ? 'shield-off' : 'shield-star'}
-                size={26}
+                size={isSmall ? 22 : 26}
                 color={isPro ? (isExpiringSoon ? '#EF4444' : '#F59E0B') : hasReferralBonus ? '#22C55E' : isTrialExpired ? '#EF4444' : colors.accent}
               />
             </View>
 
             <View style={{ flex: 1 }}>
-              <View style={styles.planTitleBadgeRow}>
-                <Text style={[styles.proMembershipTitle, { color: colors.text }]}>
+              <View style={[styles.planTitleBadgeRow, { flexWrap: 'wrap' }]}>
+                <Text style={[styles.proMembershipTitle, { color: colors.text }, isSmall && { fontSize: 13 }]}>
                   {planDisplayName}
                 </Text>
                 <View
                   style={[
                     styles.statusPill,
+                    isSmall && { paddingHorizontal: 5, paddingVertical: 1.5 },
                     {
                       backgroundColor: isPro
                         ? isExpiringSoon
@@ -359,6 +370,7 @@ export function SettingsSheetContent() {
                   <Text
                     style={[
                       styles.statusPillText,
+                      isSmall && { fontSize: 8.5 },
                       {
                         color: isPro
                           ? isExpiringSoon
@@ -382,7 +394,7 @@ export function SettingsSheetContent() {
                   </Text>
                 </View>
               </View>
-              <Text style={[styles.proMembershipSub, { color: colors.textSecondary }]}>
+              <Text style={[styles.proMembershipSub, isSmall && { fontSize: 10.5 }, { color: colors.textSecondary }]}>
                 {isPro
                   ? proPlan === 'lifetime'
                     ? t('pro.perpetual_desc', 'Perpetual master license. High-res bathymetry & AIS radar unlocked forever.')
@@ -400,6 +412,7 @@ export function SettingsSheetContent() {
           <View
             style={[
               styles.expiryHudConsole,
+              isSmall && { padding: 10 },
               {
                 backgroundColor: isLight ? '#F8FAFC' : 'rgba(2, 12, 23, 0.85)',
                 borderColor: isPro
@@ -425,10 +438,10 @@ export function SettingsSheetContent() {
                   <View style={styles.hudLifetimeLeft}>
                     <Text style={[styles.hudHugeInfinity, { color: '#F59E0B' }]}>♾️</Text>
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.hudHeadline, { color: colors.text }]}>
+                      <Text style={[styles.hudHeadline, isSmall && { fontSize: 12 }, { color: colors.text }]}>
                         {t('pro.perpetual_access', 'PERPETUAL LIFETIME ACCESS')}
                       </Text>
-                      <Text style={[styles.hudSubtitle, { color: colors.textSecondary }]}>
+                      <Text style={[styles.hudSubtitle, isSmall && { fontSize: 10 }, { color: colors.textSecondary }]}>
                         {t('pro.perpetual_desc', 'Never expires • All bathymetry, radar & offline charts guaranteed')}
                       </Text>
                     </View>
@@ -437,7 +450,7 @@ export function SettingsSheetContent() {
               ) : (
                 // Annual or Quarterly Pro View
                 <View>
-                  <View style={styles.hudTopRow}>
+                  <View style={[styles.hudTopRow, isSmall && { flexDirection: 'column', alignItems: 'flex-start', gap: 8 }]}>
                     <View style={styles.hudCountdownBox}>
                       <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
                         {t('pro.time_remaining', 'TIME REMAINING')}
@@ -446,6 +459,7 @@ export function SettingsSheetContent() {
                         <Text
                           style={[
                             styles.hudBigNumber,
+                            isSmall && { fontSize: 22 },
                             { color: isExpiringSoon ? '#EF4444' : '#F59E0B' },
                           ]}
                         >
@@ -454,6 +468,7 @@ export function SettingsSheetContent() {
                         <Text
                           style={[
                             styles.hudBigUnit,
+                            isSmall && { fontSize: 11 },
                             { color: isExpiringSoon ? '#EF4444' : '#F59E0B' },
                           ]}
                         >
@@ -462,10 +477,10 @@ export function SettingsSheetContent() {
                       </View>
                     </View>
 
-                    <View style={styles.hudDateInfoBox}>
-                      <View style={styles.hudDatePill}>
+                    <View style={[styles.hudDateInfoBox, isSmall && { alignItems: 'flex-start' }]}>
+                      <View style={[styles.hudDatePill, isSmall && { paddingHorizontal: 6, paddingVertical: 3 }]}>
                         <Ionicons name="calendar" size={13} color={isExpiringSoon ? '#EF4444' : '#F59E0B'} />
-                        <Text style={[styles.hudDateText, { color: colors.text }]}>
+                        <Text style={[styles.hudDateText, isSmall && { fontSize: 10 }, { color: colors.text }]}>
                           {t('pro.valid_until', 'Expires')}: <Text style={{ fontWeight: '800' }}>{proFormattedExpiry}</Text>
                         </Text>
                       </View>
@@ -485,14 +500,15 @@ export function SettingsSheetContent() {
                         ]}
                       />
                     </View>
-                    <View style={styles.hudProgressLabels}>
-                      <Text style={[styles.hudProgressLabelText, { color: colors.textMuted }]}>
+                    <View style={[styles.hudProgressLabels, { flexWrap: 'wrap', gap: 4 }]}>
+                      <Text style={[styles.hudProgressLabelText, { color: colors.textMuted }, isSmall && { fontSize: 9.5 }]}>
                         {t('settings.cycle', 'Cycle')}: {proPlan === 'quarterly' ? t('pro.cycle_90', '90 Days') : t('pro.cycle_365', '365 Days')}
                       </Text>
                       <Text
                         style={[
                           styles.hudProgressLabelText,
                           { color: isExpiringSoon ? '#EF4444' : '#F59E0B', fontWeight: '700' },
+                          isSmall && { fontSize: 9.5 },
                         ]}
                       >
                         {proDaysRemaining} {t('settings.days_remaining', 'days remaining')} ({Math.max(1, 100 - proProgressPercent)}%)
@@ -504,28 +520,28 @@ export function SettingsSheetContent() {
             ) : hasReferralBonus ? (
               // Referral Bonus View
               <View>
-                <View style={styles.hudTopRow}>
+                <View style={[styles.hudTopRow, isSmall && { flexDirection: 'column', alignItems: 'flex-start', gap: 8 }]}>
                   <View style={styles.hudCountdownBox}>
                     <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
                       {t('settings.referral_pass_remaining', 'REFERRAL PASS REMAINING')}
                     </Text>
                     <View style={styles.hudDaysRow}>
-                      <Text style={[styles.hudBigNumber, { color: '#22C55E' }]}>
+                      <Text style={[styles.hudBigNumber, isSmall && { fontSize: 22 }, { color: '#22C55E' }]}>
                         {bonusProDaysRemaining}
                       </Text>
-                      <Text style={[styles.hudBigUnit, { color: '#22C55E' }]}>
+                      <Text style={[styles.hudBigUnit, isSmall && { fontSize: 11 }, { color: '#22C55E' }]}>
                         {bonusProDaysRemaining === 1 ? t('settings.day_free', 'DAY FREE') : t('settings.days_free', 'DAYS FREE')}
                       </Text>
                     </View>
                   </View>
-                  <View style={styles.hudDateInfoBox}>
-                    <View style={styles.hudDatePill}>
+                  <View style={[styles.hudDateInfoBox, isSmall && { alignItems: 'flex-start' }]}>
+                    <View style={[styles.hudDatePill, isSmall && { paddingHorizontal: 6, paddingVertical: 3 }]}>
                       <Ionicons name="gift" size={13} color="#22C55E" />
-                      <Text style={[styles.hudDateText, { color: colors.text }]}>
+                      <Text style={[styles.hudDateText, isSmall && { fontSize: 10 }, { color: colors.text }]}>
                         {t('pro.valid_until', 'Valid Until')}: <Text style={{ fontWeight: '800' }}>{bonusProFormattedExpiry}</Text>
                       </Text>
                     </View>
-                    <Text style={[styles.hudSubInfo, { color: colors.textSecondary }]}>
+                    <Text style={[styles.hudSubInfo, isSmall && { fontSize: 9.5 }, { color: colors.textSecondary }]}>
                       +{referralDaysEarned}d {t('settings.invite_crew', 'earned from crew invites')} ({referralCount})
                     </Text>
                   </View>
@@ -534,7 +550,7 @@ export function SettingsSheetContent() {
             ) : (
               // Free Trial or Expired View
               <View>
-                <View style={styles.hudTopRow}>
+                <View style={[styles.hudTopRow, isSmall && { flexDirection: 'column', alignItems: 'flex-start', gap: 8 }]}>
                   <View style={styles.hudCountdownBox}>
                     <Text style={[styles.hudSmallLabel, { color: colors.textSecondary }]}>
                       {isTrialExpired ? t('pro.trial_expired', 'TRIAL STATUS') : t('settings.free_evaluation', 'FREE EVALUATION PERIOD')}
@@ -543,6 +559,7 @@ export function SettingsSheetContent() {
                       <Text
                         style={[
                           styles.hudBigNumber,
+                          isSmall && { fontSize: 22 },
                           { color: isTrialExpired ? '#EF4444' : colors.accent },
                         ]}
                       >
@@ -551,6 +568,7 @@ export function SettingsSheetContent() {
                       <Text
                         style={[
                           styles.hudBigUnit,
+                          isSmall && { fontSize: 11 },
                           { color: isTrialExpired ? '#EF4444' : colors.accent },
                         ]}
                       >
@@ -558,18 +576,18 @@ export function SettingsSheetContent() {
                       </Text>
                     </View>
                   </View>
-                  <View style={styles.hudDateInfoBox}>
-                    <View style={styles.hudDatePill}>
+                  <View style={[styles.hudDateInfoBox, isSmall && { alignItems: 'flex-start' }]}>
+                    <View style={[styles.hudDatePill, isSmall && { paddingHorizontal: 6, paddingVertical: 3 }]}>
                       <Ionicons
                         name={isTrialExpired ? 'alert-circle' : 'time'}
                         size={13}
                         color={isTrialExpired ? '#EF4444' : colors.accent}
                       />
-                      <Text style={[styles.hudDateText, { color: colors.text }]}>
+                      <Text style={[styles.hudDateText, isSmall && { fontSize: 10 }, { color: colors.text }]}>
                         {isTrialExpired ? t('settings.trial_ended', 'Trial Ended') : `${t('settings.trial_ends', 'Trial Ends')}: ${trialFormattedExpiry}`}
                       </Text>
                     </View>
-                    <Text style={[styles.hudSubInfo, { color: colors.textSecondary }]}>
+                    <Text style={[styles.hudSubInfo, isSmall && { fontSize: 9.5 }, { color: colors.textSecondary }]}>
                       {isTrialExpired
                         ? t('settings.charts_locked', 'Offshore charts locked')
                         : t('settings.upgrade_anytime', 'Upgrade anytime for permanent access')}
@@ -589,11 +607,11 @@ export function SettingsSheetContent() {
                         ]}
                       />
                     </View>
-                    <View style={styles.hudProgressLabels}>
-                      <Text style={[styles.hudProgressLabelText, { color: colors.textMuted }]}>
+                    <View style={[styles.hudProgressLabels, { flexWrap: 'wrap', gap: 4 }]}>
+                      <Text style={[styles.hudProgressLabelText, { color: colors.textMuted }, isSmall && { fontSize: 9.5 }]}>
                         72 Hours {t('settings.free_evaluation', 'Free Evaluation')}
                       </Text>
-                      <Text style={[styles.hudProgressLabelText, { color: colors.accent, fontWeight: '700' }]}>
+                      <Text style={[styles.hudProgressLabelText, { color: colors.accent, fontWeight: '700' }, isSmall && { fontSize: 9.5 }]}>
                         {trialHoursRemaining} {t('weather.hours_left', 'hours left')}
                       </Text>
                     </View>
@@ -603,13 +621,20 @@ export function SettingsSheetContent() {
             )}
 
             {/* License Certificate & Copy Bar */}
-            <View style={[styles.hudCertRow, { borderTopColor: colors.divider }]}>
-              <View style={styles.hudCertLeft}>
+            <View style={[styles.hudCertRow, { borderTopColor: colors.divider, flexWrap: 'wrap', gap: 6 }]}>
+              <View style={[styles.hudCertLeft, { flexShrink: 1 }]}>
                 <MaterialCommunityIcons name="certificate" size={14} color="#F59E0B" />
                 <Text style={[styles.hudCertLabel, { color: colors.textMuted }]}>
                   {t('settings.license_id', 'LICENSE ID:')}
                 </Text>
-                <Text style={[styles.hudCertValue, { color: colors.text }]}>
+                <Text
+                  style={[
+                    styles.hudCertValue,
+                    { color: colors.text },
+                    isSmall && { fontSize: 10 },
+                  ]}
+                  numberOfLines={1}
+                >
                   {licenseCertificateId}
                 </Text>
               </View>
@@ -648,10 +673,11 @@ export function SettingsSheetContent() {
           <View style={[styles.divider, { backgroundColor: colors.divider, marginVertical: 10 }]} />
 
           {/* Action Buttons: Upgrade Pro / Renew & Invite Crew */}
-          <View style={styles.actionsRow}>
+          <View style={[styles.actionsRow, isSmall && { flexDirection: 'column' }]}>
             <Pressable
               style={[
                 styles.actionBtn,
+                isSmall && { width: '100%' },
                 {
                   backgroundColor: isExpiringSoon
                     ? '#EF4444'
@@ -675,6 +701,7 @@ export function SettingsSheetContent() {
                   styles.actionBtnText,
                   { color: isExpiringSoon ? '#FFFFFF' : colors.accent, fontWeight: '800' },
                 ]}
+                numberOfLines={1}
               >
                 {isExpiringSoon
                   ? t('settings.renew_now', 'Renew License Now')
@@ -687,6 +714,7 @@ export function SettingsSheetContent() {
             <Pressable
               style={[
                 styles.actionBtn,
+                isSmall && { width: '100%' },
                 {
                   backgroundColor: isLight ? '#DCFCE7' : 'rgba(34, 197, 94, 0.14)',
                   borderColor: '#22C55E',
@@ -695,7 +723,7 @@ export function SettingsSheetContent() {
               onPress={openReferralModal}
             >
               <Ionicons name="people" size={16} color="#22C55E" />
-              <Text style={[styles.actionBtnText, { color: '#22C55E' }]}>
+              <Text style={[styles.actionBtnText, { color: '#22C55E' }]} numberOfLines={1}>
                 {t('settings.invite_crew', 'Invite Crew (+10d)')}
               </Text>
             </Pressable>
@@ -707,6 +735,7 @@ export function SettingsSheetContent() {
       <Pressable
         style={[
           styles.tripsShortcutCard,
+          isSmall && { padding: 11, gap: 10, borderRadius: 14 },
           {
             backgroundColor: colors.card,
             borderColor: colors.cardBorder,
@@ -714,37 +743,38 @@ export function SettingsSheetContent() {
         ]}
         onPress={() => router.push('/trips')}
       >
-        <View style={[styles.tripsIconWrap, { backgroundColor: colors.chipBg }]}>
-          <MaterialCommunityIcons name="map-marker-path" size={24} color={colors.accent} />
+        <View style={[styles.tripsIconWrap, isSmall && { width: 38, height: 38, borderRadius: 19 }, { backgroundColor: colors.chipBg }]}>
+          <MaterialCommunityIcons name="map-marker-path" size={isSmall ? 20 : 24} color={colors.accent} />
         </View>
         <View style={styles.tripsTextWrap}>
-          <Text style={[styles.tripsTitle, { color: colors.text }]}>{t('hub.trips_log', 'Trips & Routes Logbook')}</Text>
-          <Text style={[styles.tripsSubtitle, { color: colors.textSecondary }]}>
+          <Text style={[styles.tripsTitle, isSmall && { fontSize: 13.5 }, { color: colors.text }]}>{t('hub.trips_log', 'Trips & Routes Logbook')}</Text>
+          <Text style={[styles.tripsSubtitle, isSmall && { fontSize: 10 }, { color: colors.textSecondary }]}>
             {savedTrips.length} {t('settings.trips_sub', 'recorded fishing voyages • View tracks on map')}
           </Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </Pressable>
 
       {/* 🗺️ OFFLINE MARINE CHARTS & REGIONAL TILES */}
       <View style={styles.section}>
         <View style={styles.sectionHeaderRow}>
-          <View style={styles.sectionHeaderLeft}>
+          <View style={[styles.sectionHeaderLeft, { flexShrink: 1 }]}>
             <MaterialCommunityIcons name="map-clock-outline" size={18} color={colors.accent} style={{ marginRight: 6 }} />
-            <Text style={[styles.sectionHeader, { color: colors.accent }]}>
+            <Text style={[styles.sectionHeader, { color: colors.accent }, isSmall && { fontSize: 10 }]}>
               {t('settings.offline', 'OFFLINE NAUTICAL CHARTS')}
             </Text>
           </View>
           <View
             style={[
               styles.badgeTheme,
+              isSmall && { paddingHorizontal: 6, paddingVertical: 2 },
               {
                 backgroundColor: downloadedRegions.length > 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(245, 158, 11, 0.15)',
                 borderColor: downloadedRegions.length > 0 ? '#22C55E' : '#F59E0B',
               },
             ]}
           >
-            <Text style={[styles.badgeThemeText, { color: downloadedRegions.length > 0 ? '#22C55E' : '#F59E0B' }]}>
+            <Text style={[styles.badgeThemeText, isSmall && { fontSize: 9 }, { color: downloadedRegions.length > 0 ? '#22C55E' : '#F59E0B' }]}>
               {downloadedRegions.length > 0 ? t('settings.deep_sea_ready', 'DEEP-SEA READY ✓') : t('settings.needs_setup', 'NEEDS SETUP ⚡')}
             </Text>
           </View>
@@ -754,30 +784,32 @@ export function SettingsSheetContent() {
         <View
           style={[
             styles.offlineStatusStrip,
+            isSmall && { padding: 10 },
             {
               backgroundColor: downloadedRegions.length > 0 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(245, 158, 11, 0.1)',
               borderColor: downloadedRegions.length > 0 ? 'rgba(34, 197, 94, 0.3)' : 'rgba(245, 158, 11, 0.3)',
             },
           ]}
         >
-          <View style={styles.statusStripLeft}>
+          <View style={[styles.statusStripLeft, isSmall && { gap: 10 }]}>
             <View
               style={[
                 styles.statusIconWrap,
+                isSmall && { width: 34, height: 34, borderRadius: 10 },
                 { backgroundColor: downloadedRegions.length > 0 ? 'rgba(34, 197, 94, 0.2)' : 'rgba(245, 158, 11, 0.2)' },
               ]}
             >
               <MaterialCommunityIcons
                 name={downloadedRegions.length > 0 ? 'shield-check' : 'cloud-download-outline'}
-                size={20}
+                size={isSmall ? 18 : 20}
                 color={downloadedRegions.length > 0 ? '#22C55E' : '#F59E0B'}
               />
             </View>
             <View style={styles.statusStripTextWrap}>
-              <Text style={[styles.statusStripTitle, { color: downloadedRegions.length > 0 ? '#22C55E' : '#F59E0B' }]}>
+              <Text style={[styles.statusStripTitle, isSmall && { fontSize: 11 }, { color: downloadedRegions.length > 0 ? '#22C55E' : '#F59E0B' }]}>
                 {downloadedRegions.length > 0 ? t('settings.charts_ready_title', 'OFFLINE CHARTS READY FOR SEA') : t('settings.no_charts_title', 'NO OFFLINE CHARTS SAVED')}
               </Text>
-              <Text style={[styles.statusStripSub, { color: colors.textSecondary }]}>
+              <Text style={[styles.statusStripSub, isSmall && { fontSize: 10 }, { color: colors.textSecondary }]}>
                 {downloadedRegions.length > 0
                   ? `${downloadedRegions.length} ${t('settings.zones_saved', 'chart zone(s) saved')} • ${storageUsageMb} MB ${t('settings.cached_on_phone', 'cached on phone')}`
                   : t('settings.predownload_advice', 'Pre-download charts while connected to port Wi-Fi or 4G before sailing')}
@@ -816,18 +848,19 @@ export function SettingsSheetContent() {
           </View>
         )}
 
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <View style={[styles.card, isVerySmall && { padding: 10 }, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           {/* 📍 Hero Option: Current Boat Sea Area */}
           <View
             style={[
               styles.currentAreaHeroCard,
+              isSmall && { margin: 4, padding: 10 },
               {
                 backgroundColor: isLight ? '#F0FDF4' : 'rgba(0, 240, 255, 0.05)',
                 borderColor: isLight ? '#86EFAC' : 'rgba(0, 240, 255, 0.25)',
               },
             ]}
           >
-            <View style={styles.currentAreaHeader}>
+            <View style={[styles.currentAreaHeader, isSmall && { flexWrap: 'wrap', gap: 6 }]}>
               <View
                 style={[
                   styles.currentAreaBadge,
@@ -846,25 +879,26 @@ export function SettingsSheetContent() {
                 <Text
                   style={[
                     styles.currentAreaBadgeText,
+                    isSmall && { fontSize: 8.5 },
                     { color: isCurrentAreaDownloaded ? '#22C55E' : colors.accent },
                   ]}
                 >
                   {isCurrentAreaDownloaded ? t('settings.cached_30nm', '30 NM CACHED OFFLINE') : t('settings.current_perimeter', 'CURRENT BOAT PERIMETER')}
                 </Text>
               </View>
-              <Text style={[styles.currentAreaCoordText, { color: colors.textMuted }]}>
+              <Text style={[styles.currentAreaCoordText, isSmall && { fontSize: 9.5 }, { color: colors.textMuted }]}>
                 {location
                   ? `${location.latitude.toFixed(3)}°N, ${location.longitude.toFixed(3)}°E`
                   : 'Veraval Port Waters'}
               </Text>
             </View>
 
-            <View style={styles.currentAreaBody}>
+            <View style={[styles.currentAreaBody, isSmall && { flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
               <View style={styles.currentAreaTextWrap}>
-                <Text style={[styles.currentAreaTitle, { color: colors.text }]}>
+                <Text style={[styles.currentAreaTitle, isSmall && { fontSize: 12.5 }, { color: colors.text }]}>
                   {t('settings.surrounding_sea', 'Surrounding Sea Chart (30 NM)')}
                 </Text>
-                <Text style={[styles.currentAreaDesc, { color: colors.textSecondary }]}>
+                <Text style={[styles.currentAreaDesc, isSmall && { fontSize: 10.5 }, { color: colors.textSecondary }]}>
                   {isCurrentAreaDownloaded
                     ? t('settings.active_zone_saved', `✓ Active 30 NM zone is saved (${currentAreaMeta?.tileCount || 260} tiles). Tap 'Update' if boat moved to a new zone.`)
                     : t('settings.instant_30nm', 'Instant 30 Nautical Mile boundary covering all fishing spots, banks & channels')}
@@ -873,6 +907,7 @@ export function SettingsSheetContent() {
               <Pressable
                 style={[
                   styles.downloadHeroBtn,
+                  isSmall && { alignSelf: 'stretch', justifyContent: 'center' },
                   isCurrentAreaDownloaded
                     ? { backgroundColor: colors.chipBg, borderColor: '#22C55E', borderWidth: 1 }
                     : { backgroundColor: colors.accent },
@@ -912,15 +947,15 @@ export function SettingsSheetContent() {
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           {/* 📍 Dynamic Nearby Harbor Suggestions Header */}
-          <View style={styles.nearbyHeaderRow}>
-            <View style={styles.nearbyTitleWithDot}>
+          <View style={[styles.nearbyHeaderRow, isSmall && { paddingHorizontal: 6, flexWrap: 'wrap', rowGap: 4 }]}>
+            <View style={[styles.nearbyTitleWithDot, { flexShrink: 1 }]}>
               <View
                 style={[
                   styles.pulsingGpsDot,
                   { backgroundColor: location ? '#22C55E' : '#F59E0B' },
                 ]}
               />
-              <Text style={[styles.harborPacksHeader, { color: colors.textSecondary }]}>
+              <Text style={[styles.harborPacksHeader, isSmall && { fontSize: 9.5, paddingHorizontal: 2 }, { color: colors.textSecondary }]}>
                 {location ? t('settings.nearby_charts', 'NEARBY HARBOR CHARTS (GPS SUGGESTIONS)') : t('settings.popular_charts', 'POPULAR HARBOR CHARTS (GUJARAT)')}
               </Text>
             </View>
@@ -940,22 +975,23 @@ export function SettingsSheetContent() {
             return (
               <View key={region.id}>
                 {idx > 0 && <View style={[styles.divider, { backgroundColor: colors.divider }]} />}
-                <View style={styles.offlineItemRow}>
+                <View style={[styles.offlineItemRow, isSmall && { paddingHorizontal: 8, paddingVertical: 8, gap: 8 }]}>
                   <View
                     style={[
                       styles.offlineIconWrap,
+                      isSmall && { width: 32, height: 32, borderRadius: 8 },
                       { backgroundColor: isDownloaded ? 'rgba(34, 197, 94, 0.15)' : colors.chipBg },
                     ]}
                   >
                     <MaterialCommunityIcons
                       name={isDownloaded ? 'check-decagram' : 'anchor'}
-                      size={22}
+                      size={isSmall ? 18 : 22}
                       color={isDownloaded ? '#22C55E' : colors.accent}
                     />
                   </View>
                   <View style={styles.offlineTextWrap}>
-                    <View style={styles.regionTitleLine}>
-                      <Text style={[styles.offlineItemTitle, { color: colors.text }]}>
+                    <View style={[styles.regionTitleLine, { flexWrap: 'wrap', gap: 4 }]}>
+                      <Text style={[styles.offlineItemTitle, isSmall && { fontSize: 12 }, { color: colors.text }]}>
                         {region.name}
                       </Text>
                       {isDownloaded ? (
@@ -991,10 +1027,10 @@ export function SettingsSheetContent() {
                         )
                       )}
                     </View>
-                    <Text style={[styles.offlineItemDesc, { color: colors.textSecondary }]} numberOfLines={1}>
+                    <Text style={[styles.offlineItemDesc, isSmall && { fontSize: 10 }, { color: colors.textSecondary }]} numberOfLines={1}>
                       {region.description}
                     </Text>
-                    <Text style={[styles.offlineSizeLabel, { color: colors.textMuted }]}>
+                    <Text style={[styles.offlineSizeLabel, isSmall && { fontSize: 9.5 }, { color: colors.textMuted }]}>
                       {region.estimatedTiles} tiles • ~{region.estimatedSizeMb} MB • Zoom {region.minZoom}-{region.maxZoom}
                     </Text>
                   </View>
@@ -1002,6 +1038,7 @@ export function SettingsSheetContent() {
                   <Pressable
                     style={[
                       styles.downloadActionBtn,
+                      isSmall && { paddingHorizontal: 8, paddingVertical: 5 },
                       isDownloaded
                         ? { backgroundColor: colors.chipBg, borderColor: '#22C55E', borderWidth: 1 }
                         : { backgroundColor: colors.accent },
@@ -1060,10 +1097,10 @@ export function SettingsSheetContent() {
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           {/* Storage Footer */}
-          <View style={styles.storageFooterRow}>
+          <View style={[styles.storageFooterRow, isSmall && { paddingHorizontal: 8, paddingVertical: 8, flexWrap: 'wrap', gap: 4 }]}>
             <View style={styles.storageStatsWrap}>
               <Ionicons name="save-outline" size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
-              <Text style={[styles.storageStatsText, { color: colors.textSecondary }]}>
+              <Text style={[styles.storageStatsText, isSmall && { fontSize: 10 }, { color: colors.textSecondary }]}>
                 {t('settings.offline_storage', 'Offline Storage')}: <Text style={{ color: colors.text, fontWeight: '700' }}>{storageUsageMb} MB</Text>
                 {downloadedRegions.length > 0
                   ? ` (${downloadedRegions.length} ${t('settings.packs_saved', 'packs')})`
@@ -1076,20 +1113,20 @@ export function SettingsSheetContent() {
 
       {/* 🎨 APP THEME: HIGH CONTRAST / DARK / LIGHT */}
       <View style={styles.section}>
-        <View style={styles.sectionHeaderRow}>
+        <View style={[styles.sectionHeaderRow, isSmall && { flexWrap: 'wrap', gap: 6 }]}>
           <Text style={[styles.sectionHeader, { color: colors.accent }]}>
             {t('settings.app_theme', 'APP THEME')}
           </Text>
-          <View style={[styles.badgeTheme, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
-            <Text style={[styles.badgeThemeText, { color: colors.accent }]}>
+          <View style={[styles.badgeTheme, isSmall && { paddingHorizontal: 6, paddingVertical: 2 }, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
+            <Text style={[styles.badgeThemeText, isSmall && { fontSize: 9 }, { color: colors.accent }]}>
               {theme === 'high-contrast' ? t('settings.high_contrast', 'HIGH CONTRAST').toUpperCase() : t('settings.light_mode', 'LIGHT MODE').toUpperCase()}
             </Text>
           </View>
         </View>
 
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <View style={[styles.card, isSmall && { padding: 10 }, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
 
-          <View style={styles.themesList}>
+          <View style={[styles.themesList, isSmall && { gap: 8 }]}>
             {(
               [
                 {
@@ -1120,6 +1157,7 @@ export function SettingsSheetContent() {
                   key={item.id}
                   style={[
                     styles.themeItem,
+                    isSmall && { padding: 10, gap: 10, borderRadius: 12 },
                     {
                       backgroundColor: isSelected
                         ? colors.chipBg
@@ -1135,20 +1173,22 @@ export function SettingsSheetContent() {
                   <View
                     style={[
                       styles.themeIconCircle,
+                      isSmall && { width: 36, height: 36, borderRadius: 18 },
                       {
                         backgroundColor: item.bgColor,
                         borderColor: isSelected ? item.accentColor : 'transparent',
                       },
                     ]}
                   >
-                    <Ionicons name={item.icon} size={22} color={item.accentColor} />
+                    <Ionicons name={item.icon} size={isSmall ? 18 : 22} color={item.accentColor} />
                   </View>
 
                   <View style={styles.themeInfoWrap}>
-                    <View style={styles.themeTitleRow}>
+                    <View style={[styles.themeTitleRow, { flexWrap: 'wrap', gap: 4 }]}>
                       <Text
                         style={[
                           styles.themeTitle,
+                          isSmall && { fontSize: 13 },
                           { color: isSelected ? colors.text : colors.textSecondary },
                           isSelected && { fontWeight: '800', color: colors.text },
                         ]}
@@ -1168,6 +1208,7 @@ export function SettingsSheetContent() {
                         <Text
                           style={[
                             styles.themeTagText,
+                            isSmall && { fontSize: 8.5 },
                             { color: isSelected ? item.accentColor : colors.textMuted },
                           ]}
                         >
@@ -1175,7 +1216,7 @@ export function SettingsSheetContent() {
                         </Text>
                       </View>
                     </View>
-                    <Text style={[styles.themeDesc, { color: colors.textMuted }]}>{item.desc}</Text>
+                    <Text style={[styles.themeDesc, isSmall && { fontSize: 10.5, lineHeight: 14 }, { color: colors.textMuted }]}>{item.desc}</Text>
                   </View>
 
                   <View
@@ -1199,12 +1240,13 @@ export function SettingsSheetContent() {
         <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
           {t('settings.vessel', 'VESSEL & BOAT PROFILE')}
         </Text>
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <View style={[styles.card, isSmall && { padding: 10 }, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.boat_name', 'Boat Name')}</Text>
+            <Text style={[styles.fieldLabel, isSmall && { fontSize: 12 }, { color: colors.text }]}>{t('settings.boat_name', 'Boat Name')}</Text>
             <TextInput
               style={[
                 styles.textInput,
+                isSmall && { minWidth: 90, maxWidth: '55%', fontSize: 12, paddingHorizontal: 8, paddingVertical: 5 },
                 {
                   backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.3)',
                   borderColor: colors.divider,
@@ -1221,11 +1263,12 @@ export function SettingsSheetContent() {
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.draft_limit', 'Draft Limit (Meters)')}</Text>
+            <Text style={[styles.fieldLabel, isSmall && { fontSize: 12 }, { color: colors.text }]}>{t('settings.draft_limit', 'Draft Limit (Meters)')}</Text>
             <TextInput
               style={[
                 styles.textInput,
                 styles.shortInput,
+                isSmall && { minWidth: 50, maxWidth: '40%', fontSize: 12, paddingHorizontal: 8, paddingVertical: 5 },
                 {
                   backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.3)',
                   borderColor: colors.divider,
@@ -1241,11 +1284,12 @@ export function SettingsSheetContent() {
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.cruise_speed', 'Cruise Speed (Knots)')}</Text>
+            <Text style={[styles.fieldLabel, isSmall && { fontSize: 12 }, { color: colors.text }]}>{t('settings.cruise_speed', 'Cruise Speed (Knots)')}</Text>
             <TextInput
               style={[
                 styles.textInput,
                 styles.shortInput,
+                isSmall && { minWidth: 50, maxWidth: '40%', fontSize: 12, paddingHorizontal: 8, paddingVertical: 5 },
                 {
                   backgroundColor: isLight ? '#F1F5F9' : 'rgba(0, 0, 0, 0.3)',
                   borderColor: colors.divider,
@@ -1260,9 +1304,9 @@ export function SettingsSheetContent() {
 
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
-          <Pressable style={[styles.saveVesselBtn, { backgroundColor: colors.accent }]} onPress={handleSaveVessel}>
-            <Ionicons name="checkmark-circle" size={16} color={isLight ? '#FFFFFF' : '#020B14'} />
-            <Text style={[styles.saveVesselBtnText, { color: isLight ? '#FFFFFF' : '#020B14' }]}>
+          <Pressable style={[styles.saveVesselBtn, isSmall && { paddingVertical: 10 }, { backgroundColor: colors.accent }]} onPress={handleSaveVessel}>
+            <Ionicons name="checkmark-circle" size={isSmall ? 15 : 16} color={isLight ? '#FFFFFF' : '#020B14'} />
+            <Text style={[styles.saveVesselBtnText, isSmall && { fontSize: 11.5 }, { color: isLight ? '#FFFFFF' : '#020B14' }]}>
               {t('settings.save_vessel', 'Save Vessel Specs')}
             </Text>
           </Pressable>
@@ -1271,23 +1315,23 @@ export function SettingsSheetContent() {
 
       {/* 🌐 Section: Application Language & Translation */}
       <View style={styles.section}>
-        <View style={styles.sectionHeaderRow}>
+        <View style={[styles.sectionHeaderRow, isSmall && { flexWrap: 'wrap', gap: 6 }]}>
           <View style={styles.sectionHeaderLeft}>
             <Ionicons name="globe-outline" size={16} color={colors.accent} style={{ marginRight: 6 }} />
             <Text style={[styles.sectionHeader, { color: colors.text, marginLeft: 0 }]}>
               {t('settings.language', 'APPLICATION LANGUAGE')}
             </Text>
           </View>
-          <View style={[styles.langBadgePill, { backgroundColor: colors.chipBg, borderColor: colors.accent }]}>
-            <Text style={[styles.langBadgePillText, { color: colors.accent }]}>
+          <View style={[styles.langBadgePill, isSmall && { paddingHorizontal: 6, paddingVertical: 2 }, { backgroundColor: colors.chipBg, borderColor: colors.accent }]}>
+            <Text style={[styles.langBadgePillText, isSmall && { fontSize: 10 }, { color: colors.accent }]}>
               {availableLanguages.find((l) => l.code === language)?.flag}{' '}
               {availableLanguages.find((l) => l.code === language)?.nativeName}
             </Text>
           </View>
         </View>
 
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-          <Text style={[styles.langSectionSub, { color: colors.textSecondary }]}>
+        <View style={[styles.card, isSmall && { padding: 10 }, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Text style={[styles.langSectionSub, isSmall && { fontSize: 10.5, lineHeight: 15, marginBottom: 8 }, { color: colors.textSecondary }]}>
             {t('settings.language.subtitle', 'Choose your preferred language for the app')}
           </Text>
           <LanguageDropdown />
@@ -1299,15 +1343,16 @@ export function SettingsSheetContent() {
         <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
           {t('settings.units', 'UNITS & MEASUREMENTS')}
         </Text>
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <View style={[styles.card, isSmall && { padding: 10 }, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.distance_unit', 'Distance Unit')}</Text>
-            <View style={styles.toggleRow}>
+            <Text style={[styles.fieldLabel, isSmall && { fontSize: 12 }, { color: colors.text }]}>{t('settings.distance_unit', 'Distance Unit')}</Text>
+            <View style={[styles.toggleRow, isSmall && { gap: 3 }]}>
               {(['NM', 'KM', 'MI'] as const).map((u) => (
                 <Pressable
                   key={u}
                   style={[
                     styles.unitBtn,
+                    isSmall && { paddingHorizontal: 7, paddingVertical: 4 },
                     {
                       backgroundColor: isLight ? '#F1F5F9' : 'rgba(255, 255, 255, 0.06)',
                       borderColor: colors.divider,
@@ -1322,6 +1367,7 @@ export function SettingsSheetContent() {
                   <Text
                     style={[
                       styles.unitBtnText,
+                      isSmall && { fontSize: 10 },
                       { color: colors.textSecondary },
                       distanceUnit === u && { color: colors.accent, fontWeight: '700' },
                     ]}
@@ -1336,13 +1382,14 @@ export function SettingsSheetContent() {
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.speed_unit', 'Speed Unit')}</Text>
-            <View style={styles.toggleRow}>
+            <Text style={[styles.fieldLabel, isSmall && { fontSize: 12 }, { color: colors.text }]}>{t('settings.speed_unit', 'Speed Unit')}</Text>
+            <View style={[styles.toggleRow, isSmall && { gap: 3 }]}>
               {(['KTS', 'KMH'] as const).map((u) => (
                 <Pressable
                   key={u}
                   style={[
                     styles.unitBtn,
+                    isSmall && { paddingHorizontal: 7, paddingVertical: 4 },
                     {
                       backgroundColor: isLight ? '#F1F5F9' : 'rgba(255, 255, 255, 0.06)',
                       borderColor: colors.divider,
@@ -1357,6 +1404,7 @@ export function SettingsSheetContent() {
                   <Text
                     style={[
                       styles.unitBtnText,
+                      isSmall && { fontSize: 10 },
                       { color: colors.textSecondary },
                       speedUnit === u && { color: colors.accent, fontWeight: '700' },
                     ]}
@@ -1371,13 +1419,14 @@ export function SettingsSheetContent() {
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.depth_unit', 'Depth Unit')}</Text>
-            <View style={styles.toggleRow}>
+            <Text style={[styles.fieldLabel, isSmall && { fontSize: 12 }, { color: colors.text }]}>{t('settings.depth_unit', 'Depth Unit')}</Text>
+            <View style={[styles.toggleRow, isSmall && { gap: 3 }]}>
               {(['M', 'FT'] as const).map((u) => (
                 <Pressable
                   key={u}
                   style={[
                     styles.unitBtn,
+                    isSmall && { paddingHorizontal: 7, paddingVertical: 4 },
                     {
                       backgroundColor: isLight ? '#F1F5F9' : 'rgba(255, 255, 255, 0.06)',
                       borderColor: colors.divider,
@@ -1392,6 +1441,7 @@ export function SettingsSheetContent() {
                   <Text
                     style={[
                       styles.unitBtnText,
+                      isSmall && { fontSize: 10 },
                       { color: colors.textSecondary },
                       depthUnit === u && { color: colors.accent, fontWeight: '700' },
                     ]}
@@ -1410,11 +1460,11 @@ export function SettingsSheetContent() {
         <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
           {t('settings.alarms', 'NAVIGATION ALARMS & SENSORS')}
         </Text>
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <View style={[styles.card, isSmall && { padding: 10 }, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.fieldRow}>
             <View style={styles.switchInfo}>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.high_gps', 'High-Precision GPS')}</Text>
-              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>{t('settings.high_gps_sub', '1-second interval NMEA tracking')}</Text>
+              <Text style={[styles.fieldLabel, isSmall && { fontSize: 12 }, { color: colors.text }]}>{t('settings.high_gps', 'High-Precision GPS')}</Text>
+              <Text style={[styles.fieldSub, isSmall && { fontSize: 10 }, { color: colors.textSecondary }]}>{t('settings.high_gps_sub', '1-second interval NMEA tracking')}</Text>
             </View>
             <Switch
               value={gpsPrecision}
@@ -1428,8 +1478,8 @@ export function SettingsSheetContent() {
 
           <View style={styles.fieldRow}>
             <View style={styles.switchInfo}>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.shallow_warning', 'Shallow Water Warning')}</Text>
-              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>{t('settings.shallow_sub', `Alarm when depth is < ${boatDraft}m`)}</Text>
+              <Text style={[styles.fieldLabel, isSmall && { fontSize: 12 }, { color: colors.text }]}>{t('settings.shallow_warning', 'Shallow Water Warning')}</Text>
+              <Text style={[styles.fieldSub, isSmall && { fontSize: 10 }, { color: colors.textSecondary }]}>{t('settings.shallow_sub', `Alarm when depth is < ${boatDraft}m`)}</Text>
             </View>
             <Switch
               value={shallowAlarm}
@@ -1443,8 +1493,8 @@ export function SettingsSheetContent() {
 
           <View style={styles.fieldRow}>
             <View style={styles.switchInfo}>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.danger_alerts', 'Arabian Sea Danger Alerts')}</Text>
-              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>{t('settings.danger_alerts_sub', 'Hazard warnings around coastal rocks')}</Text>
+              <Text style={[styles.fieldLabel, isSmall && { fontSize: 12 }, { color: colors.text }]}>{t('settings.danger_alerts', 'Arabian Sea Danger Alerts')}</Text>
+              <Text style={[styles.fieldSub, isSmall && { fontSize: 10 }, { color: colors.textSecondary }]}>{t('settings.danger_alerts_sub', 'Hazard warnings around coastal rocks')}</Text>
             </View>
             <Switch
               value={dangerZoneAlarm}
@@ -1458,8 +1508,8 @@ export function SettingsSheetContent() {
 
           <View style={styles.fieldRow}>
             <View style={styles.switchInfo}>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.keep_awake', 'Keep Screen Awake')}</Text>
-              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>{t('settings.keep_awake_sub', 'Never sleep during active navigation')}</Text>
+              <Text style={[styles.fieldLabel, isSmall && { fontSize: 12 }, { color: colors.text }]}>{t('settings.keep_awake', 'Keep Screen Awake')}</Text>
+              <Text style={[styles.fieldSub, isSmall && { fontSize: 10 }, { color: colors.textSecondary }]}>{t('settings.keep_awake_sub', 'Never sleep during active navigation')}</Text>
             </View>
             <Switch
               value={keepAwake}
@@ -1474,9 +1524,9 @@ export function SettingsSheetContent() {
       {/* 4. Map Overlays */}
       <View style={styles.section}>
         <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('settings.map_display', 'MAP DISPLAY & CHARTS')}</Text>
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <View style={[styles.card, isSmall && { padding: 10 }, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.depth_contours', 'Bathymetric Depth Contours')}</Text>
+            <Text style={[styles.fieldLabel, isSmall && { fontSize: 12 }, { color: colors.text }]}>{t('settings.depth_contours', 'Bathymetric Depth Contours')}</Text>
             <Switch
               value={showContours}
               onValueChange={setShowContours}
@@ -1488,7 +1538,7 @@ export function SettingsSheetContent() {
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
           <View style={styles.fieldRow}>
-            <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.seamarks_buoys', 'Nautical Seamarks & Buoys')}</Text>
+            <Text style={[styles.fieldLabel, isSmall && { fontSize: 12 }, { color: colors.text }]}>{t('settings.seamarks_buoys', 'Nautical Seamarks & Buoys')}</Text>
             <Switch
               value={showSeamarks}
               onValueChange={setShowSeamarks}
@@ -1504,31 +1554,39 @@ export function SettingsSheetContent() {
         <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>
           {t('settings.backup', 'DATA & GPX BACKUP')}
         </Text>
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <View style={[styles.card, isSmall && { padding: 10 }, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.fieldRow}>
             <View>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>{t('settings.saved_waypoints', 'Saved Waypoints')}</Text>
-              <Text style={[styles.fieldSub, { color: colors.textSecondary }]}>{waypoints.length} {t('settings.spots_in_storage', 'spots in storage')}</Text>
+              <Text style={[styles.fieldLabel, isSmall && { fontSize: 12 }, { color: colors.text }]}>{t('settings.saved_waypoints', 'Saved Waypoints')}</Text>
+              <Text style={[styles.fieldSub, isSmall && { fontSize: 10 }, { color: colors.textSecondary }]}>{waypoints.length} {t('settings.spots_in_storage', 'spots in storage')}</Text>
             </View>
           </View>
 
           <View style={[styles.divider, { backgroundColor: colors.divider }]} />
 
-          <View style={styles.actionsRow}>
+          <View style={[styles.actionsRow, isSmall && { flexDirection: 'column', gap: 8 }]}>
             <Pressable
-              style={[styles.actionBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+              style={[
+                styles.actionBtn,
+                isSmall && { width: '100%', paddingVertical: 10 },
+                { backgroundColor: colors.chipBg, borderColor: colors.chipBorder },
+              ]}
               onPress={handleExportGpx}
             >
               <Ionicons name="download-outline" size={16} color={colors.accent} />
-              <Text style={[styles.actionBtnText, { color: colors.accent }]}>{t('settings.export_gpx', 'Export GPX')}</Text>
+              <Text style={[styles.actionBtnText, isSmall && { fontSize: 11.5 }, { color: colors.accent }]}>{t('settings.export_gpx', 'Export GPX')}</Text>
             </Pressable>
 
             <Pressable
-              style={[styles.actionBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+              style={[
+                styles.actionBtn,
+                isSmall && { width: '100%', paddingVertical: 10 },
+                { backgroundColor: colors.chipBg, borderColor: colors.chipBorder },
+              ]}
               onPress={handleImportGpx}
             >
               <Ionicons name="cloud-upload-outline" size={16} color={colors.accent} />
-              <Text style={[styles.actionBtnText, { color: colors.accent }]}>{t('settings.import_gpx', 'Import GPX')}</Text>
+              <Text style={[styles.actionBtnText, isSmall && { fontSize: 11.5 }, { color: colors.accent }]}>{t('settings.import_gpx', 'Import GPX')}</Text>
             </Pressable>
           </View>
 
@@ -1536,7 +1594,7 @@ export function SettingsSheetContent() {
 
           <Pressable style={styles.resetBtn} onPress={handleResetPrompt}>
             <Ionicons name="refresh-outline" size={16} color="#EF4444" />
-            <Text style={styles.resetBtnText}>{t('settings.reset_waypoints', 'Reset Waypoints to Default')}</Text>
+            <Text style={[styles.resetBtnText, isSmall && { fontSize: 11.5 }]}>{t('settings.reset_waypoints', 'Reset Waypoints to Default')}</Text>
           </Pressable>
         </View>
       </View>
@@ -1544,12 +1602,12 @@ export function SettingsSheetContent() {
       {/* 6. Emergency VHF */}
       <View style={styles.section}>
         <Text style={[styles.sectionHeader, { color: colors.textSecondary }]}>{t('settings.emergency', 'MARINE EMERGENCY CHANNELS')}</Text>
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: 'rgba(239, 68, 68, 0.25)' }]}>
+        <View style={[styles.card, isSmall && { padding: 10 }, { backgroundColor: colors.card, borderColor: 'rgba(239, 68, 68, 0.25)' }]}>
           <View style={styles.emergencyRow}>
             <Ionicons name="radio" size={18} color="#EF4444" />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.emergencyTitle, { color: colors.text }]}>{t('settings.vhf_16', 'VHF CHANNEL 16')}</Text>
-              <Text style={[styles.emergencySub, { color: colors.textSecondary }]}>
+              <Text style={[styles.emergencyTitle, isSmall && { fontSize: 12 }, { color: colors.text }]}>{t('settings.vhf_16', 'VHF CHANNEL 16')}</Text>
+              <Text style={[styles.emergencySub, isSmall && { fontSize: 10 }, { color: colors.textSecondary }]}>
                 {t('settings.vhf_sub', 'International Maritime Distress & Safety')}
               </Text>
             </View>
@@ -1560,8 +1618,8 @@ export function SettingsSheetContent() {
           <View style={styles.emergencyRow}>
             <Ionicons name="call" size={18} color="#22C55E" />
             <View style={{ flex: 1 }}>
-              <Text style={[styles.emergencyTitle, { color: colors.text }]}>{t('settings.coast_guard_title', 'COAST GUARD: 1554')}</Text>
-              <Text style={[styles.emergencySub, { color: colors.textSecondary }]}>
+              <Text style={[styles.emergencyTitle, isSmall && { fontSize: 12 }, { color: colors.text }]}>{t('settings.coast_guard_title', 'COAST GUARD: 1554')}</Text>
+              <Text style={[styles.emergencySub, isSmall && { fontSize: 10 }, { color: colors.textSecondary }]}>
                 {t('settings.coast_guard_sub', '24x7 Indian Coast Guard Maritime Search & Rescue')}
               </Text>
             </View>
@@ -1592,6 +1650,7 @@ export function SettingsSheetContent() {
           <View
             style={[
               styles.card,
+              isSmall && { padding: 10 },
               {
                 backgroundColor: colors.card,
                 borderColor: colors.cardBorder,
@@ -1690,11 +1749,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 4,
+    gap: 8,
   },
   fieldLabel: {
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '600',
+    flexShrink: 1,
+    paddingRight: 6,
   },
   fieldSub: {
     color: MapColors.textSecondary,
@@ -1728,6 +1790,7 @@ const styles = StyleSheet.create({
   toggleRow: {
     flexDirection: 'row',
     gap: 4,
+    flexShrink: 0,
   },
   unitBtn: {
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
@@ -1818,6 +1881,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 8,
+    flexWrap: 'wrap',
+    gap: 6,
   },
   badgeTheme: {
     paddingHorizontal: 8,
@@ -1904,6 +1969,8 @@ const styles = StyleSheet.create({
   sectionHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   offlineSectionSub: {
     fontSize: 12,
@@ -2207,6 +2274,29 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.7,
+  },
+  devControlsTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.7,
+  },
+  devBtnsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  devChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  devChipText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
   // Section 0: Pro Membership & Expiry Styles
   proMembershipRow: {
