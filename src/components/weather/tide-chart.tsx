@@ -44,11 +44,17 @@ export function TideChart({ tideData, isOffline = false }: TideChartProps) {
   const plotHeight = CHART_HEIGHT - PADDING_TOP - PADDING_BOTTOM;
 
   // Convert hour (0 - 48) to X coordinate
-  const getX = (hour: number) => PADDING_LEFT + hour * PX_PER_HOUR;
+  const getX = (hour: number) => {
+    const safeH = Number.isFinite(hour) ? hour : 0;
+    return PADDING_LEFT + safeH * PX_PER_HOUR;
+  };
 
   // Convert water height (meters) to Y coordinate
-  const getY = (h: number) =>
-    PADDING_TOP + plotHeight - ((h - minHeight) / (maxHeight - minHeight)) * plotHeight;
+  const getY = (h: number) => {
+    const safeH = Number.isFinite(h) ? h : 2.15;
+    const clampedH = Math.max(minHeight, Math.min(maxHeight, safeH));
+    return PADDING_TOP + plotHeight - ((clampedH - minHeight) / (maxHeight - minHeight)) * plotHeight;
+  };
 
   // Real device clock time (0 - 24)
   const now = new Date();
@@ -56,9 +62,9 @@ export function TideChart({ tideData, isOffline = false }: TideChartProps) {
   const currentX = getX(currentHour);
 
   // Tidal harmonic curve parameters (48-hour wave)
-  const baseline = tideData?.tidalCurveCoeff?.baselineM ?? 2.15;
-  const amplitude = tideData?.tidalCurveCoeff?.amplitudeM ?? 1.35;
-  const phase = tideData?.tidalCurveCoeff?.phaseHour ?? 4.15;
+  const baseline = Number.isFinite(tideData?.tidalCurveCoeff?.baselineM) ? tideData!.tidalCurveCoeff.baselineM : 2.15;
+  const amplitude = Number.isFinite(tideData?.tidalCurveCoeff?.amplitudeM) ? tideData!.tidalCurveCoeff.amplitudeM : 1.35;
+  const phase = Number.isFinite(tideData?.tidalCurveCoeff?.phaseHour) ? tideData!.tidalCurveCoeff.phaseHour : 4.15;
 
   // Generate 96 points (every 30 mins for 48 hours)
   const points: { x: number; y: number; hour: number; height: number }[] = [];
@@ -71,7 +77,7 @@ export function TideChart({ tideData, isOffline = false }: TideChartProps) {
   }
 
   // Build SVG path
-  let pathD = `M ${points[0].x} ${points[0].y}`;
+  let pathD = points.length > 0 ? `M ${points[0].x} ${points[0].y}` : '';
   for (let i = 1; i < points.length; i++) {
     const prev = points[i - 1];
     const curr = points[i];
@@ -80,13 +86,14 @@ export function TideChart({ tideData, isOffline = false }: TideChartProps) {
   }
 
   // Area under curve
-  const areaD = `${pathD} L ${points[points.length - 1].x} ${PADDING_TOP + plotHeight} L ${
+  const areaD = points.length > 0 ? `${pathD} L ${points[points.length - 1].x} ${PADDING_TOP + plotHeight} L ${
     points[0].x
-  } ${PADDING_TOP + plotHeight} Z`;
+  } ${PADDING_TOP + plotHeight} Z` : '';
 
   // Live water level
-  const currentCalculatedHeight =
-    tideData?.currentHeightM ?? Number((baseline + amplitude * Math.cos(((currentHour - phase) / 12.42) * 2 * Math.PI)).toFixed(2));
+  const currentCalculatedHeight = Number.isFinite(tideData?.currentHeightM)
+    ? (tideData!.currentHeightM)
+    : Number((baseline + amplitude * Math.cos(((currentHour - phase) / 12.42) * 2 * Math.PI)).toFixed(2));
   const currentY = getY(currentCalculatedHeight);
 
   // All 8 extreme high and low points across 48h

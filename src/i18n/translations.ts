@@ -421,11 +421,11 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'profile.view_all_trips': 'View Voyage History',
 
     // Weather
-    'weather.at_harbor': '⚓ AT HARBOR',
+    'weather.at_harbor': '⚓ NEARSHORE',
     'weather.offshore': 'OFFSHORE',
-    'weather.syncing': 'SYNCING HARBOR WEATHER...',
-    'weather.offline_cached': 'OFFLINE • CACHED AT HARBOR',
-    'weather.online_live': 'ONLINE • HARBOR LIVE (AUTO-SYNCED)',
+    'weather.syncing': 'SYNCING LIVE WEATHER...',
+    'weather.offline_cached': 'OFFLINE • CACHED FORECAST',
+    'weather.online_live': 'ONLINE • LIVE SATELLITE (AUTO-SYNCED)',
     'weather.fishing_safe': 'FISHING: SAFE',
     'weather.fishing_unsafe': 'FISHING: UNSAFE',
     'weather.active': 'ACTIVE',
@@ -1011,11 +1011,11 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'profile.view_all_trips': 'यात्रा इतिहास देखें',
 
     // Weather
-    'weather.at_harbor': '⚓ बंदरगाह पर',
-    'weather.offshore': 'समुद्र में',
-    'weather.syncing': 'बंदरगाह मौसम सिंक हो रहा है...',
-    'weather.offline_cached': 'ऑफलाइन • बंदरगाह पर सहेजा गया',
-    'weather.online_live': 'ऑनलाइन • लाइव मौसम',
+    'weather.at_harbor': '⚓ तटीय क्षेत्र',
+    'weather.offshore': 'खुले समुद्र में',
+    'weather.syncing': 'लाइव मौसम सिंक हो रहा है...',
+    'weather.offline_cached': 'ऑफलाइन • सहेजा गया पूर्वानुमान',
+    'weather.online_live': 'ऑनलाइन • लाइव सैटेलाइट (ऑटो-सिंक)',
     'weather.fishing_safe': 'मछली पकड़ना: सुरक्षित',
     'weather.fishing_unsafe': 'मछली पकड़ना: असुरक्षित',
     'weather.active': 'सक्रिय',
@@ -1601,11 +1601,11 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'profile.view_all_trips': 'સફર ઇતિહાસ જુઓ',
 
     // Weather
-    'weather.at_harbor': '⚓ બંદરે પહોંચ્યા',
+    'weather.at_harbor': '⚓ કિનારા નજીક',
     'weather.offshore': 'દરિયામાં',
     'weather.syncing': 'હવામાન ડેટા સિંક થઈ રહ્યો છે...',
-    'weather.offline_cached': 'ઓફલાઇન • બંદરે સેવ થયેલ',
-    'weather.online_live': 'ઓનલાઇન • લાઈવ હવામાન',
+    'weather.offline_cached': 'ઓફલાઇન • સેવ કરેલ આગાહી',
+    'weather.online_live': 'ઓનલાઇન • લાઈવ સેટેલાઇટ (ઓટો-સિંક)',
     'weather.fishing_safe': 'માછીમારી: સુરક્ષિત',
     'weather.fishing_unsafe': 'માછીમારી: અસુરક્ષિત',
     'weather.active': 'સક્રિય',

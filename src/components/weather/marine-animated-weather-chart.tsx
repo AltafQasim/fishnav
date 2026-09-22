@@ -223,59 +223,8 @@ export function MarineAnimatedWeatherChart({
   }, [activeMetric]);
 
   const config = WEATHER_METRICS[selectedMetric];
+  // Active color for current metric
   const activeColor = isLight ? config.colorLight : config.colorDark;
-
-  // Pulse animation for the "Now" indicator beacon
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const pulseOpacity = useRef(new Animated.Value(0.7)).current;
-
-  // Tab switch transition animation
-  const chartAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    chartAnim.setValue(0);
-    Animated.spring(chartAnim, {
-      toValue: 1,
-      friction: 8,
-      tension: 50,
-      useNativeDriver: Platform.OS !== 'web',
-    }).start();
-  }, [selectedMetric]);
-
-  useEffect(() => {
-    const pulseLoop = Animated.loop(
-      Animated.parallel([
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 2.2,
-            duration: 1500,
-            easing: Easing.out(Easing.quad),
-            useNativeDriver: Platform.OS !== 'web',
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 0,
-            useNativeDriver: Platform.OS !== 'web',
-          }),
-        ]),
-        Animated.sequence([
-          Animated.timing(pulseOpacity, {
-            toValue: 0,
-            duration: 1500,
-            easing: Easing.out(Easing.quad),
-            useNativeDriver: Platform.OS !== 'web',
-          }),
-          Animated.timing(pulseOpacity, {
-            toValue: 0.7,
-            duration: 0,
-            useNativeDriver: Platform.OS !== 'web',
-          }),
-        ]),
-      ])
-    );
-    pulseLoop.start();
-    return () => pulseLoop.stop();
-  }, [pulseAnim, pulseOpacity]);
 
   // Extract raw numerical values for the active metric across the dataset
   const parsedItems = useMemo(() => {
@@ -286,43 +235,73 @@ export function MarineAnimatedWeatherChart({
 
       switch (selectedMetric) {
         case 'wave':
-          val = item.waveNum ?? parseFloat(item.wave?.replace('m', '') || '1.2');
+          if (typeof item.waveNum === 'number' && Number.isFinite(item.waveNum)) {
+            val = item.waveNum;
+          } else {
+            const p = parseFloat(String(item.wave ?? '1.2').replace('m', ''));
+            val = Number.isFinite(p) ? p : 1.2;
+          }
           break;
         case 'wind':
-          val = item.windNum ?? parseFloat(item.wind?.replace(' kts', '') || '14');
-          secondaryVal = item.gustsNum ?? Math.round(val * 1.35);
+          if (typeof item.windNum === 'number' && Number.isFinite(item.windNum)) {
+            val = item.windNum;
+          } else {
+            const p = parseFloat(String(item.wind ?? '14').replace(' kts', ''));
+            val = Number.isFinite(p) ? p : 14;
+          }
+          secondaryVal = typeof item.gustsNum === 'number' && Number.isFinite(item.gustsNum) ? item.gustsNum : Math.round(val * 1.35);
           break;
         case 'rain':
-          val = item.rainNum ?? parseFloat(item.rain?.replace('mm', '') || '0');
+          if (typeof item.rainNum === 'number' && Number.isFinite(item.rainNum)) {
+            val = item.rainNum;
+          } else {
+            const p = parseFloat(String(item.rain ?? '0').replace('mm', ''));
+            val = Number.isFinite(p) ? p : 0;
+          }
           break;
         case 'temp':
-          val = item.tempNum ?? parseFloat(item.temp?.replace('°', '') || '28');
+          if (typeof item.tempNum === 'number' && Number.isFinite(item.tempNum)) {
+            val = item.tempNum;
+          } else {
+            const p = parseFloat(String(item.temp ?? '28').replace('°', ''));
+            val = Number.isFinite(p) ? p : 28;
+          }
           break;
         case 'pressure':
-          val = item.pressureNum ?? 1012;
+          val = typeof item.pressureNum === 'number' && Number.isFinite(item.pressureNum) ? item.pressureNum : 1012;
           break;
         case 'visibility':
-          val = item.visibilityNum ?? (conditions?.visibilityNm || 9.5);
+          val = typeof item.visibilityNum === 'number' && Number.isFinite(item.visibilityNum)
+            ? item.visibilityNum
+            : (typeof conditions?.visibilityNm === 'number' && Number.isFinite(conditions.visibilityNm) ? conditions.visibilityNm : 9.5);
           break;
         case 'current':
-          val = item.currentNum ?? (conditions?.tidalCurrentKnots || 0.8);
+          val = typeof item.currentNum === 'number' && Number.isFinite(item.currentNum)
+            ? item.currentNum
+            : (typeof conditions?.tidalCurrentKnots === 'number' && Number.isFinite(conditions.tidalCurrentKnots) ? conditions.tidalCurrentKnots : 0.8);
           break;
         case 'period':
-          val = item.periodNum ?? (conditions?.wavePeriodS || 7.0);
+          val = typeof item.periodNum === 'number' && Number.isFinite(item.periodNum)
+            ? item.periodNum
+            : (typeof conditions?.wavePeriodS === 'number' && Number.isFinite(conditions.wavePeriodS) ? conditions.wavePeriodS : 7.0);
           break;
         case 'humidity':
-          val = item.humidityNum ?? (conditions?.relativeHumidity || 74);
+          val = typeof item.humidityNum === 'number' && Number.isFinite(item.humidityNum)
+            ? item.humidityNum
+            : (typeof conditions?.relativeHumidity === 'number' && Number.isFinite(conditions.relativeHumidity) ? conditions.relativeHumidity : 74);
           break;
       }
+
+      const finalVal = Number.isFinite(val) ? val : config.minScale;
 
       return {
         ...item,
         index: idx,
-        value: Number.isNaN(val) ? 0 : val,
+        value: finalVal,
         secondaryValue: secondaryVal,
       };
     });
-  }, [hourly, selectedMetric]);
+  }, [hourly, selectedMetric, config.minScale, conditions]);
 
   // Dynamic min and max for chart scaling
   const { minVal, maxVal, avgVal, peakIdx } = useMemo(() => {
@@ -360,11 +339,15 @@ export function MarineAnimatedWeatherChart({
   const chartWidth = Math.max(Dimensions.get('window').width - 32, totalPoints * PX_PER_ITEM + PADDING_LEFT + 40);
   const plotHeight = CHART_HEIGHT - PADDING_TOP - PADDING_BOTTOM;
 
-  const getX = (idx: number) => PADDING_LEFT + idx * PX_PER_ITEM;
+  const getX = (idx: number) => {
+    const safeIdx = typeof idx === 'number' && Number.isFinite(idx) ? idx : 0;
+    return PADDING_LEFT + safeIdx * PX_PER_ITEM;
+  };
   const getY = (val: number) => {
+    const safeVal = typeof val === 'number' && Number.isFinite(val) ? val : minVal;
     if (maxVal === minVal) return PADDING_TOP + plotHeight / 2;
-    const ratio = (val - minVal) / (maxVal - minVal);
-    const clamped = Math.max(0, Math.min(1, ratio));
+    const ratio = (safeVal - minVal) / (maxVal - minVal);
+    const clamped = Math.max(0, Math.min(1, Number.isFinite(ratio) ? ratio : 0));
     return PADDING_TOP + plotHeight - clamped * plotHeight;
   };
 
@@ -389,11 +372,12 @@ export function MarineAnimatedWeatherChart({
 
   // Generate cubic bezier curved path
   const curvePathD = useMemo(() => {
-    if (svgPoints.length < 2) return '';
-    let d = `M ${svgPoints[0].x} ${svgPoints[0].y}`;
-    for (let i = 1; i < svgPoints.length; i++) {
-      const prev = svgPoints[i - 1];
-      const curr = svgPoints[i];
+    const validPts = svgPoints.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    if (validPts.length < 2) return '';
+    let d = `M ${validPts[0].x} ${validPts[0].y}`;
+    for (let i = 1; i < validPts.length; i++) {
+      const prev = validPts[i - 1];
+      const curr = validPts[i];
       const midX = (prev.x + curr.x) / 2;
       d += ` C ${midX} ${prev.y}, ${midX} ${curr.y}, ${curr.x} ${curr.y}`;
     }
@@ -402,11 +386,12 @@ export function MarineAnimatedWeatherChart({
 
   // Secondary curve path for gusts
   const secondaryCurvePathD = useMemo(() => {
-    if (secondarySvgPoints.length < 2) return '';
-    let d = `M ${secondarySvgPoints[0].x} ${secondarySvgPoints[0].y}`;
-    for (let i = 1; i < secondarySvgPoints.length; i++) {
-      const prev = secondarySvgPoints[i - 1];
-      const curr = secondarySvgPoints[i];
+    const validPts = secondarySvgPoints.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    if (validPts.length < 2) return '';
+    let d = `M ${validPts[0].x} ${validPts[0].y}`;
+    for (let i = 1; i < validPts.length; i++) {
+      const prev = validPts[i - 1];
+      const curr = validPts[i];
       const midX = (prev.x + curr.x) / 2;
       d += ` C ${midX} ${prev.y}, ${midX} ${curr.y}, ${curr.x} ${curr.y}`;
     }
@@ -416,15 +401,19 @@ export function MarineAnimatedWeatherChart({
   // Closed area under the curve for gradient fill
   const areaPathD = useMemo(() => {
     if (!curvePathD || svgPoints.length === 0) return '';
-    const lastX = svgPoints[svgPoints.length - 1].x;
-    const firstX = svgPoints[0].x;
+    const validPts = svgPoints.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    if (validPts.length === 0) return '';
+    const lastX = validPts[validPts.length - 1].x;
+    const firstX = validPts[0].x;
     const bottomY = PADDING_TOP + plotHeight;
     return `${curvePathD} L ${lastX} ${bottomY} L ${firstX} ${bottomY} Z`;
   }, [curvePathD, svgPoints, plotHeight]);
 
   const activePoint = parsedItems[selectedPointIndex] || parsedItems[0];
-  const activeX = activePoint ? getX(activePoint.index) : PADDING_LEFT;
-  const activeY = activePoint ? getY(activePoint.value) : PADDING_TOP;
+  const rawActiveX = activePoint ? getX(activePoint.index) : PADDING_LEFT;
+  const rawActiveY = activePoint ? getY(activePoint.value) : PADDING_TOP;
+  const activeX = Number.isFinite(rawActiveX) ? rawActiveX : PADDING_LEFT;
+  const activeY = Number.isFinite(rawActiveY) ? rawActiveY : PADDING_TOP;
 
   const handleSelectMetric = (m: WeatherMetricType) => {
     setSelectedMetric(m);
@@ -645,7 +634,7 @@ export function MarineAnimatedWeatherChart({
         contentContainerStyle={{ paddingRight: 40 }}
         style={styles.chartScroll}
       >
-        <Animated.View style={{ opacity: chartAnim, transform: [{ scaleY: chartAnim }] }}>
+        <View>
           <Svg width={chartWidth} height={CHART_HEIGHT}>
             <Defs>
               <LinearGradient id="weatherAreaGrad" x1="0" y1="0" x2="0" y2="1">
@@ -830,7 +819,7 @@ export function MarineAnimatedWeatherChart({
               strokeWidth="2"
             />
           </Svg>
-        </Animated.View>
+        </View>
       </ScrollView>
 
       {/* 5. Horizontal Touch Scrubbing Bar */}
@@ -975,7 +964,7 @@ export function MiniWeatherSparkline({
 
   const lastPt = pts[pts.length - 1];
   const areaD = `${pathD} L ${lastPt.x} ${height} L ${pts[0].x} ${height} Z`;
-  const gradKey = `miniGrad_${color.replace('#', '')}_${Math.round(height)}_${Math.round(width)}`;
+  const gradKey = useRef(`miniGrad_${color.replace('#', '')}_${Math.random().toString(36).substring(2, 7)}`).current;
 
   return (
     <Animated.View style={{ opacity: anim, height, width, position: 'relative' }}>

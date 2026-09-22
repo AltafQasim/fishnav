@@ -1,5 +1,5 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useMemo, useRef, useState } from 'react';
+import { Component, type ErrorInfo, type ReactNode, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -11,7 +11,6 @@ import {
 
 import {
   MarineAnimatedWeatherChart,
-  MiniWeatherSparkline,
   WeatherMetricType,
 } from '@/components/weather/marine-animated-weather-chart';
 import { TideChart } from '@/components/weather/tide-chart';
@@ -20,7 +19,7 @@ import { useAppTheme } from '@/context/theme-context';
 import { useMarineWeather } from '@/hooks/use-marine-weather';
 import { getBaselineMarineData } from '@/services/marine-weather-service';
 
-export function WeatherSheetContent() {
+function WeatherSheetContentInner() {
   const { colors, isLight } = useAppTheme();
   const { t } = useLanguage();
   const {
@@ -44,8 +43,6 @@ export function WeatherSheetContent() {
   const safeTides = tides || baseline.tides;
 
   const safetyAdvisory = safeConditions?.safetyAdvisory || baseline.conditions.safetyAdvisory;
-  const nearestPort = safeConditions?.nearestPort || baseline.conditions.nearestPort;
-  const port = nearestPort?.port || baseline.conditions.nearestPort.port;
 
   const isWarning = safetyAdvisory?.status === 'WARNING';
   const isCaution = safetyAdvisory?.status === 'CAUTION';
@@ -82,42 +79,7 @@ export function WeatherSheetContent() {
     return fallbackText;
   };
 
-  const waveSeries = useMemo(
-    () => safeHourly.map((h) => h.waveNum ?? parseFloat(h.wave?.replace('m', '') || '1.2')),
-    [safeHourly]
-  );
-  const windSeries = useMemo(
-    () => safeHourly.map((h) => h.windNum ?? parseFloat(h.wind?.replace(' kts', '') || '14')),
-    [safeHourly]
-  );
-  const rainSeries = useMemo(
-    () => safeHourly.map((h) => h.rainNum ?? parseFloat(h.rain?.replace('mm', '') || '0')),
-    [safeHourly]
-  );
-  const tempSeries = useMemo(
-    () => safeHourly.map((h) => h.tempNum ?? parseFloat(h.temp?.replace('°', '') || '28')),
-    [safeHourly]
-  );
-  const pressureSeries = useMemo(
-    () => safeHourly.map((h) => h.pressureNum ?? 1012),
-    [safeHourly]
-  );
-  const visibilitySeries = useMemo(
-    () => safeHourly.map((h) => h.visibilityNum ?? safeConditions.visibilityNm ?? 9.5),
-    [safeHourly, safeConditions.visibilityNm]
-  );
-  const currentSeries = useMemo(
-    () => safeHourly.map((h) => h.currentNum ?? safeConditions.tidalCurrentKnots ?? 0.8),
-    [safeHourly, safeConditions.tidalCurrentKnots]
-  );
-  const periodSeries = useMemo(
-    () => safeHourly.map((h) => h.periodNum ?? safeConditions.wavePeriodS ?? 7.0),
-    [safeHourly, safeConditions.wavePeriodS]
-  );
-  const humiditySeries = useMemo(
-    () => safeHourly.map((h) => h.humidityNum ?? safeConditions.relativeHumidity ?? 74),
-    [safeHourly, safeConditions.relativeHumidity]
-  );
+
 
   const handleCardPress = (metric: WeatherMetricType) => {
     setActiveChartMetric(metric);
@@ -133,73 +95,6 @@ export function WeatherSheetContent() {
       contentContainerStyle={[styles.content, { paddingBottom: 110 }]}
       showsVerticalScrollIndicator={false}
     >
-      {/* 1. Nearest Port & Harbor Information Card */}
-      <View
-        style={[
-          styles.portCard,
-          {
-            backgroundColor: colors.card,
-            borderColor: colors.cardBorder,
-          },
-        ]}
-      >
-        <View style={styles.portLeft}>
-          <View
-            style={[
-              styles.portIconWrap,
-              { backgroundColor: isLight ? '#E0F2FE' : 'rgba(0, 240, 255, 0.12)' },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="anchor"
-              size={20}
-              color={isLight ? '#0284C7' : '#00F0FF'}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={[styles.portName, { color: colors.text }]} numberOfLines={1}>
-                {port?.name || 'Harbor'}
-              </Text>
-              <View
-                style={[
-                  styles.portTag,
-                  {
-                    backgroundColor: nearestPort?.isAtPort
-                      ? isLight
-                        ? '#DCFCE7'
-                        : 'rgba(34, 197, 94, 0.15)'
-                      : isLight
-                        ? '#E2E8F0'
-                        : 'rgba(255, 255, 255, 0.08)',
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.portTagText,
-                    {
-                      color: nearestPort?.isAtPort
-                        ? isLight
-                          ? '#16A34A'
-                          : '#22C55E'
-                        : colors.textSecondary,
-                    },
-                  ]}
-                >
-                  {nearestPort?.isAtPort
-                    ? t('weather.at_harbor', '⚓ AT HARBOR')
-                    : `${nearestPort?.distanceNm ?? '0.0'} NM ${t('weather.offshore', 'OFFSHORE')}`}
-                </Text>
-              </View>
-            </View>
-            <Text style={[styles.portSub, { color: colors.textSecondary }]}>
-              {port?.nameGujarati ? `${port.nameGujarati} • ` : ''}{port?.district || ''} (
-              {nearestPort?.bearingText ?? 'N'} {nearestPort?.bearingDeg ?? 0}°)
-            </Text>
-          </View>
-        </View>
-      </View>
 
       {/* 2. Sync Status Banner & Manual Refresh */}
       <View
@@ -248,10 +143,10 @@ export function WeatherSheetContent() {
               ]}
             >
               {syncStatus === 'syncing'
-                ? t('weather.syncing', 'SYNCING HARBOR WEATHER...')
+                ? t('weather.syncing', 'SYNCING LIVE WEATHER...')
                 : isOffline
-                  ? t('weather.offline_cached', 'OFFLINE • CACHED AT HARBOR')
-                  : t('weather.online_live', 'ONLINE • HARBOR LIVE (AUTO-SYNCED)')}
+                  ? t('weather.offline_cached', 'OFFLINE • CACHED FORECAST')
+                  : t('weather.online_live', 'ONLINE • LIVE SATELLITE (AUTO-SYNCED)')}
             </Text>
             <Text style={[styles.syncSub, { color: colors.textSecondary }]}>
               {isOffline
@@ -382,8 +277,10 @@ export function WeatherSheetContent() {
         </View>
       </View>
 
-      {/* 4. Ocean & Sea Conditions Grid (All States with Animated Charts) */}
-      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('weather.title', 'OCEAN & SEA CONDITIONS')}</Text>
+      {/* 4. Ocean & Sea Conditions Grid (All States without sparklines) */}
+      <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+        {t('weather.title', 'OCEAN & SEA CONDITIONS')}
+      </Text>
       <View style={styles.grid}>
         {/* 1. Wave Height */}
         <TouchableOpacity
@@ -406,23 +303,14 @@ export function WeatherSheetContent() {
               </View>
             )}
           </View>
-          <View style={styles.cardContentRow}>
-            <View>
-              <Text style={[styles.cardValue, { color: colors.text }]}>
-                {safeConditions.waveHeightM}
-                <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>m</Text>
-              </Text>
-              <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                {safeConditions.wavePeriodS}s • {safeConditions.waveDirectionText}
-              </Text>
-            </View>
-            <MiniWeatherSparkline
-              data={waveSeries}
-              color={isLight ? '#0284C7' : '#00F0FF'}
-              isActive={activeChartMetric === 'wave'}
-              width={72}
-              height={28}
-            />
+          <View style={styles.cardContent}>
+            <Text style={[styles.cardValue, { color: colors.text }]}>
+              {safeConditions.waveHeightM}
+              <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>m</Text>
+            </Text>
+            <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
+              {safeConditions.wavePeriodS}s • {safeConditions.waveDirectionText}
+            </Text>
           </View>
         </TouchableOpacity>
 
@@ -447,23 +335,14 @@ export function WeatherSheetContent() {
               </View>
             )}
           </View>
-          <View style={styles.cardContentRow}>
-            <View>
-              <Text style={[styles.cardValue, { color: colors.text }]}>
-                {safeConditions.windSpeedKnots}
-                <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>kts</Text>
-              </Text>
-              <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                Gusts {safeConditions.windGustsKnots}k • {safeConditions.windBeaufort}
-              </Text>
-            </View>
-            <MiniWeatherSparkline
-              data={windSeries}
-              color={isLight ? '#D97706' : '#F59E0B'}
-              isActive={activeChartMetric === 'wind'}
-              width={72}
-              height={28}
-            />
+          <View style={styles.cardContent}>
+            <Text style={[styles.cardValue, { color: colors.text }]}>
+              {safeConditions.windSpeedKnots}
+              <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>kts</Text>
+            </Text>
+            <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
+              Gusts {safeConditions.windGustsKnots}k • {safeConditions.windBeaufort}
+            </Text>
           </View>
         </TouchableOpacity>
 
@@ -488,28 +367,19 @@ export function WeatherSheetContent() {
               </View>
             )}
           </View>
-          <View style={styles.cardContentRow}>
-            <View>
-              <Text
-                style={[
-                  styles.cardValue,
-                  { color: (safeConditions.precipitationMm ?? 0) > 2 ? '#EF4444' : colors.text },
-                ]}
-              >
-                {safeConditions.precipitationMm ?? 0}
-                <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>mm/h</Text>
-              </Text>
-              <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                {getLocalizedWeatherDesc(safeConditions.weatherCode ?? 0, safeConditions.weatherDesc ?? 'Clear')}
-              </Text>
-            </View>
-            <MiniWeatherSparkline
-              data={rainSeries}
-              color={isLight ? '#2563EB' : '#38BDF8'}
-              isActive={activeChartMetric === 'rain'}
-              width={72}
-              height={28}
-            />
+          <View style={styles.cardContent}>
+            <Text
+              style={[
+                styles.cardValue,
+                { color: (safeConditions.precipitationMm ?? 0) > 2 ? '#EF4444' : colors.text },
+              ]}
+            >
+              {safeConditions.precipitationMm ?? 0}
+              <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>mm/h</Text>
+            </Text>
+            <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
+              {getLocalizedWeatherDesc(safeConditions.weatherCode ?? 0, safeConditions.weatherDesc ?? 'Clear')}
+            </Text>
           </View>
         </TouchableOpacity>
 
@@ -534,23 +404,14 @@ export function WeatherSheetContent() {
               </View>
             )}
           </View>
-          <View style={styles.cardContentRow}>
-            <View>
-              <Text style={[styles.cardValue, { color: colors.text }]}>
-                {safeConditions.seaTempC ?? 28}
-                <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>°C</Text>
-              </Text>
-              <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                {t('weather.surface_water', 'Marine Surface Water')}
-              </Text>
-            </View>
-            <MiniWeatherSparkline
-              data={tempSeries}
-              color={isLight ? '#EA580C' : '#FB923C'}
-              isActive={activeChartMetric === 'temp'}
-              width={72}
-              height={28}
-            />
+          <View style={styles.cardContent}>
+            <Text style={[styles.cardValue, { color: colors.text }]}>
+              {safeConditions.seaTempC ?? 28}
+              <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>°C</Text>
+            </Text>
+            <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
+              {t('weather.surface_water', 'Marine Surface Water')}
+            </Text>
           </View>
         </TouchableOpacity>
 
@@ -575,23 +436,14 @@ export function WeatherSheetContent() {
               </View>
             )}
           </View>
-          <View style={styles.cardContentRow}>
-            <View>
-              <Text style={[styles.cardValue, { color: colors.text }]}>
-                {safeConditions.surfacePressureHpa ?? 1012}
-                <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>hPa</Text>
-              </Text>
-              <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                {(safeConditions.surfacePressureHpa ?? 1012) < 1005 ? t('weather.low_pressure', '⚠️ Low (Squall)') : t('weather.surface_pressure', 'Surface Pressure')}
-              </Text>
-            </View>
-            <MiniWeatherSparkline
-              data={pressureSeries}
-              color={isLight ? '#7C3AED' : '#A855F7'}
-              isActive={activeChartMetric === 'pressure'}
-              width={72}
-              height={28}
-            />
+          <View style={styles.cardContent}>
+            <Text style={[styles.cardValue, { color: colors.text }]}>
+              {safeConditions.surfacePressureHpa ?? 1012}
+              <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>hPa</Text>
+            </Text>
+            <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
+              {(safeConditions.surfacePressureHpa ?? 1012) < 1005 ? t('weather.low_pressure', '⚠️ Low (Squall)') : t('weather.surface_pressure', 'Surface Pressure')}
+            </Text>
           </View>
         </TouchableOpacity>
 
@@ -616,23 +468,14 @@ export function WeatherSheetContent() {
               </View>
             )}
           </View>
-          <View style={styles.cardContentRow}>
-            <View>
-              <Text style={[styles.cardValue, { color: colors.text }]}>
-                {safeConditions.visibilityNm ?? 9.5}
-                <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>NM</Text>
-              </Text>
-              <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                {(safeConditions.visibilityNm ?? 9.5) >= 8 ? t('weather.clear_horizon', 'Clear Horizon') : t('weather.fog_mist', 'Marine Mist / Fog')}
-              </Text>
-            </View>
-            <MiniWeatherSparkline
-              data={visibilitySeries}
-              color={isLight ? '#059669' : '#10B981'}
-              isActive={activeChartMetric === 'visibility'}
-              width={72}
-              height={28}
-            />
+          <View style={styles.cardContent}>
+            <Text style={[styles.cardValue, { color: colors.text }]}>
+              {safeConditions.visibilityNm ?? 9.5}
+              <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>NM</Text>
+            </Text>
+            <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
+              {(safeConditions.visibilityNm ?? 9.5) >= 8 ? t('weather.clear_horizon', 'Clear Horizon') : t('weather.fog_mist', 'Marine Mist / Fog')}
+            </Text>
           </View>
         </TouchableOpacity>
 
@@ -657,23 +500,14 @@ export function WeatherSheetContent() {
               </View>
             )}
           </View>
-          <View style={styles.cardContentRow}>
-            <View>
-              <Text style={[styles.cardValue, { color: colors.text }]}>
-                {safeConditions.tidalCurrentKnots ?? 0.8}
-                <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>kts</Text>
-              </Text>
-              <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                {t('weather.tidal_drift', 'Astronomical Drift')}
-              </Text>
-            </View>
-            <MiniWeatherSparkline
-              data={currentSeries}
-              color={isLight ? '#4F46E5' : '#818CF8'}
-              isActive={activeChartMetric === 'current'}
-              width={72}
-              height={28}
-            />
+          <View style={styles.cardContent}>
+            <Text style={[styles.cardValue, { color: colors.text }]}>
+              {safeConditions.tidalCurrentKnots ?? 0.8}
+              <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>kts</Text>
+            </Text>
+            <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
+              {t('weather.tidal_drift', 'Astronomical Drift')}
+            </Text>
           </View>
         </TouchableOpacity>
 
@@ -698,23 +532,14 @@ export function WeatherSheetContent() {
               </View>
             )}
           </View>
-          <View style={styles.cardContentRow}>
-            <View>
-              <Text style={[styles.cardValue, { color: colors.text }]}>
-                {safeConditions.wavePeriodS ?? 7.0}
-                <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>s</Text>
-              </Text>
-              <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                {t('weather.wave_roll', 'Wave Interval / Roll')}
-              </Text>
-            </View>
-            <MiniWeatherSparkline
-              data={periodSeries}
-              color={isLight ? '#E11D48' : '#FB7185'}
-              isActive={activeChartMetric === 'period'}
-              width={72}
-              height={28}
-            />
+          <View style={styles.cardContent}>
+            <Text style={[styles.cardValue, { color: colors.text }]}>
+              {safeConditions.wavePeriodS ?? 7.0}
+              <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>s</Text>
+            </Text>
+            <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
+              {t('weather.wave_roll', 'Wave Interval / Roll')}
+            </Text>
           </View>
         </TouchableOpacity>
 
@@ -739,38 +564,16 @@ export function WeatherSheetContent() {
               </View>
             )}
           </View>
-          <View style={styles.cardContentRow}>
-            <View>
-              <Text style={[styles.cardValue, { color: colors.text }]}>
-                {safeConditions.relativeHumidity ?? 74}
-                <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>%</Text>
-              </Text>
-              <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                {t('weather.dew_moisture', 'Dew Point & Moisture')}
-              </Text>
-            </View>
-            <MiniWeatherSparkline
-              data={humiditySeries}
-              color={isLight ? '#0891B2' : '#06B6D4'}
-              isActive={activeChartMetric === 'humidity'}
-              width={72}
-              height={28}
-            />
+          <View style={styles.cardContent}>
+            <Text style={[styles.cardValue, { color: colors.text }]}>
+              {safeConditions.relativeHumidity ?? 74}
+              <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>%</Text>
+            </Text>
+            <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
+              {t('weather.dew_moisture', 'Dew Point & Moisture')}
+            </Text>
           </View>
         </TouchableOpacity>
-
-        {/* 10. Nearest Port */}
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-          <View style={styles.cardHeader}>
-            <Text style={[styles.cardLabel, { color: colors.textMuted }]}>{t('weather.nearest_port', 'NEAREST PORT').toUpperCase()}</Text>
-          </View>
-          <Text style={[styles.cardValueSmall, { color: colors.text }]} numberOfLines={1}>
-            {(port?.name || 'Veraval').replace(' Fishing Harbor', '').replace(' Harbor', '')}
-          </Text>
-          <Text style={[styles.cardSub, { color: colors.textSecondary }]}>
-            {nearestPort?.displayBadge || 'Harbor'}
-          </Text>
-        </View>
       </View>
 
       {/* 5. Interactive 36-Hour Animated Telemetry Chart */}
@@ -782,19 +585,23 @@ export function WeatherSheetContent() {
         <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 4 }]}>
           {t('weather.anim_charts_title', 'ANIMATED PREDICTIVE CHARTS (36H)').toUpperCase()}
         </Text>
-        <MarineAnimatedWeatherChart
-          hourly={safeHourly}
-          conditions={safeConditions}
-          activeMetric={activeChartMetric}
-          onMetricChange={setActiveChartMetric}
-        />
+        <WeatherComponentBoundary name="MarineAnimatedWeatherChart">
+          <MarineAnimatedWeatherChart
+            hourly={safeHourly}
+            conditions={safeConditions}
+            activeMetric={activeChartMetric}
+            onMetricChange={setActiveChartMetric}
+          />
+        </WeatherComponentBoundary>
       </View>
 
       {/* 6. 48-Hour Scrollable Astronomical Tide Chart */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 4 }]}>
         {t('weather.tides_title', 'ASTRONOMICAL HARMONIC TIDES (48H)').toUpperCase()}
       </Text>
-      <TideChart tideData={safeTides} isOffline={isOffline} />
+      <WeatherComponentBoundary name="TideChart">
+        <TideChart tideData={safeTides} isOffline={isOffline} />
+      </WeatherComponentBoundary>
 
       {/* 7. Hourly Marine Forecast (Next 36h) */}
       <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('weather.hourly_title', 'HOURLY MARINE FORECAST').toUpperCase()}</Text>
@@ -832,48 +639,14 @@ export function WeatherSheetContent() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 0,
+    flexShrink: 1,
   },
   content: {
     padding: 12,
     gap: 12,
   },
-  portCard: {
-    padding: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  portLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  portIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  portName: {
-    fontSize: 14,
-    fontWeight: '700',
-    flexShrink: 1,
-  },
-  portTag: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  portTagText: {
-    fontSize: 9.5,
-    fontWeight: '700',
-  },
-  portSub: {
-    fontSize: 10.5,
-    marginTop: 1,
-    flexShrink: 1,
-  },
+
   syncBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -979,6 +752,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
     flexShrink: 1,
   },
+  cardContent: {
+    marginTop: 2,
+  },
   cardContentRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1045,3 +821,63 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
 });
+
+class WeatherComponentBoundary extends Component<{ children: ReactNode; name: string }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.warn(`[${this.props.name}] Render error caught:`, error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ padding: 14, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.04)', marginVertical: 6, alignItems: 'center' }}>
+          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>Chart telemetry temporarily unavailable</Text>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+class WeatherErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.warn('[WeatherSheetContent] Render error caught:', error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ padding: 24, alignItems: 'center', justifyContent: 'center' }}>
+          <MaterialCommunityIcons name="weather-partly-cloudy" size={48} color="#00F0FF" />
+          <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700', marginTop: 12 }}>
+            Marine Weather
+          </Text>
+          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, textAlign: 'center', marginTop: 6 }}>
+            Tap below to reload live marine conditions
+          </Text>
+          <TouchableOpacity
+            onPress={() => this.setState({ hasError: false })}
+            style={{ marginTop: 16, backgroundColor: '#0284C7', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12 }}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>Reload Weather</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export function WeatherSheetContent() {
+  return (
+    <WeatherErrorBoundary>
+      <WeatherSheetContentInner />
+    </WeatherErrorBoundary>
+  );
+}

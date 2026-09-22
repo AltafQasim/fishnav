@@ -18,13 +18,13 @@ export function useMarineWeather() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const lastCoordsRef = useRef<{ lat: number; lon: number } | null>(null);
 
-  // Format relative sync time e.g. "Synced 15m ago at Harbor"
+  // Format relative sync time e.g. "Synced 15m ago"
   const getRelativeSyncTime = (timestamp: number): string => {
     const diffMin = Math.round((Date.now() - timestamp) / (1000 * 60));
-    if (diffMin < 2) return 'Synced just now at Harbor';
-    if (diffMin < 60) return `Synced ${diffMin}m ago at Harbor`;
+    if (diffMin < 2) return 'Synced just now';
+    if (diffMin < 60) return `Synced ${diffMin}m ago`;
     const diffHours = Math.floor(diffMin / 60);
-    return `Synced ${diffHours}h ago at Harbor`;
+    return `Synced ${diffHours}h ago`;
   };
 
   const syncHarborData = useCallback(async (forcedLat?: number, forcedLon?: number) => {
