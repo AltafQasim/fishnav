@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -19,7 +19,14 @@ import { MapColors } from '@/constants/map-theme';
 import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import { UserLocation } from '@/hooks/use-user-location';
-import { parseCoordinates } from '@/utils/geo';
+import {
+  COORDINATE_FORMATS,
+  CoordinateFormatId,
+  parseAnyCoordinate,
+  ParsedCoordResult,
+  toDDMM_MM,
+} from '@/utils/coordinate-converters';
+import { bearingDegrees, distanceNm, formatBearing, formatNm, parseCoordinates } from '@/utils/geo';
 
 type WaypointModalProps = {
   visible: boolean;
@@ -74,29 +81,64 @@ export function WaypointModal({
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [coordError, setCoordError] = useState<string | null>(null);
+  const [selectedFormat, setSelectedFormat] = useState<CoordinateFormatId>('DDMM.MM');
+  const [showFormatDropdown, setShowFormatDropdown] = useState(false);
+
+  // Live parsed coordinates for real-time validation and preview
+  const liveParsed = useMemo<ParsedCoordResult | null>(() => {
+    if (coordMode === 'single') {
+      if (!singleText.trim()) return null;
+      return parseAnyCoordinate(singleText, selectedFormat);
+    } else {
+      if (!latText.trim() && !lngText.trim()) return null;
+      return parseAnyCoordinate(`${latText}, ${lngText}`, selectedFormat);
+    }
+  }, [coordMode, singleText, latText, lngText, selectedFormat]);
+
+  // Live nautical distance & bearing calculation from current boat position
+  const liveTargetStats = useMemo(() => {
+    if (!liveParsed || !userLocation) return null;
+    const nm = distanceNm(userLocation.latitude, userLocation.longitude, liveParsed.latitude, liveParsed.longitude);
+    const brg = bearingDegrees(userLocation.latitude, userLocation.longitude, liveParsed.latitude, liveParsed.longitude);
+    return {
+      distanceStr: formatNm(nm),
+      bearingStr: formatBearing(brg),
+    };
+  }, [liveParsed, userLocation]);
+
+  const activeFormatMeta = useMemo(() => {
+    return COORDINATE_FORMATS.find((f) => f.id === selectedFormat) || COORDINATE_FORMATS[0];
+  }, [selectedFormat]);
 
   // Sync state when modal opens or spotToEdit changes
   useEffect(() => {
     if (visible) {
       setCoordError(null);
+      setShowFormatDropdown(false);
       if (spotToEdit) {
         setName(spotToEdit.name);
-        const lStr = spotToEdit.latitude.toFixed(4);
-        const gStr = spotToEdit.longitude.toFixed(4);
-        setLatText(lStr);
-        setLngText(gStr);
-        setSingleText(`${lStr}, ${gStr}`);
+        const ddmLat = toDDMM_MM(spotToEdit.latitude, true);
+        const ddmLng = toDDMM_MM(spotToEdit.longitude, false);
+        setLatText(ddmLat.displayStr);
+        setLngText(ddmLng.displayStr);
+        setSingleText(`${ddmLat.displayStr}, ${ddmLng.displayStr}`);
         setDepthStr(String(spotToEdit.depthM));
         setCategory(spotToEdit.category || CATEGORIES[0].id);
         setColor(spotToEdit.color || COLOR_OPTIONS[0]);
         setNotes(spotToEdit.notes || '');
       } else {
         setName('');
-        const initLat = userLocation ? userLocation.latitude.toFixed(4) : '20.3500';
-        const initLng = userLocation ? userLocation.longitude.toFixed(4) : '70.8200';
-        setLatText(initLat);
-        setLngText(initLng);
-        setSingleText(`${initLat}, ${initLng}`);
+        if (userLocation) {
+          const ddmLat = toDDMM_MM(userLocation.latitude, true);
+          const ddmLng = toDDMM_MM(userLocation.longitude, false);
+          setLatText(ddmLat.displayStr);
+          setLngText(ddmLng.displayStr);
+          setSingleText(`${ddmLat.displayStr}, ${ddmLng.displayStr}`);
+        } else {
+          setLatText("20° 44.570' N");
+          setLngText("070° 52.340' E");
+          setSingleText("20° 44.570' N, 070° 52.340' E");
+        }
         setDepthStr('50');
         setCategory(CATEGORIES[0].id);
         setColor(COLOR_OPTIONS[0]);
@@ -109,10 +151,10 @@ export function WaypointModal({
   const handleSingleChange = (text: string) => {
     setSingleText(text);
     setCoordError(null);
-    const parsed = parseCoordinates(text);
+    const parsed = parseAnyCoordinate(text, selectedFormat);
     if (parsed) {
-      setLatText(parsed.latitude.toFixed(4));
-      setLngText(parsed.longitude.toFixed(4));
+      setLatText(parsed.formattedDDM.lat);
+      setLngText(parsed.formattedDDM.lng);
     }
   };
 
@@ -133,11 +175,11 @@ export function WaypointModal({
   // Autofill with current GPS location
   const handleUseCurrentGps = () => {
     if (userLocation) {
-      const lStr = userLocation.latitude.toFixed(4);
-      const gStr = userLocation.longitude.toFixed(4);
-      setLatText(lStr);
-      setLngText(gStr);
-      setSingleText(`${lStr}, ${gStr}`);
+      const ddmLat = toDDMM_MM(userLocation.latitude, true);
+      const ddmLng = toDDMM_MM(userLocation.longitude, false);
+      setLatText(ddmLat.displayStr);
+      setLngText(ddmLng.displayStr);
+      setSingleText(`${ddmLat.displayStr}, ${ddmLng.displayStr}`);
       setCoordError(null);
     } else {
       Alert.alert(
@@ -159,37 +201,27 @@ export function WaypointModal({
       return;
     }
 
-    let lat: number;
-    let lng: number;
+    // Robust parsing using the universal coordinate converter
+    let parsed = coordMode === 'single'
+      ? parseAnyCoordinate(singleText, selectedFormat)
+      : parseAnyCoordinate(`${latText}, ${lngText}`, selectedFormat);
 
-    if (coordMode === 'single') {
-      const parsed = parseCoordinates(singleText);
-      if (!parsed) {
-        setCoordError(
-          t('coords.invalid_format', 'Invalid coordinates format. Example: 20.3875, 70.8783'),
-        );
-        return;
-      }
-      lat = parsed.latitude;
-      lng = parsed.longitude;
-    } else {
-      const l = parseFloat(latText);
-      const g = parseFloat(lngText);
-      if (isNaN(l) || l < -90 || l > 90) {
-        setCoordError(
-          t('waypoints.val_lat_err', 'Please enter a valid Latitude between -90 and 90.'),
-        );
-        return;
-      }
-      if (isNaN(g) || g < -180 || g > 180) {
-        setCoordError(
-          t('waypoints.val_lng_err', 'Please enter a valid Longitude between -180 and 180.'),
-        );
-        return;
-      }
-      lat = l;
-      lng = g;
+    // Fallback attempt without hintFormat if not parsed
+    if (!parsed) {
+      parsed = coordMode === 'single'
+        ? parseAnyCoordinate(singleText)
+        : parseAnyCoordinate(`${latText}, ${lngText}`);
     }
+
+    if (!parsed) {
+      setCoordError(
+        t('coords.invalid_format', `Please enter valid coordinates in ${activeFormatMeta.label} format. (${activeFormatMeta.example})`),
+      );
+      return;
+    }
+
+    const lat = parsed.latitude;
+    const lng = parsed.longitude;
 
     const depth = parseInt(depthStr, 10) || 40;
 
@@ -308,6 +340,92 @@ export function WaypointModal({
                 </Pressable>
               </View>
 
+              {/* 🧭 Coordinate Format Dropdown Selector (Matching GPS unit options) */}
+              <View style={styles.formatBarWrapper}>
+                <Pressable
+                  style={[
+                    styles.formatSelectorBtn,
+                    {
+                      backgroundColor: isLight ? '#F8FAFC' : 'rgba(255, 255, 255, 0.05)',
+                      borderColor: showFormatDropdown ? colors.accent : colors.cardBorder,
+                    },
+                  ]}
+                  onPress={() => setShowFormatDropdown((prev) => !prev)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Coordinate format"
+                >
+                  <View style={styles.formatBtnLeft}>
+                    <Ionicons name="compass" size={17} color={colors.accent} />
+                    <View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={[styles.formatBtnTitle, { color: colors.text }]}>{activeFormatMeta.label}</Text>
+                        <View style={[styles.formatTagBadge, { backgroundColor: `${colors.accent}25` }]}>
+                          <Text style={[styles.formatTagText, { color: colors.accent }]}>GPS FORMAT</Text>
+                        </View>
+                      </View>
+                      <Text style={[styles.formatBtnSub, { color: colors.textSecondary }]}>
+                        {activeFormatMeta.sublabel}
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons
+                    name={showFormatDropdown ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color={colors.textSecondary}
+                  />
+                </Pressable>
+
+                {/* Dropdown Options List */}
+                {showFormatDropdown && (
+                  <View
+                    style={[
+                      styles.formatDropdown,
+                      {
+                        backgroundColor: isLight ? '#FFFFFF' : '#0B1929',
+                        borderColor: colors.cardBorder,
+                      },
+                    ]}
+                  >
+                    {COORDINATE_FORMATS.map((fmt, fIdx) => (
+                      <Pressable
+                        key={fmt.id}
+                        style={[
+                          styles.formatOptionItem,
+                          {
+                            borderBottomColor: fIdx < COORDINATE_FORMATS.length - 1 ? (isLight ? '#F1F5F9' : 'rgba(255, 255, 255, 0.06)') : 'transparent',
+                            backgroundColor: selectedFormat === fmt.id ? (isLight ? '#E0F2FE' : 'rgba(0, 240, 255, 0.12)') : 'transparent',
+                          },
+                        ]}
+                        onPress={() => {
+                          setSelectedFormat(fmt.id);
+                          setShowFormatDropdown(false);
+                        }}
+                      >
+                        <View style={{ flex: 1, paddingRight: 8 }}>
+                          <Text
+                            style={[
+                              styles.formatOptionLabel,
+                              { color: selectedFormat === fmt.id ? colors.accent : colors.text },
+                            ]}
+                          >
+                            {fmt.label}
+                          </Text>
+                          <Text style={[styles.formatOptionSub, { color: colors.textSecondary }]}>
+                            {fmt.sublabel}
+                          </Text>
+                          <Text style={[styles.formatOptionExample, { color: colors.textMuted }]}>
+                            {fmt.example}
+                          </Text>
+                        </View>
+                        {selectedFormat === fmt.id && (
+                          <Ionicons name="checkmark-circle" size={18} color={colors.accent} />
+                        )}
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+              </View>
+
               {/* Mode Switcher Tabs (Same structure as CoordinateInputModal) */}
               <View style={[styles.tabsRow, { backgroundColor: isLight ? '#E2E8F0' : 'rgba(0, 0, 0, 0.35)' }]}>
                 <Pressable
@@ -375,14 +493,14 @@ export function WaypointModal({
                   </Text>
                   <TextInput
                     style={inputStyle}
-                    placeholder={t('coords.pair_placeholder', "e.g. 20.3875, 70.8783 or 20° 23' N, 70° 52' E")}
+                    placeholder={activeFormatMeta.example}
                     placeholderTextColor={colors.textMuted}
                     value={singleText}
                     onChangeText={handleSingleChange}
                     autoCapitalize="none"
                   />
                   <Text style={[styles.hint, { color: colors.textSecondary }]}>
-                    {t('coords.pair_hint', 'Accepts decimal (20.35, 70.82) or standard nautical notation.')}
+                    💡 {activeFormatMeta.example}
                   </Text>
                 </View>
               ) : (
@@ -394,11 +512,11 @@ export function WaypointModal({
                     </Text>
                     <TextInput
                       style={inputStyle}
-                      keyboardType="numeric"
-                      placeholder={t('coords.lat_placeholder', 'e.g. 20.3875')}
+                      placeholder={activeFormatMeta.placeholderLat}
                       placeholderTextColor={colors.textMuted}
                       value={latText}
                       onChangeText={handleLatChange}
+                      autoCapitalize="none"
                     />
                   </View>
                   <View style={styles.pairCol}>
@@ -407,15 +525,56 @@ export function WaypointModal({
                     </Text>
                     <TextInput
                       style={inputStyle}
-                      keyboardType="numeric"
-                      placeholder={t('coords.lng_placeholder', 'e.g. 70.8783')}
+                      placeholder={activeFormatMeta.placeholderLng}
                       placeholderTextColor={colors.textMuted}
                       value={lngText}
                       onChangeText={handleLngChange}
+                      autoCapitalize="none"
                     />
                   </View>
                 </View>
               )}
+
+              {/* Live Synchronized Preview & Validation Card */}
+              {liveParsed ? (
+                <View
+                  style={[
+                    styles.previewCard,
+                    {
+                      backgroundColor: isLight ? '#F0FDF4' : 'rgba(34, 197, 94, 0.08)',
+                      borderColor: isLight ? '#86EFAC' : 'rgba(34, 197, 94, 0.35)',
+                    },
+                  ]}
+                >
+                  <View style={styles.previewHeaderRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                      <Ionicons name="checkmark-circle" size={15} color="#22C55E" />
+                      <Text style={[styles.previewBadgeText, { color: '#22C55E' }]}>
+                        ACCURATE NAUTICAL POSITION
+                      </Text>
+                    </View>
+                    {liveTargetStats && (
+                      <Text style={[styles.previewDistanceText, { color: colors.accent }]}>
+                        📍 {liveTargetStats.distanceStr} ({liveTargetStats.bearingStr})
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.previewDataGrid}>
+                    <View style={styles.previewDataItem}>
+                      <Text style={[styles.previewDataLabel, { color: colors.textMuted }]}>GPS (DDMM.MM):</Text>
+                      <Text style={[styles.previewDataValue, { color: colors.text }]}>{liveParsed.formattedDDM.full}</Text>
+                    </View>
+                    <View style={styles.previewDataItem}>
+                      <Text style={[styles.previewDataLabel, { color: colors.textMuted }]}>WGS84 DECIMAL:</Text>
+                      <Text style={[styles.previewDataValue, { color: colors.accent }]}>{liveParsed.formattedDD.full}</Text>
+                    </View>
+                    <View style={styles.previewDataItem}>
+                      <Text style={[styles.previewDataLabel, { color: colors.textMuted }]}>DMS (DDMM.SS):</Text>
+                      <Text style={[styles.previewDataValue, { color: colors.textSecondary }]}>{liveParsed.formattedDMS.full}</Text>
+                    </View>
+                  </View>
+                </View>
+              ) : null}
 
               {/* Validation Error Message */}
               {coordError ? (
@@ -723,6 +882,122 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     flex: 1,
+  },
+  formatBarWrapper: {
+    marginBottom: 10,
+    zIndex: 20,
+  },
+  formatSelectorBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  formatBtnLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginRight: 8,
+  },
+  formatBtnTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  formatTagBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
+  formatTagText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+  },
+  formatBtnSub: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  formatDropdown: {
+    marginTop: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  formatOptionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  formatOptionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  formatOptionSub: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  formatOptionExample: {
+    fontSize: 10.5,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginTop: 3,
+  },
+  formatExampleHint: {
+    fontSize: 11,
+    marginTop: 4,
+    marginBottom: 8,
+    fontStyle: 'italic',
+  },
+  previewCard: {
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  previewHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  previewBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  previewDistanceText: {
+    fontSize: 10.5,
+    fontWeight: '600',
+  },
+  previewDataGrid: {
+    gap: 6,
+  },
+  previewDataItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 2,
+  },
+  previewDataLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  previewDataValue: {
+    fontSize: 11,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   previewBox: {
     flexDirection: 'row',

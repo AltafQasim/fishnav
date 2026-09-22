@@ -10,6 +10,7 @@ import {
   MapControlStack
 } from '@/components/map/map-overlays';
 import type { MapStyleId } from '@/components/map/map-style-selector';
+import { MarineDownloadPill } from '@/components/map/marine-download-pill';
 import {
   type MapOverlaysState,
   type NativeMapHandle,
@@ -24,20 +25,19 @@ import {
 import { MarineDirectionsModal } from '@/components/navigation/marine-directions-modal';
 import { CaptainProfileModal } from '@/components/search/captain-profile-modal';
 import { MarineSearchHeader } from '@/components/search/marine-search-header';
-import { MarineDownloadPill } from '@/components/map/marine-download-pill';
 import { CalendarSheetContent } from '@/components/sheets/calendar-sheet-content';
 import { CompassSheetContent } from '@/components/sheets/compass-sheet-content';
+import { WeatherSheetContent } from '@/components/sheets/marine-weather-sheet';
 import { SettingsSheetContent } from '@/components/sheets/settings-sheet-content';
 import { WaypointsSheetContent } from '@/components/sheets/waypoints-sheet-content';
-import { WeatherSheetContent } from '@/components/sheets/marine-weather-sheet';
 import { SlidingSheetContainer } from '@/components/ui/sliding-sheet-container';
 import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
-import { useTripTracking } from '@/context/trip-context';
-import { useSubscription } from '@/context/subscription-context';
-import { useWaypoints } from '@/context/waypoints-context';
 import { useLanguage } from '@/context/language-context';
+import { useSubscription } from '@/context/subscription-context';
 import { useAppTheme } from '@/context/theme-context';
+import { useTripTracking } from '@/context/trip-context';
+import { useWaypoints } from '@/context/waypoints-context';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { bearingDegrees, distanceNm, etaFromNm, formatBearing, formatNm } from '@/utils/geo';
 

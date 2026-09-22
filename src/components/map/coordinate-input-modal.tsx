@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -15,7 +15,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MapColors } from '@/constants/map-theme';
 import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
-import { parseCoordinates } from '@/utils/geo';
+import {
+  COORDINATE_FORMATS,
+  CoordinateFormatId,
+  parseAnyCoordinate,
+} from '@/utils/coordinate-converters';
 
 type CoordinateInputModalProps = {
   visible: boolean;
@@ -37,7 +41,26 @@ export function CoordinateInputModal({
   const [lngText, setLngText] = useState('');
   const [singleText, setSingleText] = useState('');
   const [mode, setMode] = useState<'pair' | 'single'>('single');
+  const [selectedFormat, setSelectedFormat] = useState<CoordinateFormatId>('DDMM.MM');
+  const [showFormatDropdown, setShowFormatDropdown] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const activeFormatMeta = useMemo(
+    () => COORDINATE_FORMATS.find((f) => f.id === selectedFormat) || COORDINATE_FORMATS[0],
+    [selectedFormat]
+  );
+
+  // Live parsed coordinates for real-time validation preview
+  const liveParsed = useMemo(() => {
+    if (mode === 'single') {
+      if (!singleText.trim()) return null;
+      return parseAnyCoordinate(singleText, selectedFormat);
+    } else {
+      if (!latText.trim() && !lngText.trim()) return null;
+      const combined = `${latText.trim()} ${lngText.trim()}`;
+      return parseAnyCoordinate(combined, selectedFormat);
+    }
+  }, [mode, singleText, latText, lngText, selectedFormat]);
 
   const handlePlot = () => {
     setError(null);
@@ -45,22 +68,45 @@ export function CoordinateInputModal({
     let lng: number | null = null;
 
     if (mode === 'single') {
-      const parsed = parseCoordinates(singleText);
+      if (!singleText.trim()) {
+        setError(t('coords.invalid_format', 'Please enter coordinates.'));
+        return;
+      }
+      let parsed = parseAnyCoordinate(singleText, selectedFormat);
       if (!parsed) {
-        setError(t('coords.invalid_format', 'Invalid coordinates format. Example: 20.3875, 70.8783'));
+        parsed = parseAnyCoordinate(singleText);
+      }
+      if (!parsed) {
+        setError(t('coords.invalid_format', `Invalid coordinates for ${activeFormatMeta.label}. Example: ${activeFormatMeta.example}`));
         return;
       }
       lat = parsed.latitude;
       lng = parsed.longitude;
     } else {
-      const l = parseFloat(latText);
-      const g = parseFloat(lngText);
-      if (isNaN(l) || isNaN(g) || l < -90 || l > 90 || g < -180 || g > 180) {
-        setError(t('waypoints.val_lat_err', 'Please enter valid Latitude (-90 to 90) and Longitude (-180 to 180).'));
+      if (!latText.trim() || !lngText.trim()) {
+        setError(t('waypoints.val_lat_err', 'Please enter both Latitude and Longitude.'));
         return;
       }
-      lat = l;
-      lng = g;
+      const combined = `${latText.trim()} ${lngText.trim()}`;
+      let parsed = parseAnyCoordinate(combined, selectedFormat);
+      if (!parsed) {
+        parsed = parseAnyCoordinate(combined);
+      }
+      if (!parsed) {
+        // Fallback check if simple numbers were entered
+        const l = parseFloat(latText);
+        const g = parseFloat(lngText);
+        if (!isNaN(l) && !isNaN(g) && l >= -90 && l <= 90 && g >= -180 && g <= 180) {
+          lat = l;
+          lng = g;
+        } else {
+          setError(t('waypoints.val_lat_err', 'Please enter valid coordinates. Example: 20°44.570\' N, 71°04.811\' E'));
+          return;
+        }
+      } else {
+        lat = parsed.latitude;
+        lng = parsed.longitude;
+      }
     }
 
     onPlot(lat, lng);
@@ -108,7 +154,96 @@ export function CoordinateInputModal({
             </Pressable>
           </View>
 
-          {/* Mode Switcher Tabs */}
+          {/* Coordinate Format Selector (Matches Garmin/Marine GPS Options) */}
+          <View style={styles.formatBarWrapper}>
+            <Pressable
+              style={[
+                styles.formatSelectorBtn,
+                {
+                  backgroundColor: isLight ? '#F1F5F9' : colors.surfaceSubtle,
+                  borderColor: showFormatDropdown ? colors.accent : colors.border,
+                },
+              ]}
+              onPress={() => setShowFormatDropdown((prev) => !prev)}
+            >
+              <View style={styles.formatBtnLeft}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={[styles.formatBtnTitle, { color: colors.text }]}>
+                    {activeFormatMeta.label}
+                  </Text>
+                  <View style={styles.formatTagBadge}>
+                    <Text style={styles.formatTagText}>GPS FORMAT</Text>
+                  </View>
+                </View>
+                <Text style={[styles.formatBtnSub, { color: colors.textMuted }]} numberOfLines={1}>
+                  {activeFormatMeta.description} (e.g. {activeFormatMeta.example})
+                </Text>
+              </View>
+              <Ionicons
+                name={showFormatDropdown ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={colors.accent}
+              />
+            </Pressable>
+
+            {/* Dropdown Options List */}
+            {showFormatDropdown && (
+              <View
+                style={[
+                  styles.formatDropdown,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : '#0B192C',
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                {COORDINATE_FORMATS.map((fmt) => {
+                  const isSelected = fmt.id === selectedFormat;
+                  return (
+                    <Pressable
+                      key={fmt.id}
+                      style={[
+                        styles.formatOptionItem,
+                        {
+                          borderBottomColor: colors.border,
+                          backgroundColor: isSelected
+                            ? isLight
+                              ? 'rgba(2, 132, 199, 0.1)'
+                              : 'rgba(56, 189, 248, 0.15)'
+                            : 'transparent',
+                        },
+                      ]}
+                      onPress={() => {
+                        setSelectedFormat(fmt.id);
+                        setShowFormatDropdown(false);
+                        setError(null);
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text
+                          style={[
+                            styles.formatOptionLabel,
+                            { color: isSelected ? colors.accent : colors.text },
+                          ]}
+                        >
+                          {fmt.label}
+                        </Text>
+                        {isSelected && <Ionicons name="checkmark-circle" size={16} color={colors.accent} />}
+                      </View>
+                      <Text style={[styles.formatOptionSub, { color: colors.textMuted }]}>
+                        {fmt.description}
+                      </Text>
+                      <Text style={[styles.formatOptionExample, { color: colors.accent }]}>
+                        e.g. {fmt.example}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          {/* Mode Switcher Tabs (2 Modes: Quick Paste / Raw vs Separate Lat & Lng) */}
           <View style={[styles.tabsRow, { backgroundColor: isLight ? '#E2E8F0' : colors.surfaceSubtle }]}>
             <Pressable
               style={[
@@ -147,14 +282,14 @@ export function CoordinateInputModal({
               <Text style={[styles.label, { color: colors.textMuted }]}>{t('coords.pair_label', 'ENTER COORDINATE PAIR')}</Text>
               <TextInput
                 style={inputStyle}
-                placeholder={t('coords.pair_placeholder', "e.g. 20.3875, 70.8783 or 20° 23' N, 70° 52' E")}
+                placeholder={activeFormatMeta.example}
                 placeholderTextColor={colors.textMuted}
                 value={singleText}
                 onChangeText={setSingleText}
                 autoCapitalize="none"
               />
               <Text style={[styles.hint, { color: colors.textSecondary }]}>
-                {t('coords.pair_hint', 'Accepts decimal (20.35, 70.82) or standard nautical notation.')}
+                {activeFormatMeta.description} • Format: {activeFormatMeta.label}
               </Text>
             </View>
           ) : (
@@ -164,7 +299,7 @@ export function CoordinateInputModal({
                 <TextInput
                   style={inputStyle}
                   keyboardType="numeric"
-                  placeholder={t('coords.lat_placeholder', 'e.g. 20.3875')}
+                  placeholder={selectedFormat === 'DDMM.MM' ? "20° 44.570' N" : '20.3875'}
                   placeholderTextColor={colors.textMuted}
                   value={latText}
                   onChangeText={setLatText}
@@ -175,11 +310,44 @@ export function CoordinateInputModal({
                 <TextInput
                   style={inputStyle}
                   keyboardType="numeric"
-                  placeholder={t('coords.lng_placeholder', 'e.g. 70.8783')}
+                  placeholder={selectedFormat === 'DDMM.MM' ? "071° 04.811' E" : '70.8783'}
                   placeholderTextColor={colors.textMuted}
                   value={lngText}
                   onChangeText={setLngText}
                 />
+              </View>
+            </View>
+          )}
+
+          {/* Live Preview Card */}
+          {liveParsed && (
+            <View
+              style={[
+                styles.previewCard,
+                {
+                  backgroundColor: isLight ? '#F0FDF4' : 'rgba(34, 197, 94, 0.08)',
+                  borderColor: isLight ? '#86EFAC' : 'rgba(34, 197, 94, 0.3)',
+                },
+              ]}
+            >
+              <View style={styles.previewHeaderRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
+                  <Text style={[styles.previewBadgeText, { color: '#22C55E' }]}>
+                    VERIFIED GPS POSITION
+                  </Text>
+                </View>
+                <Text style={[styles.previewBadgeText, { color: colors.textMuted }]}>
+                  {liveParsed.formatDetected}
+                </Text>
+              </View>
+              <View style={{ gap: 3 }}>
+                <Text style={[styles.previewValText, { color: colors.text }]}>
+                  DDM: {liveParsed.formattedDDM.full}
+                </Text>
+                <Text style={[styles.previewValText, { color: colors.textSecondary }]}>
+                  Dec: {liveParsed.latitude.toFixed(6)}°, {liveParsed.longitude.toFixed(6)}°
+                </Text>
               </View>
             </View>
           )}
@@ -246,6 +414,95 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  formatBarWrapper: {
+    marginBottom: 12,
+    zIndex: 20,
+  },
+  formatSelectorBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  formatBtnLeft: {
+    flex: 1,
+    marginRight: 8,
+  },
+  formatBtnTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  formatTagBadge: {
+    backgroundColor: 'rgba(56, 189, 248, 0.18)',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 4,
+  },
+  formatTagText: {
+    color: '#38BDF8',
+    fontSize: 9.5,
+    fontWeight: '800',
+  },
+  formatBtnSub: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  formatDropdown: {
+    marginTop: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  formatOptionItem: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+  },
+  formatOptionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  formatOptionSub: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  formatOptionExample: {
+    fontSize: 10.5,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    marginTop: 3,
+  },
+  previewCard: {
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    marginTop: 6,
+    marginBottom: 10,
+  },
+  previewHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  previewBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  previewValText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
   tabsRow: {
     flexDirection: 'row',
