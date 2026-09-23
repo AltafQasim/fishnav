@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -23,10 +23,11 @@ import {
   COORDINATE_FORMATS,
   CoordinateFormatId,
   parseAnyCoordinate,
+  parseSingleCoordinate,
   ParsedCoordResult,
   toDDMM_MM,
 } from '@/utils/coordinate-converters';
-import { bearingDegrees, distanceNm, formatBearing, formatNm, parseCoordinates } from '@/utils/geo';
+import { bearingDegrees, distanceNm, formatBearing, formatNm } from '@/utils/geo';
 
 type WaypointModalProps = {
   visible: boolean;
@@ -67,13 +68,22 @@ export function WaypointModal({
   const { colors, isLight } = useAppTheme();
   const { t } = useLanguage();
 
+  // Input Refs for smooth auto-focus on validation failure
+  const nameInputRef = useRef<TextInput>(null);
+  const singleInputRef = useRef<TextInput>(null);
+  const latInputRef = useRef<TextInput>(null);
+  const lngInputRef = useRef<TextInput>(null);
+
   const [name, setName] = useState('');
+  const [nameError, setNameError] = useState<string | null>(null);
   const [coordMode, setCoordMode] = useState<'single' | 'pair'>('pair');
 
   // Coordinates fields matching CoordinateInputModal
   const [singleText, setSingleText] = useState('');
   const [latText, setLatText] = useState('');
   const [lngText, setLngText] = useState('');
+  const [latHasError, setLatHasError] = useState(false);
+  const [lngHasError, setLngHasError] = useState(false);
 
   const [depthStr, setDepthStr] = useState('50');
   const [category, setCategory] = useState(CATEGORIES[0].id);
@@ -81,7 +91,7 @@ export function WaypointModal({
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [coordError, setCoordError] = useState<string | null>(null);
-  const [selectedFormat, setSelectedFormat] = useState<CoordinateFormatId>('DDMM.MM');
+  const [selectedFormat, setSelectedFormat] = useState<CoordinateFormatId>('AUTO');
   const [showFormatDropdown, setShowFormatDropdown] = useState(false);
 
   // Live parsed coordinates for real-time validation and preview
@@ -91,7 +101,12 @@ export function WaypointModal({
       return parseAnyCoordinate(singleText, selectedFormat);
     } else {
       if (!latText.trim() && !lngText.trim()) return null;
-      return parseAnyCoordinate(`${latText}, ${lngText}`, selectedFormat);
+      const lat = parseSingleCoordinate(latText, true);
+      const lng = parseSingleCoordinate(lngText, false);
+      if (lat !== null && lng !== null) {
+        return parseAnyCoordinate(`${lat}, ${lng}`, selectedFormat);
+      }
+      return null;
     }
   }, [coordMode, singleText, latText, lngText, selectedFormat]);
 
@@ -110,11 +125,15 @@ export function WaypointModal({
     return COORDINATE_FORMATS.find((f) => f.id === selectedFormat) || COORDINATE_FORMATS[0];
   }, [selectedFormat]);
 
-  // Sync state when modal opens or spotToEdit changes
+  // Sync state ONLY when modal visibility changes or spotToEdit changes (NEVER on background GPS location tick!)
   useEffect(() => {
     if (visible) {
+      setNameError(null);
       setCoordError(null);
+      setLatHasError(false);
+      setLngHasError(false);
       setShowFormatDropdown(false);
+
       if (spotToEdit) {
         setName(spotToEdit.name);
         const ddmLat = toDDMM_MM(spotToEdit.latitude, true);
@@ -128,51 +147,47 @@ export function WaypointModal({
         setNotes(spotToEdit.notes || '');
       } else {
         setName('');
-        if (userLocation) {
-          const ddmLat = toDDMM_MM(userLocation.latitude, true);
-          const ddmLng = toDDMM_MM(userLocation.longitude, false);
-          setLatText(ddmLat.displayStr);
-          setLngText(ddmLng.displayStr);
-          setSingleText(`${ddmLat.displayStr}, ${ddmLng.displayStr}`);
-        } else {
-          setLatText("20° 44.570' N");
-          setLngText("070° 52.340' E");
-          setSingleText("20° 44.570' N, 070° 52.340' E");
-        }
+        // No default coordinates prefilled - keep completely empty so only placeholder is shown!
+        setLatText('');
+        setLngText('');
+        setSingleText('');
         setDepthStr('50');
         setCategory(CATEGORIES[0].id);
         setColor(COLOR_OPTIONS[0]);
         setNotes('');
       }
     }
-  }, [visible, spotToEdit, userLocation]);
+  }, [visible, spotToEdit]);
 
-  // Handle single raw input change -> try to auto-sync to pair fields
+  // Handle name input change
+  const handleNameChange = (text: string) => {
+    setName(text);
+    if (nameError) setNameError(null);
+  };
+
+  // Handle single raw input change (without auto-overwriting pair fields while user is typing!)
   const handleSingleChange = (text: string) => {
     setSingleText(text);
     setCoordError(null);
-    const parsed = parseAnyCoordinate(text, selectedFormat);
-    if (parsed) {
-      setLatText(parsed.formattedDDM.lat);
-      setLngText(parsed.formattedDDM.lng);
-    }
+    setLatHasError(false);
+    setLngHasError(false);
   };
 
-  // Handle lat change in pair mode -> auto-sync to single field
+  // Handle lat change in pair mode (without cross-polluting or auto-overwriting!)
   const handleLatChange = (text: string) => {
     setLatText(text);
     setCoordError(null);
-    setSingleText(`${text}, ${lngText}`);
+    setLatHasError(false);
   };
 
-  // Handle lng change in pair mode -> auto-sync to single field
+  // Handle lng change in pair mode (without cross-polluting or auto-overwriting!)
   const handleLngChange = (text: string) => {
     setLngText(text);
     setCoordError(null);
-    setSingleText(`${latText}, ${text}`);
+    setLngHasError(false);
   };
 
-  // Autofill with current GPS location
+  // Autofill with current GPS location on explicit user button tap
   const handleUseCurrentGps = () => {
     if (userLocation) {
       const ddmLat = toDDMM_MM(userLocation.latitude, true);
@@ -181,47 +196,82 @@ export function WaypointModal({
       setLngText(ddmLng.displayStr);
       setSingleText(`${ddmLat.displayStr}, ${ddmLng.displayStr}`);
       setCoordError(null);
+      setLatHasError(false);
+      setLngHasError(false);
     } else {
-      Alert.alert(
-        t('validation.error', 'GPS Unavailable'),
-        t('waypoints.gps_unavail', 'Current GPS location is not available yet.'),
-      );
+      setCoordError(t('waypoints.gps_unavail', 'Current GPS location is not available yet.'));
     }
   };
 
-  // Save handler with dual validation
+  // Save handler with DIRECT INLINE FIELD VALIDATION & AUTO-FOCUS (Zero alert popups!)
   const handleSave = async () => {
+    setNameError(null);
     setCoordError(null);
+    setLatHasError(false);
+    setLngHasError(false);
+
     const trimmedName = name.trim();
     if (!trimmedName) {
-      Alert.alert(
-        t('validation.error', 'Validation Error'),
-        t('waypoints.val_name_err', 'Please enter a waypoint name.'),
-      );
+      setNameError(t('waypoints.val_name_err', 'Please enter a waypoint name.'));
+      nameInputRef.current?.focus();
       return;
     }
 
-    // Robust parsing using the universal coordinate converter
-    let parsed = coordMode === 'single'
-      ? parseAnyCoordinate(singleText, selectedFormat)
-      : parseAnyCoordinate(`${latText}, ${lngText}`, selectedFormat);
+    let lat: number | null = null;
+    let lng: number | null = null;
 
-    // Fallback attempt without hintFormat if not parsed
-    if (!parsed) {
-      parsed = coordMode === 'single'
-        ? parseAnyCoordinate(singleText)
-        : parseAnyCoordinate(`${latText}, ${lngText}`);
+    if (coordMode === 'single') {
+      if (!singleText.trim()) {
+        setCoordError(t('coords.err_empty', 'Please enter coordinates.'));
+        singleInputRef.current?.focus();
+        return;
+      }
+
+      const parsed = parseAnyCoordinate(singleText, selectedFormat) || parseAnyCoordinate(singleText);
+      if (!parsed) {
+        setCoordError(
+          t('coords.invalid_format', `Please enter valid coordinates. Example: 20° 44.570' N, 70° 52.340' E or 20.7428, 70.8723`),
+        );
+        singleInputRef.current?.focus();
+        return;
+      }
+      lat = parsed.latitude;
+      lng = parsed.longitude;
+    } else {
+      // Pair mode validation
+      if (!latText.trim()) {
+        setCoordError(t('coords.err_lat_empty', 'Please enter Latitude. Example: 20° 44.570\' N or 20.7428'));
+        setLatHasError(true);
+        latInputRef.current?.focus();
+        return;
+      }
+
+      if (!lngText.trim()) {
+        setCoordError(t('coords.err_lng_empty', 'Please enter Longitude. Example: 070° 52.340\' E or 70.8723'));
+        setLngHasError(true);
+        lngInputRef.current?.focus();
+        return;
+      }
+
+      const parsedLat = parseSingleCoordinate(latText, true);
+      if (parsedLat === null) {
+        setCoordError(t('coords.err_lat_invalid', 'Invalid Latitude (-90° to +90°). Example: 20° 44.570\' N or 20.7428'));
+        setLatHasError(true);
+        latInputRef.current?.focus();
+        return;
+      }
+
+      const parsedLng = parseSingleCoordinate(lngText, false);
+      if (parsedLng === null) {
+        setCoordError(t('coords.err_lng_invalid', 'Invalid Longitude (-180° to +180°). Example: 070° 52.340\' E or 70.8723'));
+        setLngHasError(true);
+        lngInputRef.current?.focus();
+        return;
+      }
+
+      lat = parsedLat;
+      lng = parsedLng;
     }
-
-    if (!parsed) {
-      setCoordError(
-        t('coords.invalid_format', `Please enter valid coordinates in ${activeFormatMeta.label} format. (${activeFormatMeta.example})`),
-      );
-      return;
-    }
-
-    const lat = parsed.latitude;
-    const lng = parsed.longitude;
 
     const depth = parseInt(depthStr, 10) || 40;
 
@@ -242,9 +292,8 @@ export function WaypointModal({
       );
       onClose();
     } catch {
-      Alert.alert(
-        t('validation.error', 'Error'),
-        t('waypoints.save_err', 'Failed to save waypoint. Please try again.'),
+      setCoordError(
+        t('waypoints.save_err', 'Failed to save waypoint. Please check storage.'),
       );
     } finally {
       setIsSaving(false);
@@ -314,12 +363,19 @@ export function WaypointModal({
                 {t('waypoints.name_label', 'WAYPOINT NAME')}
               </Text>
               <TextInput
-                style={inputStyle}
+                ref={nameInputRef}
+                style={[inputStyle, nameError ? styles.inputError : null]}
                 placeholder={t('waypoints.name_placeholder', 'e.g. Ghol Spot Alpha, Deep Reef')}
                 placeholderTextColor={colors.textMuted}
                 value={name}
-                onChangeText={setName}
+                onChangeText={handleNameChange}
               />
+              {nameError ? (
+                <View style={styles.inlineErrorRow}>
+                  <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                  <Text style={styles.inlineErrorText}>{nameError}</Text>
+                </View>
+              ) : null}
             </View>
 
             {/* GPS Coordinates Header & Autofill */}
@@ -434,8 +490,17 @@ export function WaypointModal({
                     coordMode === 'pair' && [styles.tabActive, { backgroundColor: colors.accent }],
                   ]}
                   onPress={() => {
-                    setCoordMode('pair');
-                    setCoordError(null);
+                    if (coordMode !== 'pair') {
+                      setCoordMode('pair');
+                      setCoordError(null);
+                      if (singleText.trim() && !latText && !lngText) {
+                        const parsed = parseAnyCoordinate(singleText, selectedFormat);
+                        if (parsed) {
+                          setLatText(parsed.formattedDDM.lat);
+                          setLngText(parsed.formattedDDM.lng);
+                        }
+                      }
+                    }
                   }}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: coordMode === 'pair' }}
@@ -462,8 +527,13 @@ export function WaypointModal({
                     coordMode === 'single' && [styles.tabActive, { backgroundColor: colors.accent }],
                   ]}
                   onPress={() => {
-                    setCoordMode('single');
-                    setCoordError(null);
+                    if (coordMode !== 'single') {
+                      setCoordMode('single');
+                      setCoordError(null);
+                      if ((latText.trim() || lngText.trim()) && !singleText.trim()) {
+                        setSingleText(latText && lngText ? `${latText}, ${lngText}` : latText || lngText);
+                      }
+                    }
                   }}
                   accessibilityRole="tab"
                   accessibilityState={{ selected: coordMode === 'single' }}
@@ -492,7 +562,8 @@ export function WaypointModal({
                     {t('coords.pair_label', 'ENTER COORDINATE PAIR')}
                   </Text>
                   <TextInput
-                    style={inputStyle}
+                    ref={singleInputRef}
+                    style={[inputStyle, coordError ? styles.inputError : null]}
                     placeholder={activeFormatMeta.example}
                     placeholderTextColor={colors.textMuted}
                     value={singleText}
@@ -511,7 +582,8 @@ export function WaypointModal({
                       {t('waypoints.lat_label', 'LATITUDE')}
                     </Text>
                     <TextInput
-                      style={inputStyle}
+                      ref={latInputRef}
+                      style={[inputStyle, latHasError ? styles.inputError : null]}
                       placeholder={activeFormatMeta.placeholderLat}
                       placeholderTextColor={colors.textMuted}
                       value={latText}
@@ -524,7 +596,8 @@ export function WaypointModal({
                       {t('waypoints.lng_label', 'LONGITUDE')}
                     </Text>
                     <TextInput
-                      style={inputStyle}
+                      ref={lngInputRef}
+                      style={[inputStyle, lngHasError ? styles.inputError : null]}
                       placeholder={activeFormatMeta.placeholderLng}
                       placeholderTextColor={colors.textMuted}
                       value={lngText}
@@ -534,6 +607,14 @@ export function WaypointModal({
                   </View>
                 </View>
               )}
+
+              {/* Validation Error Message right below coordinate fields */}
+              {coordError ? (
+                <View style={[styles.inlineErrorRow, { marginBottom: 6 }]}>
+                  <Ionicons name="alert-circle" size={14} color="#EF4444" />
+                  <Text style={styles.inlineErrorText}>{coordError}</Text>
+                </View>
+              ) : null}
 
               {/* Live Synchronized Preview & Validation Card */}
               {liveParsed ? (
@@ -573,14 +654,6 @@ export function WaypointModal({
                       <Text style={[styles.previewDataValue, { color: colors.textSecondary }]}>{liveParsed.formattedDMS.full}</Text>
                     </View>
                   </View>
-                </View>
-              ) : null}
-
-              {/* Validation Error Message */}
-              {coordError ? (
-                <View style={styles.errorBox}>
-                  <Ionicons name="alert-circle" size={14} color="#EF4444" />
-                  <Text style={styles.errorText}>{coordError}</Text>
                 </View>
               ) : null}
 
@@ -1091,5 +1164,21 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
+  },
+  inputError: {
+    borderColor: '#EF4444',
+    borderWidth: 1.5,
+  },
+  inlineErrorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 5,
+    paddingHorizontal: 2,
+  },
+  inlineErrorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

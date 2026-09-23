@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -19,6 +19,7 @@ import {
   COORDINATE_FORMATS,
   CoordinateFormatId,
   parseAnyCoordinate,
+  parseSingleCoordinate,
 } from '@/utils/coordinate-converters';
 
 type CoordinateInputModalProps = {
@@ -37,11 +38,17 @@ export function CoordinateInputModal({
   const { t } = useLanguage();
   const isLight = activeTheme === 'light';
 
+  const singleInputRef = useRef<TextInput>(null);
+  const latInputRef = useRef<TextInput>(null);
+  const lngInputRef = useRef<TextInput>(null);
+
   const [latText, setLatText] = useState('');
   const [lngText, setLngText] = useState('');
+  const [latHasError, setLatHasError] = useState(false);
+  const [lngHasError, setLngHasError] = useState(false);
   const [singleText, setSingleText] = useState('');
   const [mode, setMode] = useState<'pair' | 'single'>('single');
-  const [selectedFormat, setSelectedFormat] = useState<CoordinateFormatId>('DDMM.MM');
+  const [selectedFormat, setSelectedFormat] = useState<CoordinateFormatId>('AUTO');
   const [showFormatDropdown, setShowFormatDropdown] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,56 +64,69 @@ export function CoordinateInputModal({
       return parseAnyCoordinate(singleText, selectedFormat);
     } else {
       if (!latText.trim() && !lngText.trim()) return null;
-      const combined = `${latText.trim()} ${lngText.trim()}`;
-      return parseAnyCoordinate(combined, selectedFormat);
+      const lat = parseSingleCoordinate(latText, true);
+      const lng = parseSingleCoordinate(lngText, false);
+      if (lat !== null && lng !== null) {
+        return parseAnyCoordinate(`${lat}, ${lng}`, selectedFormat);
+      }
+      return null;
     }
   }, [mode, singleText, latText, lngText, selectedFormat]);
 
   const handlePlot = () => {
     setError(null);
+    setLatHasError(false);
+    setLngHasError(false);
+
     let lat: number | null = null;
     let lng: number | null = null;
 
     if (mode === 'single') {
       if (!singleText.trim()) {
         setError(t('coords.invalid_format', 'Please enter coordinates.'));
+        singleInputRef.current?.focus();
         return;
       }
-      let parsed = parseAnyCoordinate(singleText, selectedFormat);
+      const parsed = parseAnyCoordinate(singleText, selectedFormat) || parseAnyCoordinate(singleText);
       if (!parsed) {
-        parsed = parseAnyCoordinate(singleText);
-      }
-      if (!parsed) {
-        setError(t('coords.invalid_format', `Invalid coordinates for ${activeFormatMeta.label}. Example: ${activeFormatMeta.example}`));
+        setError(t('coords.invalid_format', `Invalid coordinates. Example: ${activeFormatMeta.example}`));
+        singleInputRef.current?.focus();
         return;
       }
       lat = parsed.latitude;
       lng = parsed.longitude;
     } else {
-      if (!latText.trim() || !lngText.trim()) {
-        setError(t('waypoints.val_lat_err', 'Please enter both Latitude and Longitude.'));
+      if (!latText.trim()) {
+        setError(t('waypoints.val_lat_err', 'Please enter Latitude. Example: 20° 44.570\' N or 20.7428'));
+        setLatHasError(true);
+        latInputRef.current?.focus();
         return;
       }
-      const combined = `${latText.trim()} ${lngText.trim()}`;
-      let parsed = parseAnyCoordinate(combined, selectedFormat);
-      if (!parsed) {
-        parsed = parseAnyCoordinate(combined);
+      if (!lngText.trim()) {
+        setError(t('coords.err_lng_empty', 'Please enter Longitude. Example: 070° 52.340\' E or 70.8723'));
+        setLngHasError(true);
+        lngInputRef.current?.focus();
+        return;
       }
-      if (!parsed) {
-        // Fallback check if simple numbers were entered
-        const l = parseFloat(latText);
-        const g = parseFloat(lngText);
-        if (!isNaN(l) && !isNaN(g) && l >= -90 && l <= 90 && g >= -180 && g <= 180) {
-          lat = l;
-          lng = g;
-        } else {
-          setError(t('waypoints.val_lat_err', 'Please enter valid coordinates. Example: 20°44.570\' N, 71°04.811\' E'));
-          return;
-        }
-      } else {
-        lat = parsed.latitude;
-        lng = parsed.longitude;
+
+      const parsedLat = parseSingleCoordinate(latText, true);
+      if (parsedLat === null) {
+        setError(t('coords.err_lat_invalid', 'Invalid Latitude (-90° to +90°). Example: 20° 44.570\' N or 20.7428'));
+        setLatHasError(true);
+        latInputRef.current?.focus();
+        return;
       }
+
+      const parsedLng = parseSingleCoordinate(lngText, false);
+      if (parsedLng === null) {
+        setError(t('coords.err_lng_invalid', 'Invalid Longitude (-180° to +180°). Example: 070° 52.340\' E or 70.8723'));
+        setLngHasError(true);
+        lngInputRef.current?.focus();
+        return;
+      }
+
+      lat = parsedLat;
+      lng = parsedLng;
     }
 
     onPlot(lat, lng);
@@ -281,11 +301,15 @@ export function CoordinateInputModal({
             <View style={styles.fieldBlock}>
               <Text style={[styles.label, { color: colors.textMuted }]}>{t('coords.pair_label', 'ENTER COORDINATE PAIR')}</Text>
               <TextInput
-                style={inputStyle}
+                ref={singleInputRef}
+                style={[inputStyle, error ? styles.inputError : null]}
                 placeholder={activeFormatMeta.example}
                 placeholderTextColor={colors.textMuted}
                 value={singleText}
-                onChangeText={setSingleText}
+                onChangeText={(text) => {
+                  setSingleText(text);
+                  if (error) setError(null);
+                }}
                 autoCapitalize="none"
               />
               <Text style={[styles.hint, { color: colors.textSecondary }]}>
@@ -297,23 +321,33 @@ export function CoordinateInputModal({
               <View style={styles.pairCol}>
                 <Text style={[styles.label, { color: colors.textMuted }]}>{t('waypoints.lat_label', 'LATITUDE')}</Text>
                 <TextInput
-                  style={inputStyle}
-                  keyboardType="numeric"
-                  placeholder={selectedFormat === 'DDMM.MM' ? "20° 44.570' N" : '20.3875'}
+                  ref={latInputRef}
+                  style={[inputStyle, latHasError ? styles.inputError : null]}
+                  placeholder={activeFormatMeta.placeholderLat}
                   placeholderTextColor={colors.textMuted}
                   value={latText}
-                  onChangeText={setLatText}
+                  onChangeText={(text) => {
+                    setLatText(text);
+                    if (error) setError(null);
+                    if (latHasError) setLatHasError(false);
+                  }}
+                  autoCapitalize="none"
                 />
               </View>
               <View style={styles.pairCol}>
                 <Text style={[styles.label, { color: colors.textMuted }]}>{t('waypoints.lng_label', 'LONGITUDE')}</Text>
                 <TextInput
-                  style={inputStyle}
-                  keyboardType="numeric"
-                  placeholder={selectedFormat === 'DDMM.MM' ? "071° 04.811' E" : '70.8783'}
+                  ref={lngInputRef}
+                  style={[inputStyle, lngHasError ? styles.inputError : null]}
+                  placeholder={activeFormatMeta.placeholderLng}
                   placeholderTextColor={colors.textMuted}
                   value={lngText}
-                  onChangeText={setLngText}
+                  onChangeText={(text) => {
+                    setLngText(text);
+                    if (error) setError(null);
+                    if (lngHasError) setLngHasError(false);
+                  }}
+                  autoCapitalize="none"
                 />
               </View>
             </View>
@@ -567,6 +601,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 12,
+  },
+  inputError: {
+    borderColor: '#EF4444',
+    borderWidth: 1.5,
   },
   plotBtn: {
     backgroundColor: MapColors.accent,

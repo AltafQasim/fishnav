@@ -630,6 +630,13 @@ ${BUNDLED_LEAFLET_CSS}
       return nm < 10 ? nm.toFixed(2) + ' NM' : nm.toFixed(1) + ' NM';
     }
 
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, function(m) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m];
+      });
+    }
+
     function createSpotIcon(spot, isSelected) {
       const selectedClass = isSelected ? 'selected' : '';
       return L.divIcon({
@@ -638,7 +645,7 @@ ${BUNDLED_LEAFLET_CSS}
                 '<div class="spot-pin" style="background:' + (spot.color || '#F59E0B') + '">' +
                   '<div class="spot-pin-inner"></div>' +
                 '</div>' +
-                '<div class="spot-label-pill">' + spot.name + '</div>' +
+                '<div class="spot-label-pill">' + escapeHtml(spot.name) + '</div>' +
               '</div>',
         iconSize: [80, 52],
         iconAnchor: [40, 26],

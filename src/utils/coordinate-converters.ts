@@ -9,7 +9,7 @@
  * 5. MGRS (Military Grid Reference System e.g. 42QVK0831693481)
  */
 
-export type CoordinateFormatId = 'DDMM.MM' | 'DDMM.SS' | 'D.D' | 'UTM' | 'MGRS';
+export type CoordinateFormatId = 'AUTO' | 'DDMM.MM' | 'DDMM.SS' | 'D.D' | 'UTM' | 'MGRS';
 export type CoordinateFormatType = CoordinateFormatId;
 
 export type CoordinateFormatMeta = {
@@ -23,6 +23,15 @@ export type CoordinateFormatMeta = {
 };
 
 export const COORDINATE_FORMATS: CoordinateFormatMeta[] = [
+  {
+    id: 'AUTO',
+    label: 'Auto Detect (Smart)',
+    sublabel: 'Any Coordinate Format',
+    description: 'Auto-detects GPS (DDMM.MM), Decimal (D.D), DMS or Links',
+    example: "20° 44.570' N, 70° 52.340' E • 20.7428, 70.8723",
+    placeholderLat: "e.g. 20° 44.570' N or 20.7428",
+    placeholderLng: "e.g. 070° 52.340' E or 70.8723",
+  },
   {
     id: 'DDMM.MM',
     label: 'DDMM.MM',
@@ -44,8 +53,8 @@ export const COORDINATE_FORMATS: CoordinateFormatMeta[] = [
   {
     id: 'D.D',
     label: 'D.D',
-    sublabel: 'Degrees/Fractions',
-    description: 'Degrees/Fractions',
+    sublabel: 'Decimal Degrees',
+    description: 'Decimal Degrees',
     example: '57.9234 means 57.9234° • 20.7428 means 20.7428° N',
     placeholderLat: 'e.g. 20.7428',
     placeholderLng: 'e.g. 71.0802',
@@ -524,20 +533,115 @@ export function parseMGRSString(raw: string): { latitude: number; longitude: num
 }
 
 // ==========================================
-// 6. Universal Auto-Detect Parser
+// 6. Universal Auto-Detect & Standalone Parsers
 // ==========================================
 
-function clampCoord(val: number, isLatitude: boolean): number | null {
+export function clampCoord(val: number, isLatitude: boolean): number | null {
   const limit = isLatitude ? 90 : 180;
-  if (val >= -limit && val <= limit) {
+  if (Number.isFinite(val) && val >= -limit && val <= limit) {
     return Number(val.toFixed(6));
   }
   return null;
 }
 
 /**
- * Universal Coordinate Parser that accepts any coordinate pair string
- * and auto-detects DDMM.MM, DDMM.SS, D.D, UTM, or MGRS.
+ * Parses ANY single coordinate component (Latitude OR Longitude).
+ * Accepts:
+ * - Decimal Degrees: "20.7428", "20.7428° N", "-20.7428", "20.7428 N"
+ * - Degrees Decimal Minutes (DDM): "20° 44.570' N", "20 44.570 N", "20 44.570", "2044.570"
+ * - Degrees Minutes Seconds (DMS): "20° 44' 34.2\" N", "20 44 34 N", "20 44 34"
+ * - Handles smart quotes (’, ”, ′, ″), prefixed/suffixed cardinal directions (N, S, E, W).
+ */
+export function parseSingleCoordinate(raw: string, isLatitude: boolean): number | null {
+  if (!raw) return null;
+
+  // Normalize quotes and degree characters
+  let clean = raw
+    .trim()
+    .toUpperCase()
+    .replace(/[’′‘]/g, "'")
+    .replace(/[”″“]/g, '"')
+    .replace(/[ºdD]/g, '°')
+    .replace(/\s+/g, ' ');
+
+  if (!clean) return null;
+
+  // Determine hemisphere / negative sign
+  let sign = 1;
+  if (clean.includes('S') || clean.includes('W') || clean.startsWith('-')) {
+    sign = -1;
+  } else if (clean.includes('N') || clean.includes('E') || clean.startsWith('+')) {
+    sign = 1;
+  }
+
+  // Strip cardinal letters and leading +/- from the number string for pattern matching
+  const stripped = clean
+    .replace(/[NSEW+\-]/g, '')
+    .trim();
+
+  // Pattern 1: Degrees, Minutes, Seconds (DMS)
+  // e.g. 20° 44' 34" or 20 44 34 or 20° 44' 34.5"
+  const dmsMatch = stripped.match(/^(\d{1,3})[°\s]+(\d{1,2})['\s]+(\d{1,2}(?:\.\d+)?)["]?$/);
+  if (dmsMatch) {
+    const deg = parseFloat(dmsMatch[1]);
+    const min = parseFloat(dmsMatch[2]);
+    const sec = parseFloat(dmsMatch[3]);
+    if (Number.isFinite(deg) && Number.isFinite(min) && Number.isFinite(sec) && min < 60 && sec < 60) {
+      const dec = (Math.abs(deg) + min / 60 + sec / 3600) * sign;
+      return clampCoord(dec, isLatitude);
+    }
+  }
+
+  // Pattern 2: Degrees, Decimal Minutes (DDM - Marine GPS standard)
+  // e.g. 20° 44.570' or 20 44.570 or 20° 44.570 or 070 52.340
+  const ddmMatch = stripped.match(/^(\d{1,3})[°\s]+(\d{1,2}(?:\.\d+)?)['\s]*$/);
+  if (ddmMatch) {
+    const deg = parseFloat(ddmMatch[1]);
+    const min = parseFloat(ddmMatch[2]);
+    if (Number.isFinite(deg) && Number.isFinite(min) && min >= 0 && min < 60) {
+      const dec = (Math.abs(deg) + min / 60) * sign;
+      return clampCoord(dec, isLatitude);
+    }
+  }
+
+  // Pattern 3: Standard Decimal Degrees
+  // e.g. 20.7428 or 20.7428° or 70.8723
+  const ddMatch = stripped.match(/^(\d{1,3}(?:\.\d+)?)[°\s]*$/);
+  if (ddMatch) {
+    const val = parseFloat(ddMatch[1]);
+    if (Number.isFinite(val)) {
+      // If the number is compact marine GPS notation (e.g. 2044.570 for Lat > 90 or 07052.340 for Lng):
+      const dotIdx = stripped.indexOf('.');
+      const intPart = dotIdx !== -1 ? stripped.slice(0, dotIdx) : stripped;
+      const decPart = dotIdx !== -1 ? stripped.slice(dotIdx) : '';
+
+      // If value exceeds limits for standard degrees (Lat > 90 or Lng > 180) and has 3+ digits,
+      // it's compact DDMM.mmm notation e.g. 2044.570 or 7104.811
+      if ((isLatitude && val > 90) || (!isLatitude && val > 180) || intPart.length >= 4) {
+        if (intPart.length >= 3) {
+          const minInt = intPart.slice(-2);
+          const degPart = intPart.slice(0, -2);
+          const deg = parseFloat(degPart);
+          const min = parseFloat(minInt + decPart);
+          if (Number.isFinite(deg) && Number.isFinite(min) && min < 60) {
+            const dec = (deg + min / 60) * sign;
+            const res = clampCoord(dec, isLatitude);
+            if (res !== null) return res;
+          }
+        }
+      }
+
+      const dec = val * sign;
+      return clampCoord(dec, isLatitude);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Universal Coordinate Parser that accepts ANY coordinate pair string
+ * and auto-detects DDMM.MM, DDMM.SS, D.D, UTM, or MGRS without failing.
  */
 export function parseAnyCoordinate(
   text: string,
@@ -545,92 +649,113 @@ export function parseAnyCoordinate(
 ): ParsedCoordResult | null {
   if (!text) return null;
   const clean = text.trim();
+  if (!clean) return null;
 
-  // Try MGRS
+  // 1. Try MGRS if hinted or matches format
   if (hintFormat === 'MGRS' || /^\d{1,2}[C-X][A-Z]{2}\d{4,10}$/i.test(clean.replace(/\s/g, ''))) {
     const res = parseMGRSString(clean);
     if (res) return buildResult(res.latitude, res.longitude, 'MGRS');
   }
 
-  // Try UTM
+  // 2. Try UTM if hinted or matches format
   if (hintFormat === 'UTM' || /^\d{1,2}\s*[C-XNS]\s+\d+\s+\d+$/i.test(clean)) {
     const res = parseUTMString(clean);
     if (res) return buildResult(res.latitude, res.longitude, 'UTM');
   }
 
-  // Split pair by comma, semicolon, or slash
-  const parts = clean.split(/[,;\/|]+|\s+(?=[+-]?\d{1,3}[°\s]?[NSEW]?)/i).map((s) => s.trim()).filter(Boolean);
+  // 3. Check for Google Maps / Shared Web URL (e.g. https://maps.google.com/?q=20.7428,70.8723 or @20.7428,70.8723)
+  const urlCoordMatch = clean.match(/(?:@|q=|ll=|loc:)([+-]?\d{1,2}(?:\.\d+)?)[,\s]+([+-]?\d{1,3}(?:\.\d+)?)/i);
+  if (urlCoordMatch) {
+    const urlLat = parseFloat(urlCoordMatch[1]);
+    const urlLng = parseFloat(urlCoordMatch[2]);
+    const clampedLat = clampCoord(urlLat, true);
+    const clampedLng = clampCoord(urlLng, false);
+    if (clampedLat !== null && clampedLng !== null) {
+      return buildResult(clampedLat, clampedLng, 'D.D');
+    }
+  }
 
-  let lat: number | null = null;
-  let lng: number | null = null;
-  let detectedFormat: CoordinateFormatId = hintFormat || 'DDMM.MM';
+  let partA = '';
+  let partB = '';
 
-  if (parts.length >= 2) {
-    const partA = parts[0];
-    const partB = parts[1];
+  // 4. Multi-strategy pair splitting:
+  // Strategy A: Explicit Delimiters (Comma ',', Semicolon ';', Pipe '|', Slash '/')
+  if (/[,;\/|]/.test(clean)) {
+    const rawParts = clean.split(/[,;\/|]+/).map((s) => s.trim()).filter(Boolean);
+    if (rawParts.length >= 2) {
+      partA = rawParts[0];
+      partB = rawParts[1];
+    }
+  }
 
-    // Check if user specifically selected DDMM.MM
-    if (hintFormat === 'DDMM.MM') {
-      lat = parseDDMM_MM(partA, true);
-      lng = parseDDMM_MM(partB, false);
-      if (lat != null && lng != null) {
-        return buildResult(lat, lng, 'DDMM.MM');
-      }
+  // Strategy B: Cardinal Direction Boundary (split after [NS] or [EW])
+  // e.g. "20° 44.570' N 070° 52.340' E" or "20.7428N 70.8723E" or "20 44.570 N 70 52.340 E"
+  if (!partA && /[NS]/i.test(clean) && /[EW]/i.test(clean)) {
+    const cardSplit = clean.split(/(?<=[NSEW])[\s,]+(?=[+-]?\d|[NSEW])/i);
+    if (cardSplit.length >= 2) {
+      partA = cardSplit[0].trim();
+      partB = cardSplit[1].trim();
+    }
+  }
+
+  // Strategy C: Space-separated numerical blocks
+  if (!partA) {
+    const tokens = clean.split(/\s+/).filter(Boolean);
+    // 2 numbers: e.g. "20.7428 70.8723"
+    if (tokens.length === 2) {
+      partA = tokens[0];
+      partB = tokens[1];
+    }
+    // 4 tokens: e.g. "20 44.570 70 52.340"
+    else if (tokens.length === 4) {
+      partA = `${tokens[0]} ${tokens[1]}`;
+      partB = `${tokens[2]} ${tokens[3]}`;
+    }
+    // 6 tokens: e.g. "20 44 34 70 52 20"
+    else if (tokens.length === 6) {
+      partA = `${tokens[0]} ${tokens[1]} ${tokens[2]}`;
+      partB = `${tokens[3]} ${tokens[4]} ${tokens[5]}`;
+    }
+  }
+
+  // If still not split, try fallback split on space
+  if (!partA) {
+    const rawParts = clean.split(/\s+/).filter(Boolean);
+    if (rawParts.length >= 2) {
+      partA = rawParts[0];
+      partB = rawParts.slice(1).join(' ');
+    }
+  }
+
+  if (partA && partB) {
+    // Check if user entered Longitude first and Latitude second (e.g. "70.8723 E, 20.7428 N")
+    const aHasLng = /[EW]/i.test(partA);
+    const aHasLat = /[NS]/i.test(partA);
+    const bHasLng = /[EW]/i.test(partB);
+    const bHasLat = /[NS]/i.test(partB);
+
+    if (aHasLng && bHasLat && !aHasLat && !bHasLng) {
+      const temp = partA;
+      partA = partB;
+      partB = temp;
     }
 
-    // Check if user specifically selected DDMM.SS
-    if (hintFormat === 'DDMM.SS') {
-      lat = parseDDMM_SS(partA, true);
-      lng = parseDDMM_SS(partB, false);
-      if (lat != null && lng != null) {
-        return buildResult(lat, lng, 'DDMM.SS');
-      }
-    }
+    const lat = parseSingleCoordinate(partA, true);
+    const lng = parseSingleCoordinate(partB, false);
 
-    // Check if user specifically selected D.D
-    if (hintFormat === 'D.D') {
-      lat = parseDecimalDegrees(partA, true);
-      lng = parseDecimalDegrees(partB, false);
-      if (lat != null && lng != null) {
-        return buildResult(lat, lng, 'D.D');
+    if (lat !== null && lng !== null) {
+      // Detect format
+      let detectedFormat: CoordinateFormatId = hintFormat && hintFormat !== 'AUTO' ? hintFormat : 'DDMM.MM';
+      if (!hintFormat || hintFormat === 'AUTO') {
+        if (clean.includes('"') || /\d+\s+\d+\s+\d+/.test(clean)) {
+          detectedFormat = 'DDMM.SS';
+        } else if (clean.includes("'") || clean.includes('°') || Math.abs(parseFloat(partA)) > 90) {
+          detectedFormat = 'DDMM.MM';
+        } else {
+          detectedFormat = 'D.D';
+        }
       }
-    }
-
-    // Auto-detect:
-    // 1. If contains seconds quote (") or 3 blocks -> DDMM.SS
-    if (partA.includes('"') || partB.includes('"') || /^\d+\s+\d+\s+\d+/.test(partA)) {
-      lat = parseDDMM_SS(partA, true);
-      lng = parseDDMM_SS(partB, false);
-      if (lat != null && lng != null) {
-        return buildResult(lat, lng, 'DDMM.SS');
-      }
-    }
-
-    // 2. If contains minutes quote (') or degree symbol (°) without seconds -> DDMM.MM
-    if (partA.includes("'") || partB.includes("'") || (partA.includes('°') && !partA.includes('"'))) {
-      lat = parseDDMM_MM(partA, true);
-      lng = parseDDMM_MM(partB, false);
-      if (lat != null && lng != null) {
-        return buildResult(lat, lng, 'DDMM.MM');
-      }
-    }
-
-    // 3. Compact notation without symbols: e.g. 2044.570 or 7104.811 (Lat > 90 indicates DDMM.mmm!)
-    const numA = parseFloat(partA.replace(/[NSEW\s]/gi, ''));
-    const numB = parseFloat(partB.replace(/[NSEW\s]/gi, ''));
-    if (Math.abs(numA) > 90 || Math.abs(numB) > 180) {
-      lat = parseDDMM_MM(partA, true);
-      lng = parseDDMM_MM(partB, false);
-      if (lat != null && lng != null) {
-        return buildResult(lat, lng, 'DDMM.MM');
-      }
-    }
-
-    // 4. Standard Decimal Degrees: e.g. 20.7428, 71.0802
-    lat = parseDecimalDegrees(partA, true);
-    lng = parseDecimalDegrees(partB, false);
-    if (lat != null && lng != null) {
-      return buildResult(lat, lng, 'D.D');
+      return buildResult(lat, lng, detectedFormat);
     }
   }
 

@@ -72,7 +72,7 @@ export function etaFromNm(nm: number, speedKnots: number = 8): string {
   return `${h}h ${m}m`;
 }
 
-export function formatCoordinateDMS(value: number, positive: string, negative: string): string {
+export function toDms(value: number, positive: string, negative: string): string {
   const abs = Math.abs(value);
   const degrees = Math.floor(abs);
   const minutesFloat = (abs - degrees) * 60;
@@ -81,6 +81,8 @@ export function formatCoordinateDMS(value: number, positive: string, negative: s
   const hemi = value >= 0 ? positive : negative;
   return `${degrees}° ${minutes}' ${seconds}" ${hemi}`;
 }
+
+export const formatCoordinateDMS = toDms;
 
 /** Parses freeform coordinate string into { latitude, longitude } or null. */
 export function parseCoordinates(raw: string): { latitude: number; longitude: number } | null {

@@ -100,11 +100,14 @@ export function WaypointsSheetContent({
   };
 
   const handleSaveModal = async (data: Omit<FishingSpot, 'id'>, editId?: string) => {
+    let savedSpot: FishingSpot;
     if (editId) {
-      await updateWaypoint(editId, data);
+      savedSpot = await updateWaypoint(editId, data);
     } else {
-      await addWaypoint(data);
+      savedSpot = await addWaypoint(data);
     }
+    // Immediately center and highlight the new/updated waypoint on the map!
+    handleSelectSpot(savedSpot);
   };
 
   const handleSelectSpot = (spot: FishingSpot) => {

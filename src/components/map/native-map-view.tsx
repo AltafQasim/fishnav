@@ -193,15 +193,17 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
 
     // Synchronize spots list
     useEffect(() => {
-      const formatted = spots.map((s) => ({
-        id: s.id,
-        name: s.name,
-        lat: s.latitude,
-        lng: s.longitude,
-        color: s.color,
-        depthM: s.depthM,
-        favorite: !!s.favorite,
-      }));
+      const formatted = spots
+        .filter((s) => Number.isFinite(Number(s.latitude)) && Number.isFinite(Number(s.longitude)))
+        .map((s) => ({
+          id: s.id,
+          name: s.name,
+          lat: Number(s.latitude),
+          lng: Number(s.longitude),
+          color: s.color,
+          depthM: s.depthM,
+          favorite: !!s.favorite,
+        }));
       send({ type: 'setCustomSpots', spots: formatted });
     }, [spots, send]);
 

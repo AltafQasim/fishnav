@@ -582,7 +582,7 @@ function WeatherSheetContentInner() {
           chartSectionY.current = e.nativeEvent.layout.y;
         }}
       >
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 4 }]}>
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary, marginTop: 4, marginBottom: 8 }]}>
           {t('weather.anim_charts_title', 'ANIMATED PREDICTIVE CHARTS (36H)').toUpperCase()}
         </Text>
         <WeatherComponentBoundary name="MarineAnimatedWeatherChart">
