@@ -91,6 +91,10 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   const headingSub = useRef<Location.LocationSubscription | null>(null);
   const isWatchingRef = useRef(false);
 
+  // Marine compass stabilization refs (eliminates table jitter while maintaining instant turning response)
+  const smoothedHeadingRef = useRef<number | null>(null);
+  const lastPublishedHeadingRef = useRef<number | null>(null);
+
   const stopWatching = useCallback(() => {
     try {
       watchSub.current?.remove();
@@ -101,6 +105,9 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
       headingSub.current?.remove();
     } catch {}
     headingSub.current = null;
+
+    smoothedHeadingRef.current = null;
+    lastPublishedHeadingRef.current = null;
 
     isWatchingRef.current = false;
   }, []);
@@ -170,18 +177,43 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
     if (Platform.OS !== 'web') {
       try {
         headingSub.current = await Location.watchHeadingAsync((data) => {
-          const mag = Number.isFinite(data.magHeading) ? Math.round(data.magHeading) : null;
-          const tru = data.trueHeading >= 0 && Number.isFinite(data.trueHeading) ? Math.round(data.trueHeading) : null;
-          const primary = tru ?? mag;
+          const rawMag = Number.isFinite(data.magHeading) ? data.magHeading : null;
+          const rawTru = data.trueHeading >= 0 && Number.isFinite(data.trueHeading) ? data.trueHeading : null;
+          const rawPrimary = rawTru ?? rawMag;
 
-          if (primary != null) {
-            setHeading(primary);
-          }
-          if (mag != null) {
-            setMagHeading(mag);
-          }
-          if (tru != null) {
-            setTrueHeading(tru);
+          if (rawPrimary != null) {
+            if (smoothedHeadingRef.current === null) {
+              smoothedHeadingRef.current = rawPrimary;
+              const rounded = Math.round(rawPrimary);
+              lastPublishedHeadingRef.current = rounded;
+              setHeading(rounded);
+              if (rawMag != null) setMagHeading(Math.round(rawMag));
+              if (rawTru != null) setTrueHeading(Math.round(rawTru));
+            } else {
+              // Calculate shortest angular delta (-180 to 180)
+              let delta = (rawPrimary - smoothedHeadingRef.current) % 360;
+              if (delta > 180) delta -= 360;
+              if (delta < -180) delta += 360;
+
+              // Deadband noise gate:
+              // Phone magnetometer on a resting table has ~0.8° to 1.2° electrical noise.
+              // Ignore micro-fluctuations under 1.2° to prevent resting jitter!
+              if (Math.abs(delta) >= 1.2) {
+                // Adaptive Exponential Moving Average (EMA):
+                // For small intentional turns (1.2° - 6°): smooth alpha = 0.35
+                // For faster turns (> 6°): responsive alpha = 0.75
+                const alpha = Math.abs(delta) > 6 ? 0.75 : 0.35;
+                smoothedHeadingRef.current = (smoothedHeadingRef.current + delta * alpha + 360) % 360;
+
+                const roundedHeading = Math.round(smoothedHeadingRef.current);
+                if (roundedHeading !== lastPublishedHeadingRef.current) {
+                  lastPublishedHeadingRef.current = roundedHeading;
+                  setHeading(roundedHeading);
+                  if (rawMag != null) setMagHeading(Math.round(rawMag));
+                  if (rawTru != null) setTrueHeading(Math.round(rawTru));
+                }
+              }
+            }
           }
           if (data.accuracy != null) {
             setHeadingAccuracy(data.accuracy);

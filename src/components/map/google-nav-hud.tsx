@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   Pressable,
@@ -11,10 +11,14 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { NavigationCompassRose } from '@/components/compass/navigation-compass-rose';
+import { TargetWaypointPickerModal } from '@/components/compass/target-waypoint-picker-modal';
 import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
+import { useWaypoints } from '@/context/waypoints-context';
+import { useMarineWeather } from '@/hooks/use-marine-weather';
 import { formatLatitude, formatLongitude, useUserLocation } from '@/hooks/use-user-location';
+import { getMoonPhaseDetails } from '@/utils/astronomy';
 import { etaFromNm, formatNm } from '@/utils/geo';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -31,6 +35,17 @@ const getCardinal = (deg: number) => {
   const idx = Math.round(((deg % 360) + 360) % 360 / 22.5) % 16;
   return dirs[idx];
 };
+
+function getMoonIcon(phase: number): string {
+  if (phase < 0.05 || phase > 0.95) return '🌑';
+  if (phase < 0.20) return '🌒';
+  if (phase < 0.30) return '🌓';
+  if (phase < 0.45) return '🌔';
+  if (phase < 0.55) return '🌕';
+  if (phase < 0.70) return '🌖';
+  if (phase < 0.80) return '🌗';
+  return '🌘';
+}
 
 /**
  * 🗺️ Google Maps Marine Navigation Cockpit & Full Compass Steering HUD
@@ -49,6 +64,19 @@ export function GoogleNavHud({
   const { t } = useLanguage();
   const { location } = useUserLocation();
   const [showFullCompass, setShowFullCompass] = useState(true);
+  const [showTargetPicker, setShowTargetPicker] = useState(false);
+  const { activeNavigationTarget, setActiveNavigationTarget } = useWaypoints();
+
+  // Marine Weather, Tides & Astronomy Data
+  const { data: weatherData } = useMarineWeather();
+  const moonInfo = useMemo(() => getMoonPhaseDetails(new Date()), []);
+  const tides = weatherData?.tides;
+  const conditions = weatherData?.conditions;
+
+  const isTideRising = useMemo(() => {
+    if (!tides?.nextHighTide?.heightM || !tides?.currentHeightM) return true;
+    return tides.nextHighTide.heightM >= tides.currentHeightM;
+  }, [tides]);
 
   const {
     isTracking,
@@ -68,6 +96,8 @@ export function GoogleNavHud({
     resumeTracking,
     exitNavigation,
   } = useTripTracking();
+
+  const effectiveTarget = targetSpot || activeNavigationTarget;
 
   const getLocalizedSteer = (instr: string) => {
     const upper = (instr || '').toUpperCase();
@@ -106,13 +136,13 @@ export function GoogleNavHud({
   // 🧭 Automatically open the compass steering screen when navigation starts or target changes
   const prevTargetIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (targetSpot) {
-      if (targetSpot.id !== prevTargetIdRef.current) {
-        prevTargetIdRef.current = targetSpot.id;
+    if (effectiveTarget) {
+      if (effectiveTarget.id !== prevTargetIdRef.current) {
+        prevTargetIdRef.current = effectiveTarget.id;
         setShowFullCompass(true);
       }
     }
-  }, [targetSpot]);
+  }, [effectiveTarget]);
 
   return (
     <View style={styles.container} pointerEvents="box-none">
@@ -192,8 +222,9 @@ export function GoogleNavHud({
               </View>
             </View>
 
-            {/* 4-Grid Telemetry Cards */}
+            {/* 🧭 UNIFIED MARINE TELEMETRY INSTRUMENT GRID (Identical card design across all metrics) */}
             <View style={styles.fullTelemGrid}>
+              {/* ROW 1: SPEED (SOG) & COURSE (COG) */}
               <View
                 style={[
                   styles.fullTelemCard,
@@ -203,39 +234,53 @@ export function GoogleNavHud({
                   },
                 ]}
               >
-                <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>{t('hud.bearing', 'TARGET BEARING')}</Text>
+                <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>SPEED (SOG)</Text>
+                <Text style={[styles.fullTelemVal, { color: colors.text }]}>
+                  {currentSpeedKnots.toFixed(1)}{' '}
+                  <Text style={[styles.fullTelemUnit, { color: colors.accent }]}>kts</Text>
+                </Text>
+                <Text style={[styles.fullTelemSub, { color: colors.textMuted }]}>Speed Over Ground</Text>
+              </View>
+
+              <View
+                style={[
+                  styles.fullTelemCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>COURSE (COG)</Text>
+                <Text style={[styles.fullTelemVal, { color: colors.text }]}>
+                  {String(userCompassHeading).padStart(3, '0')}°
+                </Text>
+                <Text style={[styles.fullTelemSub, { color: colors.accent }]}>
+                  {getCardinal(userCompassHeading)} • Heading
+                </Text>
+              </View>
+
+              {/* ROW 2: TARGET BEARING & DISTANCE / ETA */}
+              <View
+                style={[
+                  styles.fullTelemCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>{t('hud.bearing', 'TARGET BEARING')}</Text>
                 <Text style={[styles.fullTelemVal, { color: colors.text }]}>
                   {targetBearing != null
                     ? `${Math.round(targetBearing)}° ${getCardinal(targetBearing)}`
                     : '—'}
                 </Text>
-              </View>
-              <View
-                style={[
-                  styles.fullTelemCard,
-                  {
-                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
-                    borderColor: colors.cardBorder,
-                  },
-                ]}
-              >
-                <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>{t('cockpit.distance', 'DISTANCE')}</Text>
-                <Text style={[styles.fullTelemVal, { color: colors.text }]}>{formatNm(remainingDist)}</Text>
-              </View>
-              <View
-                style={[
-                  styles.fullTelemCard,
-                  {
-                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
-                    borderColor: colors.cardBorder,
-                  },
-                ]}
-              >
-                <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>{t('cockpit.speed', 'BOAT SPEED')}</Text>
-                <Text style={[styles.fullTelemVal, { color: colors.text }]}>
-                  {currentSpeedKnots.toFixed(1)} <Text style={[styles.unitSmall, { color: colors.accent }]}>kts</Text>
+                <Text style={[styles.fullTelemSub, { color: colors.textMuted }]} numberOfLines={1}>
+                  {effectiveTarget ? effectiveTarget.name : 'No Target Set'}
                 </Text>
               </View>
+
               <View
                 style={[
                   styles.fullTelemCard,
@@ -245,63 +290,249 @@ export function GoogleNavHud({
                   },
                 ]}
               >
-                <Text style={[styles.fullTelemLabel, { color: colors.textSecondary }]}>{t('cockpit.eta', 'EST. ARRIVAL')}</Text>
-                <Text style={[styles.fullTelemVal, { color: colors.text }]}>{etaText}</Text>
-              </View>
-            </View>
-
-            {/* 📍 CURRENT VESSEL COORDINATES CARD (Added as requested) */}
-            <View
-              style={[
-                styles.fullCoordsCard,
-                {
-                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(10, 31, 53, 0.85)',
-                  borderColor: isLight ? '#BAE6FD' : 'rgba(0, 240, 255, 0.3)',
-                  shadowColor: isLight ? '#64748B' : '#00F0FF',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: isLight ? 0.06 : 0.2,
-                  shadowRadius: 6,
-                  elevation: 3,
-                },
-              ]}
-            >
-              <View style={styles.fullCoordsHeader}>
-                <View style={styles.fullCoordsHeaderLeft}>
-                  <Ionicons name="location" size={15} color={colors.accent} />
-                  <Text style={[styles.fullCoordsHeaderTitle, { color: colors.accent }]}>
-                    {t('overlay.gps_coords', 'CURRENT VESSEL COORDINATES')}
-                  </Text>
-                </View>
-                <View style={[styles.gpsPill, isLight && { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]}>
-                  <View style={styles.gpsPillDot} />
-                  <Text style={[styles.gpsPillText, isLight && { color: '#16A34A' }]}>3D GPS FIX</Text>
-                </View>
+                <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>{t('cockpit.distance', 'DISTANCE & ETA')}</Text>
+                <Text style={[styles.fullTelemVal, { color: colors.text }]}>
+                  {formatNm(remainingDist)}
+                </Text>
+                <Text style={[styles.fullTelemSub, { color: colors.accent }]}>
+                  ETA: {etaText}
+                </Text>
               </View>
 
-              <View style={styles.fullCoordsBody}>
-                {/* Latitude Row */}
-                <View style={styles.fullCoordCol}>
-                  <Text style={[styles.fullCoordLabel, { color: colors.textMuted }]}>LATITUDE</Text>
-                  <Text style={[styles.fullCoordDms, { color: colors.text }]}>
-                    {location ? formatLatitude(location.latitude) : '20° 54\' 00" N'}
-                  </Text>
-                  <Text style={[styles.fullCoordDec, { color: colors.accent }]}>
-                    {location ? `${location.latitude.toFixed(5)}° N` : '20.90000° N'}
-                  </Text>
+              {/* ROW 3: CURRENT POSITION & TARGET POSITION (Latitude & Longitude combined in one card) */}
+              <View
+                style={[
+                  styles.fullTelemCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <View style={styles.cardHeaderRow}>
+                  <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>CURRENT POSITION</Text>
+                  <View style={[styles.gpsMiniPill, isLight && { backgroundColor: '#DCFCE7' }]}>
+                    <View style={styles.gpsMiniDot} />
+                    <Text style={[styles.gpsMiniText, isLight && { color: '#16A34A' }]}>3D GPS</Text>
+                  </View>
                 </View>
+                <Text style={[styles.fullTelemValCoord, { color: colors.text }]}>
+                  {location ? formatLatitude(location.latitude) : '22° 26\' 40" N'}
+                </Text>
+                <Text style={[styles.fullTelemValCoord, { color: colors.text }]}>
+                  {location ? formatLongitude(location.longitude) : '070° 52\' 41" E'}
+                </Text>
+                <Text style={[styles.fullTelemSub, { color: colors.accent }]}>
+                  {location ? `${location.latitude.toFixed(4)}°, ${location.longitude.toFixed(4)}°` : '22.4444°, 70.8780°'}
+                </Text>
+              </View>
 
-                <View style={[styles.fullCoordDivider, { backgroundColor: isLight ? '#E2E8F0' : colors.divider }]} />
-
-                {/* Longitude Row */}
-                <View style={styles.fullCoordCol}>
-                  <Text style={[styles.fullCoordLabel, { color: colors.textMuted }]}>LONGITUDE</Text>
-                  <Text style={[styles.fullCoordDms, { color: colors.text }]}>
-                    {location ? formatLongitude(location.longitude) : '70° 22\' 00" E'}
+              <Pressable
+                onPress={() => setShowTargetPicker(true)}
+                style={[
+                  styles.fullTelemCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: effectiveTarget ? colors.accent : colors.cardBorder,
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Target Position"
+              >
+                <View style={styles.cardHeaderRow}>
+                  <Text style={[styles.fullTelemLabel, { color: effectiveTarget ? colors.accent : colors.textMuted }]}>
+                    TARGET POSITION
                   </Text>
-                  <Text style={[styles.fullCoordDec, { color: colors.accent }]}>
-                    {location ? `${location.longitude.toFixed(5)}° E` : '70.36670° E'}
-                  </Text>
+                  {effectiveTarget ? (
+                    <View style={styles.targetActiveMiniBadge}>
+                      <Text style={styles.targetActiveMiniText}>LOCKED</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.targetSetMiniBadge}>
+                      <Text style={styles.targetSetMiniText}>SET 🎯</Text>
+                    </View>
+                  )}
                 </View>
+                {effectiveTarget ? (
+                  <>
+                    <Text style={[styles.fullTelemValCoord, { color: colors.text }]}>
+                      {formatLatitude(effectiveTarget.latitude)}
+                    </Text>
+                    <Text style={[styles.fullTelemValCoord, { color: colors.text }]}>
+                      {formatLongitude(effectiveTarget.longitude)}
+                    </Text>
+                    <Text style={[styles.fullTelemSub, { color: colors.accent }]} numberOfLines={1}>
+                      {effectiveTarget.name} {distanceToTargetNm != null ? `• ${formatNm(distanceToTargetNm)}` : ''}
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={[styles.fullTelemValCoord, { color: colors.textMuted }]}>
+                      --° --' --" N
+                    </Text>
+                    <Text style={[styles.fullTelemValCoord, { color: colors.textMuted }]}>
+                      ---° --' --" E
+                    </Text>
+                    <Text style={[styles.fullTelemSub, { color: colors.textMuted }]}>
+                      Initial Blank • Tap to Set 🎯
+                    </Text>
+                  </>
+                )}
+              </Pressable>
+
+              {/* ROW 4: NEXT HIGH TIDE & NEXT LOW TIDE */}
+              <View
+                style={[
+                  styles.fullTelemCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>NEXT HIGH TIDE</Text>
+                <Text style={[styles.fullTelemVal, { color: '#22C55E' }]}>
+                  {tides?.nextHighTide?.time || '14:30'}{' '}
+                  <Text style={[styles.fullTelemUnit, { color: '#22C55E' }]}>
+                    {tides?.nextHighTide?.heightM ? `${tides.nextHighTide.heightM.toFixed(1)}m` : '3.8m'}
+                  </Text>
+                </Text>
+                <Text style={[styles.fullTelemSub, { color: isTideRising ? '#22C55E' : colors.textMuted }]}>
+                  {tides?.nextHighTide?.relativeText || 'In ~2h'} {isTideRising ? '• Rising ↗' : ''}
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.fullTelemCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>NEXT LOW TIDE</Text>
+                <Text style={[styles.fullTelemVal, { color: '#EAB308' }]}>
+                  {tides?.nextLowTide?.time || '20:45'}{' '}
+                  <Text style={[styles.fullTelemUnit, { color: '#EAB308' }]}>
+                    {tides?.nextLowTide?.heightM ? `${tides.nextLowTide.heightM.toFixed(1)}m` : '0.9m'}
+                  </Text>
+                </Text>
+                <Text style={[styles.fullTelemSub, { color: colors.textMuted }]}>
+                  {tides?.nextLowTide?.relativeText || 'In ~8h'} • Depth {tides?.currentHeightM ? `${tides.currentHeightM.toFixed(1)}m` : '2.4m'}
+                </Text>
+              </View>
+
+              {/* ROW 5: MOON ILLUMINATION & TIDAL CYCLE */}
+              <View
+                style={[
+                  styles.fullTelemCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>MOON ILLUMINATION</Text>
+                <Text style={[styles.fullTelemVal, { color: '#C084FC' }]}>
+                  {moonInfo.illumination}% <Text style={[styles.fullTelemUnit, { color: '#C084FC' }]}>{getMoonIcon(moonInfo.phase)}</Text>
+                </Text>
+                <Text style={[styles.fullTelemSub, { color: colors.textMuted }]} numberOfLines={1}>
+                  {moonInfo.phaseNameEn}
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.fullTelemCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>TIDAL CYCLE</Text>
+                <Text style={[styles.fullTelemVal, { color: colors.text }]}>
+                  {moonInfo.tideType === 'spring' ? 'Spring Tide' : 'Neap Tide'}
+                </Text>
+                <Text style={[styles.fullTelemSub, { color: colors.textMuted }]}>
+                  Age {moonInfo.moonAgeDays}d • {moonInfo.tideType === 'spring' ? 'High Current' : 'Gentle Sea'}
+                </Text>
+              </View>
+
+              {/* ROW 6: WIND SPEED & GUSTS */}
+              <View
+                style={[
+                  styles.fullTelemCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>WIND SPEED</Text>
+                <Text style={[styles.fullTelemVal, { color: colors.text }]}>
+                  {conditions?.windSpeedKnots ?? 14}{' '}
+                  <Text style={[styles.fullTelemUnit, { color: colors.accent }]}>kts</Text>
+                </Text>
+                <Text style={[styles.fullTelemSub, { color: colors.textMuted }]}>
+                  {conditions?.windDirectionText || 'WNW'} ({conditions?.windDirectionDeg ?? 290}°) • {conditions?.windBeaufort || 'Force 4'}
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.fullTelemCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>WIND GUSTS</Text>
+                <Text style={[styles.fullTelemVal, { color: '#F97316' }]}>
+                  {conditions?.windGustsKnots ?? 21}{' '}
+                  <Text style={[styles.fullTelemUnit, { color: '#F97316' }]}>kts</Text>
+                </Text>
+                <Text style={[styles.fullTelemSub, { color: colors.textMuted }]}>Peak Offshore Gusts</Text>
+              </View>
+
+              {/* ROW 7: SWELL WAVE & BAROMETER */}
+              <View
+                style={[
+                  styles.fullTelemCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>WAVE SWELL</Text>
+                <Text style={[styles.fullTelemVal, { color: colors.text }]}>
+                  {conditions?.waveHeightM ? `${conditions.waveHeightM.toFixed(1)}m` : '1.2m'}
+                </Text>
+                <Text style={[styles.fullTelemSub, { color: colors.textMuted }]}>
+                  Period {conditions?.wavePeriodS ? `${conditions.wavePeriodS.toFixed(0)}s` : '7s'} • Swell
+                </Text>
+              </View>
+
+              <View
+                style={[
+                  styles.fullTelemCard,
+                  {
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(15, 39, 66, 0.65)',
+                    borderColor: colors.cardBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>BAROMETER & TEMP</Text>
+                <Text style={[styles.fullTelemVal, { color: colors.text }]}>
+                  {conditions?.surfacePressureHpa ?? 1012}{' '}
+                  <Text style={[styles.fullTelemUnit, { color: colors.accent }]}>hPa</Text>
+                </Text>
+                <Text style={[styles.fullTelemSub, { color: colors.textMuted }]}>
+                  Sea {conditions?.seaTempC ? `${conditions.seaTempC.toFixed(1)}°C` : '28.2°C'} • Steady
+                </Text>
               </View>
             </View>
           </ScrollView>
@@ -533,6 +764,12 @@ export function GoogleNavHud({
           </View>
         </View>
       </View>
+
+      {/* Target Waypoint Selection Modal */}
+      <TargetWaypointPickerModal
+        visible={showTargetPicker}
+        onClose={() => setShowTargetPicker(false)}
+      />
     </View>
   );
 }
@@ -700,7 +937,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(3, 15, 29, 0.95)',
     zIndex: 50,
-    paddingHorizontal: 16,
+    paddingHorizontal: 8,
     justifyContent: 'space-between',
   },
   fullCompassHeader: {
@@ -708,12 +945,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingBottom: 10,
+    paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(56, 189, 248, 0.2)',
   },
   fullCompassPreTitle: {
     color: '#38BDF8',
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '800',
     letterSpacing: 0.8,
   },
@@ -742,25 +980,25 @@ const styles = StyleSheet.create({
   fullCompassBody: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10,
   },
   fullSteerBlock: {
     alignItems: 'center',
-    marginTop: 14,
+    marginTop: 10,
   },
   fullHeadingReadout: {
     color: '#FFFFFF',
-    fontSize: 32,
+    fontSize: 38,
     fontWeight: '900',
     letterSpacing: -0.5,
   },
   fullHeadingCardinal: {
     color: '#38BDF8',
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 26,
+    fontWeight: '900',
   },
   fullSteerBadge: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 12,
     marginTop: 8,
@@ -776,36 +1014,104 @@ const styles = StyleSheet.create({
   },
   fullSteerBadgeText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     letterSpacing: 0.3,
   },
   fullTelemGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
+    width: '100%',
+    marginTop: 10,
   },
   fullTelemCard: {
     flex: 1,
-    minWidth: '46%',
+    minWidth: '48%',
+    maxWidth: '49.5%',
     backgroundColor: 'rgba(15, 39, 66, 0.65)',
-    borderRadius: 14,
-    padding: 10,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 9,
     borderWidth: 1,
     borderColor: 'rgba(56, 189, 248, 0.25)',
-    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   fullTelemLabel: {
-    color: '#94A3B8',
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.5,
+    marginBottom: 3,
   },
   fullTelemVal: {
-    color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 23,
+    fontWeight: '900',
+    marginTop: 3,
+    letterSpacing: -0.3,
+  },
+  fullTelemValCoord: {
+    fontSize: 16,
     fontWeight: '900',
     marginTop: 2,
+    letterSpacing: -0.3,
+  },
+  fullTelemUnit: {
+    fontSize: 14.5,
+    fontWeight: '800',
+  },
+  fullTelemSub: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+    width: '100%',
+  },
+  gpsMiniPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 3,
+  },
+  gpsMiniDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#10B981',
+  },
+  gpsMiniText: {
+    color: '#10B981',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  targetActiveMiniBadge: {
+    backgroundColor: 'rgba(56, 189, 248, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  targetActiveMiniText: {
+    color: '#38BDF8',
+    fontSize: 9,
+    fontWeight: '800',
+  },
+  targetSetMiniBadge: {
+    backgroundColor: 'rgba(234, 179, 8, 0.18)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  targetSetMiniText: {
+    color: '#EAB308',
+    fontSize: 9,
+    fontWeight: '800',
   },
   unitSmall: {
     fontSize: 11,
@@ -817,6 +1123,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: 8,
+    paddingHorizontal: 4,
     gap: 12,
   },
   fullExitBtn: {
@@ -840,81 +1147,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   fullCompassScrollContent: {
-    paddingBottom: 16,
-  },
-  fullCoordsCard: {
-    borderRadius: 14,
-    borderWidth: 1.5,
-    padding: 12,
-    marginTop: 12,
-  },
-  fullCoordsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  fullCoordsHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  fullCoordsHeaderTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-  },
-  gpsPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#10B981',
-    gap: 5,
-  },
-  gpsPillDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#10B981',
-  },
-  gpsPillText: {
-    color: '#10B981',
-    fontSize: 9.5,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  fullCoordsBody: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  fullCoordCol: {
-    flex: 1,
-  },
-  fullCoordLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  fullCoordDms: {
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
-  fullCoordDec: {
-    fontSize: 11,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  fullCoordDivider: {
-    width: 1,
-    height: 38,
-    marginHorizontal: 12,
+    paddingBottom: 20,
   },
 
   // Bottom Google Maps Style Bar
