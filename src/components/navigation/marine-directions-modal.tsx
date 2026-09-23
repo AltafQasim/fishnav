@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
 import { useAppTheme } from '@/context/theme-context';
+import { useSettings } from '@/context/settings-context';
 import type { UserLocation } from '@/hooks/use-user-location';
 import { bearingDegrees, distanceNm, etaFromNm, formatBearing, formatNm } from '@/utils/geo';
 
@@ -116,6 +117,7 @@ export function MarineDirectionsModal({
 }: MarineDirectionsModalProps) {
   const insets = useSafeAreaInsets();
   const { colors, isLight } = useAppTheme();
+  const { formatDistance, formatDepth } = useSettings();
   const { width: windowWidth } = useWindowDimensions();
   const isTablet = windowWidth >= 600;
 
@@ -177,17 +179,15 @@ export function MarineDirectionsModal({
       destination.latitude,
       destination.longitude,
     );
-    const km = (nm * 1.852).toFixed(1);
     const eta = etaFromNm(nm, 12); // Average cruising speed: 12 knots
 
     return {
-      distanceNmStr: formatNm(nm),
-      distanceKmStr: `${km} km`,
+      distanceStr: formatDistance(nm),
       bearingStr: formatBearing(brg),
       bearingDeg: Math.round(brg),
       etaStr: eta,
     };
-  }, [destination, userLocation]);
+  }, [destination, userLocation, formatDistance]);
 
   // Query filter according to active typing field
   const currentQuery = (activeField === 'to' ? toText : fromText).toLowerCase().trim();
@@ -469,8 +469,8 @@ export function MarineDirectionsModal({
               <View style={styles.statPill}>
                 <MaterialCommunityIcons name="map-marker-distance" size={17} color="#38BDF8" />
                 <View>
-                  <Text style={[styles.statValue, { color: colors.text }]}>{routeStats.distanceNmStr}</Text>
-                  <Text style={[styles.statSub, { color: colors.textSecondary }]}>{routeStats.distanceKmStr}</Text>
+                  <Text style={[styles.statValue, { color: colors.text }]}>{routeStats.distanceStr}</Text>
+                  <Text style={[styles.statSub, { color: colors.textSecondary }]}>Direct Course</Text>
                 </View>
               </View>
 
@@ -539,7 +539,7 @@ export function MarineDirectionsModal({
                   </Text>
                   <Text style={[styles.typedCoordSub, { color: colors.textSecondary }]}>
                     {typedCoords.lat.toFixed(4)}° N, {typedCoords.lng.toFixed(4)}° E
-                    {userLocation ? ` • ${formatNm(distanceNm(userLocation.latitude, userLocation.longitude, typedCoords.lat, typedCoords.lng))}` : ''}
+                    {userLocation ? ` • ${formatDistance(distanceNm(userLocation.latitude, userLocation.longitude, typedCoords.lat, typedCoords.lng))}` : ''}
                   </Text>
                 </View>
               </View>
@@ -629,7 +629,7 @@ export function MarineDirectionsModal({
               filteredWaypoints.map((w) => {
                 const isSelected = destination?.id === w.id;
                 const distStr = userLocation
-                  ? formatNm(distanceNm(userLocation.latitude, userLocation.longitude, w.latitude, w.longitude))
+                  ? formatDistance(distanceNm(userLocation.latitude, userLocation.longitude, w.latitude, w.longitude))
                   : null;
 
                 return (
@@ -675,7 +675,7 @@ export function MarineDirectionsModal({
                         )}
                       </View>
                       <Text style={[styles.itemSub, { color: colors.textSecondary }]} numberOfLines={1}>
-                        Depth {w.depthM}m • {w.category || 'Waypoint'}
+                        {w.depthM ? `Depth ${formatDepth(w.depthM).full} • ` : ''}{w.category || 'Waypoint'}
                       </Text>
                     </View>
 
@@ -719,7 +719,7 @@ export function MarineDirectionsModal({
             {filteredPorts.map((port) => {
               const isSelected = destination?.id === port.id;
               const distStr = userLocation
-                ? formatNm(distanceNm(userLocation.latitude, userLocation.longitude, port.latitude, port.longitude))
+                ? formatDistance(distanceNm(userLocation.latitude, userLocation.longitude, port.latitude, port.longitude))
                 : null;
 
               return (

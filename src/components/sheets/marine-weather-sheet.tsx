@@ -15,6 +15,7 @@ import {
 } from '@/components/weather/marine-animated-weather-chart';
 import { TideChart } from '@/components/weather/tide-chart';
 import { useLanguage } from '@/context/language-context';
+import { useSettings } from '@/context/settings-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useMarineWeather } from '@/hooks/use-marine-weather';
 import { getBaselineMarineData } from '@/services/marine-weather-service';
@@ -22,6 +23,7 @@ import { getBaselineMarineData } from '@/services/marine-weather-service';
 function WeatherSheetContentInner() {
   const { colors, isLight } = useAppTheme();
   const { t } = useLanguage();
+  const { formatDepth, formatSpeed, formatDistance } = useSettings();
   const {
     conditions,
     hourly,
@@ -305,11 +307,13 @@ function WeatherSheetContentInner() {
           </View>
           <View style={styles.cardContent}>
             <Text style={[styles.cardValue, { color: colors.text }]}>
-              {safeConditions.waveHeightM}
-              <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>m</Text>
+              {formatDepth(safeConditions?.waveHeightM ?? 1.2).value}
+              <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>
+                {formatDepth(safeConditions?.waveHeightM ?? 1.2).unit}
+              </Text>
             </Text>
             <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-              {safeConditions.wavePeriodS}s • {safeConditions.waveDirectionText}
+              {safeConditions?.wavePeriodS ?? 7}s • {safeConditions?.waveDirectionText ?? 'SW'}
             </Text>
           </View>
         </TouchableOpacity>
@@ -337,11 +341,13 @@ function WeatherSheetContentInner() {
           </View>
           <View style={styles.cardContent}>
             <Text style={[styles.cardValue, { color: colors.text }]}>
-              {safeConditions.windSpeedKnots}
-              <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>kts</Text>
+              {formatSpeed(safeConditions?.windSpeedKnots ?? 14).value}
+              <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>
+                {formatSpeed(safeConditions?.windSpeedKnots ?? 14).unit}
+              </Text>
             </Text>
             <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
-              Gusts {safeConditions.windGustsKnots}k • {safeConditions.windBeaufort}
+              Gusts {formatSpeed(safeConditions?.windGustsKnots ?? 18).full} • {safeConditions?.windBeaufort ?? 'Force 4'}
             </Text>
           </View>
         </TouchableOpacity>
@@ -470,8 +476,7 @@ function WeatherSheetContentInner() {
           </View>
           <View style={styles.cardContent}>
             <Text style={[styles.cardValue, { color: colors.text }]}>
-              {safeConditions.visibilityNm ?? 9.5}
-              <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>NM</Text>
+              {formatDistance(safeConditions.visibilityNm ?? 9.5)}
             </Text>
             <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
               {(safeConditions.visibilityNm ?? 9.5) >= 8 ? t('weather.clear_horizon', 'Clear Horizon') : t('weather.fog_mist', 'Marine Mist / Fog')}
@@ -502,8 +507,10 @@ function WeatherSheetContentInner() {
           </View>
           <View style={styles.cardContent}>
             <Text style={[styles.cardValue, { color: colors.text }]}>
-              {safeConditions.tidalCurrentKnots ?? 0.8}
-              <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>kts</Text>
+              {formatSpeed(safeConditions.tidalCurrentKnots ?? 0.8).value}
+              <Text style={[styles.cardUnit, { color: colors.textSecondary }]}>
+                {formatSpeed(safeConditions.tidalCurrentKnots ?? 0.8).unit}
+              </Text>
             </Text>
             <Text style={[styles.cardSub, { color: colors.textSecondary }]} numberOfLines={1}>
               {t('weather.tidal_drift', 'Astronomical Drift')}
@@ -625,8 +632,12 @@ function WeatherSheetContentInner() {
               style={{ marginVertical: 4 }}
             />
             <Text style={[styles.hourlyTemp, { color: colors.text }]}>{item.temp}</Text>
-            <Text style={[styles.hourlyMetricText, { color: colors.textSecondary }]}>{item.wind}</Text>
-            <Text style={[styles.hourlyMetricText, { color: colors.accent }]}>{item.wave}</Text>
+            <Text style={[styles.hourlyMetricText, { color: colors.textSecondary }]}>
+              {typeof item.windNum === 'number' ? formatSpeed(item.windNum).full : item.wind}
+            </Text>
+            <Text style={[styles.hourlyMetricText, { color: colors.accent }]}>
+              {typeof item.waveNum === 'number' ? formatDepth(item.waveNum).full : item.wave}
+            </Text>
             {parseFloat(String(item?.rain || '0')) > 0 && (
               <Text style={[styles.hourlyRainText, { color: '#38BDF8' }]}>🌧️ {item.rain}</Text>
             )}
@@ -639,8 +650,8 @@ function WeatherSheetContentInner() {
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 0,
-    flexShrink: 1,
+    flexGrow: 1,
+    width: '100%',
   },
   content: {
     padding: 12,

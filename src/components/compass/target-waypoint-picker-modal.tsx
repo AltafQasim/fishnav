@@ -14,6 +14,7 @@ import {
 import { GUJARAT_PORTS } from '@/constants/gujarat-ports';
 import { FishingSpot } from '@/constants/fishing-spots';
 import { useLanguage } from '@/context/language-context';
+import { useSettings } from '@/context/settings-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useWaypoints } from '@/context/waypoints-context';
 import { useUserLocation } from '@/hooks/use-user-location';
@@ -22,11 +23,17 @@ import { bearingDegrees, distanceNm, formatBearing, formatNm } from '@/utils/geo
 type TargetWaypointPickerModalProps = {
   visible: boolean;
   onClose: () => void;
+  onStartNavigation?: (spot: FishingSpot) => void;
 };
 
-export function TargetWaypointPickerModal({ visible, onClose }: TargetWaypointPickerModalProps) {
+export function TargetWaypointPickerModal({
+  visible,
+  onClose,
+  onStartNavigation,
+}: TargetWaypointPickerModalProps) {
   const { colors, isLight } = useAppTheme();
   const { t } = useLanguage();
+  const { formatDistance } = useSettings();
   const { location } = useUserLocation();
   const { waypoints, activeNavigationTarget, setActiveNavigationTarget } = useWaypoints();
   const [searchQuery, setSearchQuery] = useState('');
@@ -78,6 +85,7 @@ export function TargetWaypointPickerModal({ visible, onClose }: TargetWaypointPi
   const handleSelectSpot = (spot: FishingSpot) => {
     setActiveNavigationTarget(spot);
     onClose();
+    onStartNavigation?.(spot);
   };
 
   const handleClearTarget = () => {
@@ -236,7 +244,7 @@ export function TargetWaypointPickerModal({ visible, onClose }: TargetWaypointPi
                     <View style={styles.itemMetaRow}>
                       {distNm != null && (
                         <Text style={[styles.itemDist, { color: colors.accent }]}>
-                          {formatNm(distNm)}
+                          {formatDistance(distNm)}
                         </Text>
                       )}
                       {bearing != null && (

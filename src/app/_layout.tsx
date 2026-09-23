@@ -12,6 +12,7 @@ import { LanguageProvider } from '@/context/language-context';
 import { LocationProvider } from '@/context/location-context';
 import { MarineAlertProvider } from '@/context/marine-alert-context';
 import { OfflineMapProvider } from '@/context/offline-map-context';
+import { SettingsProvider } from '@/context/settings-context';
 import { SubscriptionProvider } from '@/context/subscription-context';
 import { AppThemeProvider, useAppTheme } from '@/context/theme-context';
 import { TripProvider } from '@/context/trip-context';
@@ -102,21 +103,23 @@ export default function RootLayout() {
   return (
     <AppThemeProvider>
       <LanguageProvider>
-        <MarineAlertProvider>
-          <AuthProvider>
-            <SubscriptionProvider>
-              <LocationProvider>
-                <WaypointsProvider>
-                  <TripProvider>
-                    <OfflineMapProvider>
-                      <RootContent />
-                    </OfflineMapProvider>
-                  </TripProvider>
-                </WaypointsProvider>
-              </LocationProvider>
-            </SubscriptionProvider>
-          </AuthProvider>
-        </MarineAlertProvider>
+        <SettingsProvider>
+          <MarineAlertProvider>
+            <AuthProvider>
+              <SubscriptionProvider>
+                <LocationProvider>
+                  <WaypointsProvider>
+                    <TripProvider>
+                      <OfflineMapProvider>
+                        <RootContent />
+                      </OfflineMapProvider>
+                    </TripProvider>
+                  </WaypointsProvider>
+                </LocationProvider>
+              </SubscriptionProvider>
+            </AuthProvider>
+          </MarineAlertProvider>
+        </SettingsProvider>
       </LanguageProvider>
     </AppThemeProvider>
   );

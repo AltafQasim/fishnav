@@ -51,12 +51,58 @@ export function bearingDegrees(
   return (brg + 360) % 360;
 }
 
-export function formatNm(nm: number): string {
-  if (nm < 1) {
-    const cables = Math.round(nm * 10);
+export type DistanceUnit = 'NM' | 'KM' | 'MI';
+export type SpeedUnit = 'KTS' | 'KMH';
+export type DepthUnit = 'M' | 'FT';
+
+export function formatDistanceWithUnit(nm: number, unit: DistanceUnit = 'NM'): string {
+  const safeNm = typeof nm === 'number' && Number.isFinite(nm) ? nm : 0;
+  if (unit === 'KM') {
+    const km = safeNm * 1.852;
+    if (km < 1) {
+      return `${Math.round(km * 1000)} m`;
+    }
+    return `${km.toFixed(1)} km`;
+  }
+  if (unit === 'MI') {
+    const mi = safeNm * 1.15078;
+    if (mi < 0.2) {
+      return `${Math.round(mi * 5280)} ft`;
+    }
+    return `${mi.toFixed(1)} mi`;
+  }
+  // NM default
+  if (safeNm < 1) {
+    const cables = Math.round(safeNm * 10);
     return `${cables} cbl`;
   }
-  return `${nm.toFixed(1)} NM`;
+  return `${safeNm.toFixed(1)} NM`;
+}
+
+export function formatSpeedWithUnit(speedKnots: number, unit: SpeedUnit = 'KTS'): { value: string; unit: string; full: string } {
+  const safeSpeed = typeof speedKnots === 'number' && Number.isFinite(speedKnots) ? speedKnots : 0;
+  if (unit === 'KMH') {
+    const kmh = safeSpeed * 1.852;
+    const value = kmh.toFixed(1);
+    return { value, unit: 'km/h', full: `${value} km/h` };
+  }
+  const value = safeSpeed.toFixed(1);
+  return { value, unit: 'kts', full: `${value} kts` };
+}
+
+export function formatDepthWithUnit(depthM: number, unit: DepthUnit = 'M'): { value: string; unit: string; full: string } {
+  const safeDepth = typeof depthM === 'number' && Number.isFinite(depthM) ? depthM : 0;
+  if (unit === 'FT') {
+    const ft = safeDepth * 3.28084;
+    const value = ft.toFixed(1);
+    return { value, unit: 'ft', full: `${value} ft` };
+  }
+  const value = safeDepth.toFixed(1);
+  return { value, unit: 'm', full: `${value}m` };
+}
+
+export function formatNm(nm: number, unit: DistanceUnit = 'NM'): string {
+  return formatDistanceWithUnit(nm, unit);
 }
 
 export function formatBearing(deg: number): string {

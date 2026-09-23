@@ -1,8 +1,9 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Alert,
+  BackHandler,
   FlatList,
   Pressable,
   StyleSheet,
@@ -13,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { FishingTrip } from '@/constants/trips';
 import { useLanguage } from '@/context/language-context';
+import { useSettings } from '@/context/settings-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
 import { formatNm } from '@/utils/geo';
@@ -22,6 +24,7 @@ export default function TripsScreen() {
   const router = useRouter();
   const { colors, isLight } = useAppTheme();
   const { t } = useLanguage();
+  const { formatDistance, formatSpeed } = useSettings();
   const {
     savedTrips,
     deleteTrip,
@@ -59,6 +62,15 @@ export default function TripsScreen() {
       router.replace('/');
     }
   };
+
+  useEffect(() => {
+    const onBack = () => {
+      handleBack();
+      return true;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
+    return () => sub.remove();
+  }, [router]);
 
   const handleViewOnMap = (trip: FishingTrip) => {
     viewTripOnMap(trip);
@@ -144,7 +156,7 @@ export default function TripsScreen() {
         <View style={[styles.statsDivider, { backgroundColor: colors.divider }]} />
         <View style={styles.statsItem}>
           <Text style={[styles.statsVal, { color: colors.accent }]}>
-            {totalNm.toFixed(1)} <Text style={[styles.statsUnit, { color: isLight ? colors.textSecondary : '#93C5FD' }]}>NM</Text>
+            {formatDistance(totalNm)}
           </Text>
           <Text style={[styles.statsLbl, { color: colors.textMuted }]}>{t('trips.total_miles', 'TOTAL DISTANCE')}</Text>
         </View>
@@ -228,7 +240,7 @@ export default function TripsScreen() {
                   },
                 ]}>
                 <View style={styles.cardStat}>
-                  <Text style={[styles.cardStatVal, { color: colors.text }]}>{formatNm(item.distanceNm)}</Text>
+                  <Text style={[styles.cardStatVal, { color: colors.text }]}>{formatDistance(item.distanceNm)}</Text>
                   <Text style={[styles.cardStatLbl, { color: colors.textMuted }]}>{t('trips.distance', 'DISTANCE')}</Text>
                 </View>
 
@@ -243,7 +255,7 @@ export default function TripsScreen() {
 
                 <View style={styles.cardStat}>
                   <Text style={[styles.cardStatVal, { color: colors.text }]}>
-                    {item.avgSpeedKnots} <Text style={[styles.subKts, { color: colors.accent }]}>kts</Text>
+                    {formatSpeed(item.avgSpeedKnots).value} <Text style={[styles.subKts, { color: colors.accent }]}>{formatSpeed(item.avgSpeedKnots).unit}</Text>
                   </Text>
                   <Text style={[styles.cardStatLbl, { color: colors.textMuted }]}>{t('trips.avg_speed', 'AVG SPEED')}</Text>
                 </View>
@@ -252,7 +264,7 @@ export default function TripsScreen() {
 
                 <View style={styles.cardStat}>
                   <Text style={[styles.cardStatVal, { color: colors.text }]}>
-                    {item.maxSpeedKnots} <Text style={[styles.subKts, { color: colors.accent }]}>kts</Text>
+                    {formatSpeed(item.maxSpeedKnots).value} <Text style={[styles.subKts, { color: colors.accent }]}>{formatSpeed(item.maxSpeedKnots).unit}</Text>
                   </Text>
                   <Text style={[styles.cardStatLbl, { color: colors.textMuted }]}>{t('trips.max_speed', 'MAX SPEED')}</Text>
                 </View>

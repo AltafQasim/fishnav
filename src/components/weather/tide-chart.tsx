@@ -18,6 +18,7 @@ import Svg, {
   Text as SvgText,
 } from 'react-native-svg';
 
+import { useSettings } from '@/context/settings-context';
 import { useAppTheme } from '@/context/theme-context';
 import { AstronomicalTidePoint, TideCycleData } from '@/services/marine-weather-service';
 
@@ -36,6 +37,7 @@ export type TideChartProps = {
 
 export function TideChart({ tideData, isOffline = false }: TideChartProps) {
   const { colors, isLight } = useAppTheme();
+  const { depthUnit, formatDepth } = useSettings();
   const scrollRef = useRef<ScrollView>(null);
   const [activeTab, setActiveTab] = useState<'now' | 'today' | 'tomorrow'>('now');
 
@@ -312,8 +314,9 @@ export function TideChart({ tideData, isOffline = false }: TideChartProps) {
             </Defs>
 
             {/* Horizontal Water Level Meter Grid Lines */}
-            {[1, 2, 3, 4].map((level) => {
-              const y = getY(level);
+            {(depthUnit === 'FT' ? [3, 6, 9, 12] : [1, 2, 3, 4]).map((level) => {
+              const heightM = depthUnit === 'FT' ? level / 3.28084 : level;
+              const y = getY(heightM);
               return (
                 <React.Fragment key={`grid-${level}`}>
                   <Line
@@ -332,7 +335,7 @@ export function TideChart({ tideData, isOffline = false }: TideChartProps) {
                     fontSize={10}
                     textAnchor="end"
                   >
-                    {level}m
+                    {level}{depthUnit === 'FT' ? 'ft' : 'm'}
                   </SvgText>
                 </React.Fragment>
               );
@@ -457,7 +460,7 @@ export function TideChart({ tideData, isOffline = false }: TideChartProps) {
               fontWeight="bold"
               textAnchor="middle"
             >
-              NOW {currentCalculatedHeight}m
+              NOW {formatDepth(currentCalculatedHeight).full}
             </SvgText>
 
             {/* All Astronomical High and Low Points across 48h */}
@@ -492,7 +495,7 @@ export function TideChart({ tideData, isOffline = false }: TideChartProps) {
                     fontWeight="bold"
                     textAnchor="middle"
                   >
-                    {isHigh ? '▲' : '▼'} {pt.heightM}m
+                    {isHigh ? '▲' : '▼'} {formatDepth(pt.heightM).full}
                   </SvgText>
                   {/* Extreme Time */}
                   <SvgText
@@ -523,7 +526,7 @@ export function TideChart({ tideData, isOffline = false }: TideChartProps) {
             ]}>
             <Text style={[styles.tideLabel, { color: colors.textMuted }]}>NEXT HIGH TIDE</Text>
             <Text style={[styles.tideVal, { color: isLight ? '#0284C7' : colors.accent }]}>
-              {tideData?.nextHighTide?.heightM != null ? `${tideData.nextHighTide.heightM} m` : '3.5 m'}
+              {tideData?.nextHighTide?.heightM != null ? formatDepth(tideData.nextHighTide.heightM).full : formatDepth(3.5).full}
             </Text>
             <Text style={[styles.tideTime, { color: colors.textSecondary }]}>
               {tideData?.nextHighTide?.relativeText ?? 'at 16:45 (in 2h 15m)'}
@@ -540,7 +543,7 @@ export function TideChart({ tideData, isOffline = false }: TideChartProps) {
             ]}>
             <Text style={[styles.tideLabel, { color: colors.textMuted }]}>NEXT LOW TIDE</Text>
             <Text style={[styles.tideVal, { color: isLight ? '#D97706' : '#F59E0B' }]}>
-              {tideData?.nextLowTide?.heightM != null ? `${tideData.nextLowTide.heightM} m` : '1.1 m'}
+              {tideData?.nextLowTide?.heightM != null ? formatDepth(tideData.nextLowTide.heightM).full : formatDepth(1.1).full}
             </Text>
             <Text style={[styles.tideTime, { color: colors.textSecondary }]}>
               {tideData?.nextLowTide?.relativeText ?? 'at 22:50 (in 8h 20m)'}

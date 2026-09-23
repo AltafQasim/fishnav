@@ -15,6 +15,7 @@ import { SlidingSheetContainer } from '@/components/ui/sliding-sheet-container';
 import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
 import { useLanguage } from '@/context/language-context';
+import { useSettings } from '@/context/settings-context';
 import { useAppTheme } from '@/context/theme-context';
 import { formatLatitude, formatLongitude } from '@/hooks/use-user-location';
 import { toDms } from '@/utils/geo';
@@ -52,11 +53,12 @@ export function SpotBottomSheet({
   const insets = useSafeAreaInsets();
   const { colors, isLight } = useAppTheme();
   const { t } = useLanguage();
+  const { formatDepth, formatSpeed } = useSettings();
 
   const lat = spot?.latitude ?? 0;
   const lng = spot?.longitude ?? 0;
   const name = spot?.name ?? t('spot.regular', 'Fishing Spot');
-  const depthM = spot ? `${spot.depthM} m` : 'Depth ~55 m';
+  const depthM = spot ? formatDepth(spot.depthM).full : `Depth ~${formatDepth(55).full}`;
 
   const isSheetOpen = isOpen !== undefined ? isOpen : spot !== null;
 
@@ -146,12 +148,12 @@ export function SpotBottomSheet({
         <View style={[styles.seaStrip, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}>
           <View style={styles.seaItem}>
             <MaterialCommunityIcons name="weather-windy" size={16} color="#38BDF8" />
-            <Text style={[styles.seaText, { color: colors.text }]}>Wind 12 kts NW</Text>
+            <Text style={[styles.seaText, { color: colors.text }]}>Wind {formatSpeed(12).full} NW</Text>
           </View>
           <View style={[styles.seaDivider, { backgroundColor: colors.divider }]} />
           <View style={styles.seaItem}>
             <MaterialCommunityIcons name="waves" size={16} color="#60A5FA" />
-            <Text style={[styles.seaText, { color: colors.text }]}>Swell 0.8 m</Text>
+            <Text style={[styles.seaText, { color: colors.text }]}>Swell {formatDepth(0.8).full}</Text>
           </View>
           <View style={[styles.seaDivider, { backgroundColor: colors.divider }]} />
           <View style={styles.seaItem}>

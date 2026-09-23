@@ -22,6 +22,7 @@ import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
 import { useAuth } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { useSettings } from '@/context/settings-context';
 import { useSubscription } from '@/context/subscription-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useWaypoints } from '@/context/waypoints-context';
@@ -218,6 +219,7 @@ export function MarineSearchHeader({
   hidden = false,
 }: MarineSearchHeaderProps) {
   const { colors, isLight } = useAppTheme();
+  const { formatDistance, formatDepth } = useSettings();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useLanguage();
@@ -691,7 +693,7 @@ export function MarineSearchHeader({
                   let bearingText = '';
                   if (userLocation) {
                     const dist = distanceNm(userLocation.latitude, userLocation.longitude, item.latitude, item.longitude);
-                    distanceText = formatNm(dist);
+                    distanceText = formatDistance(dist);
                   }
 
                   return (
@@ -723,7 +725,7 @@ export function MarineSearchHeader({
                           )}
                         </View>
                         <Text style={styles.resultSubtitle}>
-                          {item.category || 'Waypoint'} • Depth {item.depthM}m
+                          {item.category || 'Waypoint'}{item.depthM ? ` • Depth ${formatDepth(item.depthM).full}` : ''}
                           {distanceText ? ` • ${distanceText} away` : ''}
                         </Text>
                       </View>
@@ -755,7 +757,7 @@ export function MarineSearchHeader({
                     <View style={styles.resultTextWrap}>
                       <Text style={styles.resultTitle}>{port.name}</Text>
                       <Text style={styles.resultSubtitle}>
-                        {port.state} • {port.notes}
+                        {port.state} • {port.depthM ? `${formatDepth(port.depthM).full} • ` : ''}{port.notes}
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={16} color="#64748B" />

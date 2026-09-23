@@ -6,7 +6,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  UIManager,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -14,10 +13,6 @@ import {
 import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 import type { SupportedLanguage } from '@/i18n/translations';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 type LanguageDropdownProps = {
   compact?: boolean;

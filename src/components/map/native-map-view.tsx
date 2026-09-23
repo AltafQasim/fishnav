@@ -8,6 +8,7 @@ import { offlineTileManager } from '@/services/offline-tile-manager';
 import type { MapStyleId } from '@/components/map/map-style-selector';
 import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
+import { useSettings } from '@/context/settings-context';
 import type { UserLocation } from '@/hooks/use-user-location';
 
 export type MapOverlaysState = {
@@ -75,7 +76,8 @@ type MapCommand =
   | { type: 'clearDroppedPin' }
   | { type: 'setMeasurementMode'; active: boolean }
   | { type: 'undoMeasurement' }
-  | { type: 'clearMeasurement' };
+  | { type: 'clearMeasurement' }
+  | { type: 'setDistanceUnit'; unit: string };
 
 export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
   function NativeMapView(
@@ -105,6 +107,7 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
     const readyRef = useRef(false);
     const queueRef = useRef<MapCommand[]>([]);
     const [cachedJs, setCachedJs] = useState<string | null>(null);
+    const { distanceUnit } = useSettings();
 
     useEffect(() => {
       let isMounted = true;
@@ -259,6 +262,11 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
       send({ type: 'setSavedTracks', tracks: visible });
     }, [savedTracks, send]);
 
+    // Synchronize distance unit
+    useEffect(() => {
+      send({ type: 'setDistanceUnit', unit: distanceUnit });
+    }, [distanceUnit, send]);
+
     // Synchronize user position & heading
     useEffect(() => {
       if (!location) {
@@ -284,6 +292,7 @@ export const NativeMapView = forwardRef<NativeMapHandle, NativeMapViewProps>(
         flushQueue();
         send({ type: 'setStyle', style: mapStyle });
         send({ type: 'setOverlays', overlays });
+        send({ type: 'setDistanceUnit', unit: distanceUnit });
         return;
       }
 

@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
 import { useLanguage } from '@/context/language-context';
+import { useSettings } from '@/context/settings-context';
 import { useAppTheme } from '@/context/theme-context';
 import { formatLatitude, formatLongitude, UserLocation } from '@/hooks/use-user-location';
 import { bearingDegrees, distanceNm, formatBearing, formatNm } from '@/utils/geo';
@@ -42,6 +43,7 @@ export function WaypointCard({
 }: WaypointCardProps) {
   const { colors, isLight } = useAppTheme();
   const { t } = useLanguage();
+  const { formatDistance, formatDepth } = useSettings();
   const dist = userLocation
     ? distanceNm(userLocation.latitude, userLocation.longitude, spot.latitude, spot.longitude)
     : null;
@@ -116,14 +118,14 @@ export function WaypointCard({
           <View style={[styles.badge, { backgroundColor: colors.chipBg }]}>
             <MaterialCommunityIcons name="waves" size={13} color={colors.accent} />
             <Text style={[styles.badgeText, { color: colors.text }]}>
-              {spot.depthM} m {t('spot.depth', 'depth')}
+              {formatDepth(spot.depthM).full} {t('spot.depth', 'depth')}
             </Text>
           </View>
 
           {dist != null && (
             <View style={[styles.badge, { backgroundColor: colors.chipBg }]}>
               <MaterialCommunityIcons name="map-marker-distance" size={13} color={MapColors.green} />
-              <Text style={[styles.badgeText, { color: colors.text }]}>{formatNm(dist)}</Text>
+              <Text style={[styles.badgeText, { color: colors.text }]}>{formatDistance(dist)}</Text>
             </View>
           )}
 

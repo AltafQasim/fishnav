@@ -1,6 +1,15 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Alert,
+  BackHandler,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CoordinateInputModal } from '@/components/map/coordinate-input-modal';
@@ -23,6 +32,7 @@ import {
   AppTabs,
 } from '@/components/navigation/app-tabs';
 import { MarineDirectionsModal } from '@/components/navigation/marine-directions-modal';
+import { StopNavigationModal } from '@/components/navigation/stop-navigation-modal';
 import { CaptainProfileModal } from '@/components/search/captain-profile-modal';
 import { MarineSearchHeader } from '@/components/search/marine-search-header';
 import { CalendarSheetContent } from '@/components/sheets/calendar-sheet-content';
@@ -34,6 +44,7 @@ import { SlidingSheetContainer } from '@/components/ui/sliding-sheet-container';
 import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
 import { useLanguage } from '@/context/language-context';
+import { useSettings } from '@/context/settings-context';
 import { useSubscription } from '@/context/subscription-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
@@ -59,6 +70,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     selectedSpot,
     selectedSpotId,
     setSelectedSpotId,
+    activeNavigationTarget,
     setActiveNavigationTarget,
     toggleFavorite,
   } = useWaypoints();
@@ -68,21 +80,33 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
   // Active Sheet Tab (Default is NULL = Map is shown!)
   const [activeTab, setActiveTab] = useState<ActiveTabType>(initialTab);
 
+  const {
+    formatDistance,
+    showSeamarks,
+    showDangerZones,
+    setShowSeamarks,
+    setShowDangerZones,
+    showGpsHud,
+    setShowGpsHud,
+  } = useSettings();
+
   // Map state
   const [followUser, setFollowUser] = useState(true);
   const [headingUp, setHeadingUp] = useState(false);
-  const [overlays, setOverlays] = useState<MapOverlaysState>({
-    seamarks: true,
-    dangerZone: true,
-  });
+  const overlays = useMemo<MapOverlaysState>(
+    () => ({
+      seamarks: showSeamarks,
+      dangerZone: showDangerZones,
+    }),
+    [showSeamarks, showDangerZones],
+  );
   const [activeMapStyle, setActiveMapStyle] = useState<MapStyleId>('google');
-
-  const [showGpsHud, setShowGpsHud] = useState(false);
 
   // Search & Navigation Modals state
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showCoordsModal, setShowCoordsModal] = useState(false);
   const [showLayersModal, setShowLayersModal] = useState(false);
+  const [showStopNavModal, setShowStopNavModal] = useState(false);
 
   // 🚀 Google Maps Directions & Interactive Map-Picking State
   const [showDirectionsModal, setShowDirectionsModal] = useState(false);
@@ -132,6 +156,129 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     setActiveTab(null);
   }, []);
 
+  // 📱 Android Hardware / Gesture Back Press Handler
+  // Keeps fresh reference of active modals, sheets, navigation, and overlays
+  const backStateRef = useRef({
+    showDirectionsModal,
+    showProfileModal,
+    showCoordsModal,
+    showLayersModal,
+    showStopNavModal,
+    isMapPickingMode,
+    selectedSpotId,
+    selectedTripForMap,
+    activeTab,
+    isNavigating,
+  });
+
+  useEffect(() => {
+    backStateRef.current = {
+      showDirectionsModal,
+      showProfileModal,
+      showCoordsModal,
+      showLayersModal,
+      showStopNavModal,
+      isMapPickingMode,
+      selectedSpotId,
+      selectedTripForMap,
+      activeTab,
+      isNavigating,
+    };
+  }, [
+    showDirectionsModal,
+    showProfileModal,
+    showCoordsModal,
+    showLayersModal,
+    showStopNavModal,
+    isMapPickingMode,
+    selectedSpotId,
+    selectedTripForMap,
+    activeTab,
+    isNavigating,
+  ]);
+
+  useEffect(() => {
+    const onHardwareBack = () => {
+      const state = backStateRef.current;
+
+      // 0. Close Stop Navigation confirmation modal first
+      if (state.showStopNavModal) {
+        setShowStopNavModal(false);
+        return true;
+      }
+
+      // 1. Close Open Top-level Modals
+      if (state.showDirectionsModal) {
+        setShowDirectionsModal(false);
+        return true;
+      }
+      if (state.showProfileModal) {
+        setShowProfileModal(false);
+        return true;
+      }
+      if (state.showCoordsModal) {
+        setShowCoordsModal(false);
+        return true;
+      }
+      if (state.showLayersModal) {
+        setShowLayersModal(false);
+        return true;
+      }
+
+      // 2. Cancel Map Pin Dropping / Picking Mode
+      if (state.isMapPickingMode) {
+        setIsMapPickingMode(false);
+        setDroppedPin(null);
+        mapRef.current?.clearDroppedPin();
+        return true;
+      }
+
+      // 3. Dismiss Fishing Spot Bottom Sheet
+      if (state.selectedSpotId !== null) {
+        setSelectedSpotId(null);
+        mapRef.current?.clearDroppedPin();
+        return true;
+      }
+
+      // 4. Clear Selected Saved Trip Track on Map
+      if (state.selectedTripForMap) {
+        clearSelectedTrip();
+        return true;
+      }
+
+      // 5. Close Active Bottom Sheet Tab (Waypoint, Weather, Compass, Calendar, Settings)
+      if (state.activeTab !== null) {
+        setActiveTab(null);
+        return true;
+      }
+
+      // 6. Confirm Exiting Active Turn-by-Turn Navigation via dedicated Modal
+      if (state.isNavigating) {
+        setShowStopNavModal(true);
+        return true;
+      }
+
+      // 7. Base Map: Request User Permission Before Exiting Application
+      Alert.alert(
+        t('app.exit_title', 'Exit FishNav Pro?'),
+        t('app.exit_message', 'Are you sure you want to close the app?'),
+        [
+          { text: t('btn.cancel', 'Cancel'), style: 'cancel' },
+          {
+            text: t('app.exit_confirm', 'Exit'),
+            style: 'destructive',
+            onPress: () => BackHandler.exitApp(),
+          },
+        ],
+        { cancelable: true }
+      );
+      return true;
+    };
+
+    const backSub = BackHandler.addEventListener('hardwareBackPress', onHardwareBack);
+    return () => backSub.remove();
+  }, [t, clearSelectedTrip, exitNavigation, setSelectedSpotId]);
+
   const handleViewSpotOnMap = useCallback((spot: FishingSpot) => {
     setSelectedSpotId(spot.id);
     setActiveNavigationTarget(spot);
@@ -171,11 +318,10 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     const nm = distanceNm(location.latitude, location.longitude, droppedPin.latitude, droppedPin.longitude);
     const brg = bearingDegrees(location.latitude, location.longitude, droppedPin.latitude, droppedPin.longitude);
     return {
-      distNmStr: formatNm(nm),
-      distKmStr: `${(nm * 1.852).toFixed(1)} km`,
+      distStr: formatDistance(nm),
       bearingStr: formatBearing(brg),
     };
-  }, [droppedPin, location]);
+  }, [droppedPin, location, formatDistance]);
 
   const handleConfirmPickedPinAndStart = useCallback(() => {
     if (!droppedPin) return;
@@ -249,11 +395,11 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
     const nm = distanceNm(location.latitude, location.longitude, activeTarget.latitude, activeTarget.longitude);
     const brg = bearingDegrees(location.latitude, location.longitude, activeTarget.latitude, activeTarget.longitude);
     return {
-      distanceLabel: formatNm(nm),
+      distanceLabel: formatDistance(nm),
       bearingLabel: formatBearing(brg),
       etaLabel: etaFromNm(nm, 12),
     };
-  }, [activeTarget, location]);
+  }, [activeTarget, location, formatDistance]);
 
   const meta = useMemo(() => {
     const monthYear = new Date()
@@ -432,7 +578,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
               <Text style={[styles.pickingCardTitle, { color: colors.text }]}>Selected Target Point</Text>
               <Text style={[styles.pickingCardCoords, { color: colors.textSecondary }]}>
                 {droppedPin.latitude.toFixed(4)}° N, {droppedPin.longitude.toFixed(4)}° E
-                {pickingPinStats ? ` • ${pickingPinStats.distNmStr} (${pickingPinStats.bearingStr})` : ''}
+                {pickingPinStats ? ` • ${pickingPinStats.distStr} (${pickingPinStats.bearingStr})` : ''}
               </Text>
             </View>
             <Pressable
@@ -509,6 +655,7 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
             mapRef.current?.centerOnUser();
           }}
           headingUp={headingUp}
+          onRequestStopNavigation={() => setShowStopNavModal(true)}
         />
       )}
 
@@ -533,7 +680,9 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
           />
         )}
         {activeTab === 'weather' && <WeatherSheetContent />}
-        {activeTab === 'compass' && <CompassSheetContent />}
+        {activeTab === 'compass' && (
+          <CompassSheetContent onStartNavigation={handleStartNavigationToSpot} />
+        )}
         {activeTab === 'calendar' && <CalendarSheetContent />}
         {activeTab === 'settings' && <SettingsSheetContent />}
       </SlidingSheetContainer>
@@ -555,6 +704,18 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
         onClose={() => setShowProfileModal(false)}
       />
 
+      {/* 6. Stop Navigation Confirmation Modal */}
+      <StopNavigationModal
+        visible={showStopNavModal}
+        destinationName={targetSpot?.name || activeNavigationTarget?.name}
+        distanceRemaining={navStats?.distanceLabel}
+        onCancel={() => setShowStopNavModal(false)}
+        onConfirmStop={() => {
+          setShowStopNavModal(false);
+          exitNavigation();
+        }}
+      />
+
       {/* 7. Quick Coordinate Input Modal */}
       <CoordinateInputModal
         visible={showCoordsModal}
@@ -570,10 +731,11 @@ export function MarineMainScreen({ initialTab = null }: MarineMainScreenProps) {
         showGpsHud={showGpsHud}
         onClose={() => setShowLayersModal(false)}
         onSelectStyle={(style) => setActiveMapStyle(style)}
-        onToggleOverlay={(key) =>
-          setOverlays((prev) => ({ ...prev, [key]: !prev[key] }))
-        }
-        onToggleGpsHud={() => setShowGpsHud((v) => !v)}
+        onToggleOverlay={(key) => {
+          if (key === 'seamarks') void setShowSeamarks(!showSeamarks);
+          if (key === 'dangerZone') void setShowDangerZones(!showDangerZones);
+        }}
+        onToggleGpsHud={() => void setShowGpsHud(!showGpsHud)}
       />
 
       {/* 🟢 Google Maps Style Marine Directions & Route Planning Modal */}

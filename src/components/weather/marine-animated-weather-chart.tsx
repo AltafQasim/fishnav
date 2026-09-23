@@ -21,6 +21,7 @@ import Svg, {
   Text as SvgText,
 } from 'react-native-svg';
 
+import { useSettings } from '@/context/settings-context';
 import { useAppTheme } from '@/context/theme-context';
 import { HourlyMarineForecast, MarineConditions } from '@/services/marine-weather-service';
 
@@ -211,6 +212,7 @@ export function MarineAnimatedWeatherChart({
   onMetricChange,
 }: MarineAnimatedWeatherChartProps) {
   const { colors, isLight } = useAppTheme();
+  const { distanceUnit, speedUnit, depthUnit } = useSettings();
   const [selectedMetric, setSelectedMetric] = useState<WeatherMetricType>(activeMetric);
   const [selectedPointIndex, setSelectedPointIndex] = useState<number>(0);
   const scrollRef = useRef<ScrollView>(null);
@@ -222,7 +224,42 @@ export function MarineAnimatedWeatherChart({
     }
   }, [activeMetric]);
 
-  const config = WEATHER_METRICS[selectedMetric];
+  const unitConfig = useMemo(() => {
+    const base = WEATHER_METRICS[selectedMetric];
+    if (selectedMetric === 'wave') {
+      const isFt = depthUnit === 'FT';
+      const mult = isFt ? 3.28084 : 1;
+      return {
+        ...base,
+        unit: isFt ? 'ft' : 'm',
+        minScale: Number((base.minScale * mult).toFixed(1)),
+        maxScale: Number((base.maxScale * mult).toFixed(1)),
+      };
+    }
+    if (selectedMetric === 'wind' || selectedMetric === 'current') {
+      const isKmh = speedUnit === 'KMH';
+      const mult = isKmh ? 1.852 : 1;
+      return {
+        ...base,
+        unit: isKmh ? 'km/h' : 'kts',
+        minScale: Number((base.minScale * mult).toFixed(1)),
+        maxScale: Number((base.maxScale * mult).toFixed(1)),
+      };
+    }
+    if (selectedMetric === 'visibility') {
+      const mult = distanceUnit === 'KM' ? 1.852 : distanceUnit === 'MI' ? 1.15078 : 1;
+      const unit = distanceUnit === 'KM' ? 'km' : distanceUnit === 'MI' ? 'mi' : 'NM';
+      return {
+        ...base,
+        unit,
+        minScale: Number((base.minScale * mult).toFixed(1)),
+        maxScale: Number((base.maxScale * mult).toFixed(1)),
+      };
+    }
+    return base;
+  }, [selectedMetric, depthUnit, speedUnit, distanceUnit]);
+
+  const config = unitConfig;
   // Active color for current metric
   const activeColor = isLight ? config.colorLight : config.colorDark;
 
@@ -241,6 +278,7 @@ export function MarineAnimatedWeatherChart({
             const p = parseFloat(String(item.wave ?? '1.2').replace('m', ''));
             val = Number.isFinite(p) ? p : 1.2;
           }
+          if (depthUnit === 'FT') val = val * 3.28084;
           break;
         case 'wind':
           if (typeof item.windNum === 'number' && Number.isFinite(item.windNum)) {
@@ -250,6 +288,10 @@ export function MarineAnimatedWeatherChart({
             val = Number.isFinite(p) ? p : 14;
           }
           secondaryVal = typeof item.gustsNum === 'number' && Number.isFinite(item.gustsNum) ? item.gustsNum : Math.round(val * 1.35);
+          if (speedUnit === 'KMH') {
+            val = val * 1.852;
+            if (secondaryVal != null) secondaryVal = secondaryVal * 1.852;
+          }
           break;
         case 'rain':
           if (typeof item.rainNum === 'number' && Number.isFinite(item.rainNum)) {
@@ -274,11 +316,14 @@ export function MarineAnimatedWeatherChart({
           val = typeof item.visibilityNum === 'number' && Number.isFinite(item.visibilityNum)
             ? item.visibilityNum
             : (typeof conditions?.visibilityNm === 'number' && Number.isFinite(conditions.visibilityNm) ? conditions.visibilityNm : 9.5);
+          if (distanceUnit === 'KM') val = val * 1.852;
+          else if (distanceUnit === 'MI') val = val * 1.15078;
           break;
         case 'current':
           val = typeof item.currentNum === 'number' && Number.isFinite(item.currentNum)
             ? item.currentNum
             : (typeof conditions?.tidalCurrentKnots === 'number' && Number.isFinite(conditions.tidalCurrentKnots) ? conditions.tidalCurrentKnots : 0.8);
+          if (speedUnit === 'KMH') val = val * 1.852;
           break;
         case 'period':
           val = typeof item.periodNum === 'number' && Number.isFinite(item.periodNum)
@@ -301,7 +346,7 @@ export function MarineAnimatedWeatherChart({
         secondaryValue: secondaryVal,
       };
     });
-  }, [hourly, selectedMetric, config.minScale, conditions]);
+  }, [hourly, selectedMetric, config.minScale, conditions, depthUnit, speedUnit, distanceUnit]);
 
   // Dynamic min and max for chart scaling
   const { minVal, maxVal, avgVal, peakIdx } = useMemo(() => {
@@ -435,9 +480,9 @@ export function MarineAnimatedWeatherChart({
     if (!conditions) return '';
     switch (m) {
       case 'wave':
-        return `${conditions.waveHeightM}m`;
+        return depthUnit === 'FT' ? `${(conditions.waveHeightM * 3.28084).toFixed(1)}ft` : `${conditions.waveHeightM}m`;
       case 'wind':
-        return `${conditions.windSpeedKnots}k`;
+        return speedUnit === 'KMH' ? `${Math.round(conditions.windSpeedKnots * 1.852)}k` : `${conditions.windSpeedKnots}k`;
       case 'rain':
         return `${conditions.precipitationMm}mm`;
       case 'temp':
@@ -445,9 +490,13 @@ export function MarineAnimatedWeatherChart({
       case 'pressure':
         return `${conditions.surfacePressureHpa}`;
       case 'visibility':
-        return `${conditions.visibilityNm}NM`;
+        return distanceUnit === 'KM'
+          ? `${(conditions.visibilityNm * 1.852).toFixed(1)}km`
+          : distanceUnit === 'MI'
+          ? `${(conditions.visibilityNm * 1.15078).toFixed(1)}mi`
+          : `${conditions.visibilityNm}NM`;
       case 'current':
-        return `${conditions.tidalCurrentKnots}k`;
+        return speedUnit === 'KMH' ? `${(conditions.tidalCurrentKnots * 1.852).toFixed(1)}k` : `${conditions.tidalCurrentKnots}k`;
       case 'period':
         return `${conditions.wavePeriodS}s`;
       case 'humidity':
@@ -591,7 +640,7 @@ export function MarineAnimatedWeatherChart({
                     <View style={[styles.gustPill, isLight && { backgroundColor: '#FEF3C7' }]}>
                       <Feather name="zap" size={11} color="#D97706" />
                       <Text style={[styles.gustPillText, isLight && { color: '#B45309' }]}>
-                        Gusts {activePoint.secondaryValue} kts
+                        Gusts {Math.round(activePoint.secondaryValue)} {config.unit}
                       </Text>
                     </View>
                   ) : null}

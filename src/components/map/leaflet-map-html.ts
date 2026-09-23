@@ -626,8 +626,22 @@ ${BUNDLED_LEAFLET_CSS}
       return (toDeg(Math.atan2(y, x)) + 360) % 360;
     }
 
-    function formatNm(nm) {
+    let currentDistanceUnit = 'NM';
+
+    function formatDistanceWithUnit(nm, unit) {
+      if (unit === 'KM') {
+        const km = nm * 1.852;
+        return km < 1 ? Math.round(km * 1000) + ' m' : km.toFixed(1) + ' km';
+      }
+      if (unit === 'MI') {
+        const mi = nm * 1.15078;
+        return mi < 0.2 ? Math.round(mi * 5280) + ' ft' : mi.toFixed(1) + ' mi';
+      }
       return nm < 10 ? nm.toFixed(2) + ' NM' : nm.toFixed(1) + ' NM';
+    }
+
+    function formatNm(nm) {
+      return formatDistanceWithUnit(nm, currentDistanceUnit);
     }
 
     function escapeHtml(str) {
@@ -1123,6 +1137,13 @@ ${BUNDLED_LEAFLET_CSS}
           if (cmd.overlays) {
             setSeamarks(!!cmd.overlays.seamarks);
             setDangerZone(!!cmd.overlays.dangerZone);
+          }
+          break;
+        case 'setDistanceUnit':
+          if (cmd.unit) {
+            currentDistanceUnit = cmd.unit;
+            updateRoute();
+            renderMeasure();
           }
           break;
         case 'setUser':

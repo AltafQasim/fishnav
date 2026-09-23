@@ -13,6 +13,7 @@ import {
 } from '@/components/map/native-map-view';
 import { SpotBottomSheet } from '@/components/map/spot-bottom-sheet';
 import { FishingSpot } from '@/constants/fishing-spots';
+import { useSettings } from '@/context/settings-context';
 import { useWaypoints } from '@/context/waypoints-context';
 import { useUserLocation } from '@/hooks/use-user-location';
 import { bearingDegrees, distanceNm, etaFromNm, formatBearing, formatNm } from '@/utils/geo';
@@ -22,13 +23,17 @@ export function SharedBackgroundMap() {
   const { waypoints, selectedSpot, selectedSpotId, setSelectedSpotId } = useWaypoints();
   const { location, status, heading, requestPermissionAndLocate, openSettings, refresh } =
     useUserLocation();
+  const { formatDistance, showSeamarks, showDangerZones } = useSettings();
 
   const [followUser, setFollowUser] = useState(true);
   const [headingUp, setHeadingUp] = useState(false);
-  const [overlays] = useState<MapOverlaysState>({
-    seamarks: true,
-    dangerZone: true,
-  });
+  const overlays = React.useMemo<MapOverlaysState>(
+    () => ({
+      seamarks: showSeamarks,
+      dangerZone: showDangerZones,
+    }),
+    [showSeamarks, showDangerZones],
+  );
 
   const handleSelectSpot = (spot: FishingSpot) => {
     setSelectedSpotId(spot.id);
@@ -62,11 +67,11 @@ export function SharedBackgroundMap() {
     const nm = distanceNm(location.latitude, location.longitude, activeTarget.latitude, activeTarget.longitude);
     const brg = bearingDegrees(location.latitude, location.longitude, activeTarget.latitude, activeTarget.longitude);
     return {
-      distanceLabel: formatNm(nm),
+      distanceLabel: formatDistance(nm),
       bearingLabel: formatBearing(brg),
       etaLabel: etaFromNm(nm, 12),
     };
-  }, [activeTarget, location]);
+  }, [activeTarget, location, formatDistance]);
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">

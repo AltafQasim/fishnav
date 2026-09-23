@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
 import { useLanguage } from '@/context/language-context';
+import { useSettings } from '@/context/settings-context';
 import { useAppTheme } from '@/context/theme-context';
 import { UserLocation } from '@/hooks/use-user-location';
 import {
@@ -67,6 +68,7 @@ export function WaypointModal({
   const insets = useSafeAreaInsets();
   const { colors, isLight } = useAppTheme();
   const { t } = useLanguage();
+  const { formatDistance, depthUnit } = useSettings();
 
   // Input Refs for smooth auto-focus on validation failure
   const nameInputRef = useRef<TextInput>(null);
@@ -116,10 +118,10 @@ export function WaypointModal({
     const nm = distanceNm(userLocation.latitude, userLocation.longitude, liveParsed.latitude, liveParsed.longitude);
     const brg = bearingDegrees(userLocation.latitude, userLocation.longitude, liveParsed.latitude, liveParsed.longitude);
     return {
-      distanceStr: formatNm(nm),
+      distanceStr: formatDistance(nm),
       bearingStr: formatBearing(brg),
     };
-  }, [liveParsed, userLocation]);
+  }, [liveParsed, userLocation, formatDistance]);
 
   const activeFormatMeta = useMemo(() => {
     return COORDINATE_FORMATS.find((f) => f.id === selectedFormat) || COORDINATE_FORMATS[0];
@@ -663,7 +665,7 @@ export function WaypointModal({
             <View style={styles.pairRow}>
               <View style={styles.pairCol}>
                 <Text style={[styles.label, { color: colors.textSecondary }]}>
-                  {t('waypoints.depth_label', 'WATER DEPTH (METERS)')}
+                  {t('waypoints.depth_label', `WATER DEPTH (${depthUnit === 'FT' ? 'FEET' : 'METERS'})`)}
                 </Text>
                 <TextInput
                   style={inputStyle}

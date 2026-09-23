@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 import { useLanguage } from '@/context/language-context';
+import { useSettings } from '@/context/settings-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
 import { formatNm } from '@/utils/geo';
@@ -27,6 +28,7 @@ export function SaveTripModal() {
   } = useTripTracking();
 
   const { t } = useLanguage();
+  const { formatDistance, formatSpeed } = useSettings();
   const [tripName, setTripName] = useState('');
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -93,7 +95,7 @@ export function SaveTripModal() {
           {/* Voyage Metrics Grid */}
           <View style={[styles.metricsGrid, { backgroundColor: colors.chipBg, borderColor: colors.divider }]}>
             <View style={styles.metricItem}>
-              <Text style={[styles.metricValue, { color: colors.text }]}>{formatNm(pendingTripSummary.distanceNm)}</Text>
+              <Text style={[styles.metricValue, { color: colors.text }]}>{formatDistance(pendingTripSummary.distanceNm)}</Text>
               <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>{t('trips.distance', 'DISTANCE')}</Text>
             </View>
 
@@ -110,8 +112,10 @@ export function SaveTripModal() {
 
             <View style={styles.metricItem}>
               <Text style={[styles.metricValue, { color: colors.text }]}>
-                {pendingTripSummary.avgSpeedKnots}{' '}
-                <Text style={[styles.metricUnit, { color: colors.textSecondary }]}>kts</Text>
+                {formatSpeed(pendingTripSummary.avgSpeedKnots).value}{' '}
+                <Text style={[styles.metricUnit, { color: colors.textSecondary }]}>
+                  {formatSpeed(pendingTripSummary.avgSpeedKnots).unit}
+                </Text>
               </Text>
               <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>{t('trips.avg_speed', 'AVG SPEED')}</Text>
             </View>

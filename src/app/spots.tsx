@@ -1,12 +1,14 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect } from 'react';
+import { BackHandler, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FISHING_SPOTS, FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
 import { BottomTabInset } from '@/constants/theme';
 import { useLanguage } from '@/context/language-context';
+import { useSettings } from '@/context/settings-context';
 import { formatLatitude, formatLongitude, useUserLocation } from '@/hooks/use-user-location';
 import { distanceNm, formatNm } from '@/utils/geo';
 
@@ -14,7 +16,21 @@ export default function SpotsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t } = useLanguage();
+  const { formatDistance, formatDepth } = useSettings();
   const { location } = useUserLocation();
+
+  useEffect(() => {
+    const onBack = () => {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace('/');
+      }
+      return true;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBack);
+    return () => sub.remove();
+  }, [router]);
 
   const handleSpotPress = (_spot: FishingSpot) => {
     router.push('/map');
@@ -60,7 +76,7 @@ export default function SpotsScreen() {
                 <View style={styles.metaRow}>
                   <View style={styles.metaBadge}>
                     <MaterialCommunityIcons name="waves" size={13} color={MapColors.accent} />
-                    <Text style={styles.metaText}>{item.depthM} m depth</Text>
+                    <Text style={styles.metaText}>{formatDepth(item.depthM).full} depth</Text>
                   </View>
 
                   {nm != null ? (
@@ -70,7 +86,7 @@ export default function SpotsScreen() {
                         size={13}
                         color={MapColors.green}
                       />
-                      <Text style={styles.metaText}>{formatNm(nm)} away</Text>
+                      <Text style={styles.metaText}>{formatDistance(nm)} away</Text>
                     </View>
                   ) : null}
                 </View>

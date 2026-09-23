@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationCompassRose } from '@/components/compass/navigation-compass-rose';
 import { TargetWaypointPickerModal } from '@/components/compass/target-waypoint-picker-modal';
 import { useLanguage } from '@/context/language-context';
+import { useSettings } from '@/context/settings-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useTripTracking } from '@/context/trip-context';
 import { useWaypoints } from '@/context/waypoints-context';
@@ -27,6 +28,7 @@ type GoogleNavHudProps = {
   onRecenter: () => void;
   onToggleHeadingUp?: () => void;
   headingUp?: boolean;
+  onRequestStopNavigation?: () => void;
 };
 
 // Cardinal heading helper
@@ -58,11 +60,13 @@ export function GoogleNavHud({
   onRecenter,
   onToggleHeadingUp,
   headingUp = false,
+  onRequestStopNavigation,
 }: GoogleNavHudProps) {
   const insets = useSafeAreaInsets();
   const { colors, isLight } = useAppTheme();
   const { t } = useLanguage();
   const { location } = useUserLocation();
+  const { formatDistance, formatSpeed, formatDepth } = useSettings();
   const [showFullCompass, setShowFullCompass] = useState(true);
   const [showTargetPicker, setShowTargetPicker] = useState(false);
   const { activeNavigationTarget, setActiveNavigationTarget } = useWaypoints();
@@ -236,8 +240,10 @@ export function GoogleNavHud({
               >
                 <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>SPEED (SOG)</Text>
                 <Text style={[styles.fullTelemVal, { color: colors.text }]}>
-                  {currentSpeedKnots.toFixed(1)}{' '}
-                  <Text style={[styles.fullTelemUnit, { color: colors.accent }]}>kts</Text>
+                  {formatSpeed(currentSpeedKnots).value}{' '}
+                  <Text style={[styles.fullTelemUnit, { color: colors.accent }]}>
+                    {formatSpeed(currentSpeedKnots).unit}
+                  </Text>
                 </Text>
                 <Text style={[styles.fullTelemSub, { color: colors.textMuted }]}>Speed Over Ground</Text>
               </View>
@@ -292,7 +298,7 @@ export function GoogleNavHud({
               >
                 <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>{t('cockpit.distance', 'DISTANCE & ETA')}</Text>
                 <Text style={[styles.fullTelemVal, { color: colors.text }]}>
-                  {formatNm(remainingDist)}
+                  {formatDistance(remainingDist)}
                 </Text>
                 <Text style={[styles.fullTelemSub, { color: colors.accent }]}>
                   ETA: {etaText}
@@ -362,7 +368,7 @@ export function GoogleNavHud({
                       {formatLongitude(effectiveTarget.longitude)}
                     </Text>
                     <Text style={[styles.fullTelemSub, { color: colors.accent }]} numberOfLines={1}>
-                      {effectiveTarget.name} {distanceToTargetNm != null ? `• ${formatNm(distanceToTargetNm)}` : ''}
+                      {effectiveTarget.name} {distanceToTargetNm != null ? `• ${formatDistance(distanceToTargetNm)}` : ''}
                     </Text>
                   </>
                 ) : (
@@ -394,7 +400,7 @@ export function GoogleNavHud({
                 <Text style={[styles.fullTelemVal, { color: '#22C55E' }]}>
                   {tides?.nextHighTide?.time || '14:30'}{' '}
                   <Text style={[styles.fullTelemUnit, { color: '#22C55E' }]}>
-                    {tides?.nextHighTide?.heightM ? `${tides.nextHighTide.heightM.toFixed(1)}m` : '3.8m'}
+                    {tides?.nextHighTide?.heightM ? formatDepth(tides.nextHighTide.heightM).full : formatDepth(3.8).full}
                   </Text>
                 </Text>
                 <Text style={[styles.fullTelemSub, { color: isTideRising ? '#22C55E' : colors.textMuted }]}>
@@ -415,11 +421,11 @@ export function GoogleNavHud({
                 <Text style={[styles.fullTelemVal, { color: '#EAB308' }]}>
                   {tides?.nextLowTide?.time || '20:45'}{' '}
                   <Text style={[styles.fullTelemUnit, { color: '#EAB308' }]}>
-                    {tides?.nextLowTide?.heightM ? `${tides.nextLowTide.heightM.toFixed(1)}m` : '0.9m'}
+                    {tides?.nextLowTide?.heightM ? formatDepth(tides.nextLowTide.heightM).full : formatDepth(0.9).full}
                   </Text>
                 </Text>
                 <Text style={[styles.fullTelemSub, { color: colors.textMuted }]}>
-                  {tides?.nextLowTide?.relativeText || 'In ~8h'} • Depth {tides?.currentHeightM ? `${tides.currentHeightM.toFixed(1)}m` : '2.4m'}
+                  {tides?.nextLowTide?.relativeText || 'In ~8h'} • Depth {tides?.currentHeightM ? formatDepth(tides.currentHeightM).full : formatDepth(2.4).full}
                 </Text>
               </View>
 
@@ -472,8 +478,10 @@ export function GoogleNavHud({
               >
                 <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>WIND SPEED</Text>
                 <Text style={[styles.fullTelemVal, { color: colors.text }]}>
-                  {conditions?.windSpeedKnots ?? 14}{' '}
-                  <Text style={[styles.fullTelemUnit, { color: colors.accent }]}>kts</Text>
+                  {formatSpeed(conditions?.windSpeedKnots ?? 14).value}{' '}
+                  <Text style={[styles.fullTelemUnit, { color: colors.accent }]}>
+                    {formatSpeed(conditions?.windSpeedKnots ?? 14).unit}
+                  </Text>
                 </Text>
                 <Text style={[styles.fullTelemSub, { color: colors.textMuted }]}>
                   {conditions?.windDirectionText || 'WNW'} ({conditions?.windDirectionDeg ?? 290}°) • {conditions?.windBeaufort || 'Force 4'}
@@ -491,8 +499,10 @@ export function GoogleNavHud({
               >
                 <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>WIND GUSTS</Text>
                 <Text style={[styles.fullTelemVal, { color: '#F97316' }]}>
-                  {conditions?.windGustsKnots ?? 21}{' '}
-                  <Text style={[styles.fullTelemUnit, { color: '#F97316' }]}>kts</Text>
+                  {formatSpeed(conditions?.windGustsKnots ?? 21).value}{' '}
+                  <Text style={[styles.fullTelemUnit, { color: '#F97316' }]}>
+                    {formatSpeed(conditions?.windGustsKnots ?? 21).unit}
+                  </Text>
                 </Text>
                 <Text style={[styles.fullTelemSub, { color: colors.textMuted }]}>Peak Offshore Gusts</Text>
               </View>
@@ -509,7 +519,7 @@ export function GoogleNavHud({
               >
                 <Text style={[styles.fullTelemLabel, { color: colors.textMuted }]}>WAVE SWELL</Text>
                 <Text style={[styles.fullTelemVal, { color: colors.text }]}>
-                  {conditions?.waveHeightM ? `${conditions.waveHeightM.toFixed(1)}m` : '1.2m'}
+                  {conditions?.waveHeightM ? formatDepth(conditions.waveHeightM).full : formatDepth(1.2).full}
                 </Text>
                 <Text style={[styles.fullTelemSub, { color: colors.textMuted }]}>
                   Period {conditions?.wavePeriodS ? `${conditions.wavePeriodS.toFixed(0)}s` : '7s'} • Swell
@@ -567,7 +577,10 @@ export function GoogleNavHud({
             )}
 
             {/* Red End Navigation Button */}
-            <Pressable style={styles.fullExitBtn} onPress={exitNavigation}>
+            <Pressable
+              style={styles.fullExitBtn}
+              onPress={onRequestStopNavigation || exitNavigation}
+            >
               <Ionicons name="close-circle-outline" size={18} color="#EF4444" />
               <Text style={styles.fullExitText}>{t('hud.exit_nav', 'END NAVIGATION')}</Text>
             </Pressable>
@@ -612,7 +625,7 @@ export function GoogleNavHud({
             </View>
             <Text style={styles.secondarySub} numberOfLines={1}>
               {targetSpot
-                ? `${t('cockpit.navigating_to', 'TO')}: ${targetSpot.name} ${targetSpot.depthM ? `(${targetSpot.depthM}m)` : ''}`
+                ? `${t('cockpit.navigating_to', 'TO')}: ${targetSpot.name} ${targetSpot.depthM ? `(${formatDepth(targetSpot.depthM).full})` : ''}`
                 : `${t('hud.free_nav', 'Navigating Course')} • ${String(userCompassHeading)}°`}
             </Text>
           </Pressable>
@@ -709,7 +722,7 @@ export function GoogleNavHud({
         >
           {/* Left: Distance Remaining to Waypoint */}
           <View style={styles.statCol}>
-            <Text style={styles.statMainGreen}>{formatNm(remainingDist)}</Text>
+            <Text style={styles.statMainGreen}>{formatDistance(remainingDist)}</Text>
             <Text style={[styles.statSubLabel, { color: colors.textMuted }]}>
               {targetSpot ? 'DISTANCE' : 'LOGGED'}
             </Text>
@@ -720,8 +733,10 @@ export function GoogleNavHud({
           {/* Middle: Speed Over Ground */}
           <View style={styles.statCol}>
             <Text style={[styles.statMainWhite, { color: colors.text }]}>
-              {currentSpeedKnots.toFixed(1)}{' '}
-              <Text style={[styles.unitText, { color: colors.accent }]}>kts</Text>
+              {formatSpeed(currentSpeedKnots).value}{' '}
+              <Text style={[styles.unitText, { color: colors.accent }]}>
+                {formatSpeed(currentSpeedKnots).unit}
+              </Text>
             </Text>
             <Text style={[styles.statSubLabel, { color: colors.textMuted }]}>BOAT SPEED</Text>
           </View>
@@ -758,7 +773,11 @@ export function GoogleNavHud({
             )}
 
             {/* Google Maps Red Circular Exit Navigation Button */}
-            <Pressable style={styles.redEndTripBtn} onPress={exitNavigation} hitSlop={6}>
+            <Pressable
+              style={styles.redEndTripBtn}
+              onPress={onRequestStopNavigation || exitNavigation}
+              hitSlop={6}
+            >
               <Ionicons name="close" size={24} color="#FFFFFF" />
             </Pressable>
           </View>
@@ -769,6 +788,10 @@ export function GoogleNavHud({
       <TargetWaypointPickerModal
         visible={showTargetPicker}
         onClose={() => setShowTargetPicker(false)}
+        onStartNavigation={(spot) => {
+          setShowTargetPicker(false);
+          startNavigation(spot);
+        }}
       />
     </View>
   );

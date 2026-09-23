@@ -20,6 +20,7 @@ import { MapColors } from '@/constants/map-theme';
 import { useAuth } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
 import { LanguageDropdown } from '@/components/ui/language-dropdown';
+import { useSettings } from '@/context/settings-context';
 import { useSubscription } from '@/context/subscription-context';
 import { useAppTheme } from '@/context/theme-context';
 import { useOfflineDownload } from '@/context/offline-map-context';
@@ -114,20 +115,27 @@ export function SettingsSheetContent() {
     Alert.alert('Vessel Saved', 'Boat specifications updated successfully.');
   };
 
-  // Units
-  const [distanceUnit, setDistanceUnit] = useState<'NM' | 'KM' | 'MI'>('NM');
-  const [speedUnit, setSpeedUnit] = useState<'KTS' | 'KMH'>('KTS');
-  const [depthUnit, setDepthUnit] = useState<'M' | 'FT'>('M');
-
-  // Alarms
-  const [gpsPrecision, setGpsPrecision] = useState(true);
-  const [shallowAlarm, setShallowAlarm] = useState(true);
-  const [dangerZoneAlarm, setDangerZoneAlarm] = useState(true);
-  const [keepAwake, setKeepAwake] = useState(true);
-
-  // Map overlays
-  const [showContours, setShowContours] = useState(true);
-  const [showSeamarks, setShowSeamarks] = useState(true);
+  // Global App Settings (Units, Alarms, Map Overlays)
+  const {
+    distanceUnit,
+    setDistanceUnit,
+    speedUnit,
+    setSpeedUnit,
+    depthUnit,
+    setDepthUnit,
+    gpsPrecision,
+    setGpsPrecision,
+    shallowAlarm,
+    setShallowAlarm,
+    dangerZoneAlarm,
+    setDangerZoneAlarm,
+    keepAwake,
+    setKeepAwake,
+    showContours,
+    setShowContours,
+    showSeamarks,
+    setShowSeamarks,
+  } = useSettings();
 
   // Developer / demo controls visibility
   const [showDevControls, setShowDevControls] = useState(false);

@@ -4,11 +4,16 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { MarineCompassView } from '@/components/compass/marine-compass-view';
 import { TargetWaypointPickerModal } from '@/components/compass/target-waypoint-picker-modal';
+import type { FishingSpot } from '@/constants/fishing-spots';
 import { MapColors } from '@/constants/map-theme';
 import { useLanguage } from '@/context/language-context';
 import { useAppTheme } from '@/context/theme-context';
 
-export function CompassSheetContent() {
+export type CompassSheetContentProps = {
+  onStartNavigation?: (spot: FishingSpot) => void;
+};
+
+export function CompassSheetContent({ onStartNavigation }: CompassSheetContentProps = {}) {
   const { colors, isLight } = useAppTheme();
   const { t } = useLanguage();
   const [northMode, setNorthMode] = useState<'magnetic' | 'true'>('magnetic');
@@ -81,6 +86,10 @@ export function CompassSheetContent() {
       <TargetWaypointPickerModal
         visible={showTargetModal}
         onClose={() => setShowTargetModal(false)}
+        onStartNavigation={(spot) => {
+          setShowTargetModal(false);
+          onStartNavigation?.(spot);
+        }}
       />
     </>
   );
@@ -88,11 +97,11 @@ export function CompassSheetContent() {
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 0,
-    flexShrink: 1,
+    flexGrow: 1,
+    width: '100%',
   },
   content: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 12,
     paddingTop: 8,
   },
   topBar: {
